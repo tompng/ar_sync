@@ -1,19 +1,17 @@
 module ARSync
   extend ActiveSupport::Concern
   def self.sync_has_one(name, records: nil, &block)
-    sync_children name, inverse_of: inverse_of, records: records, multiple: false, &block
+    sync_children name, multiple: false, &block
   end
 
   def self.sync_has_many(name, records: nil, &block)
-    sync_children name, inverse_of: inverse_of, records: records, multiple: true, &block
+    sync_children name, multiple: true, &block
   end
 
-  def self.sync_children(name, multiple:, records:, &data_block)
-    records ||= name.to_sym.to_proc
-    records = records.to_proc if records.is_a?(Symbol)
+  def self.sync_children(name, multiple:, &data_block)
     data_block ||= name.to_sym.to_proc
     @sync_children ||= {}
-    @sync_children[name] = [records, data_block, multiple]
+    @sync_children[name] = [data_block, multiple]
   end
 
   def self.sync_self(&block)
@@ -28,6 +26,10 @@ module ARSync
 
   def self._sync_self_block
     @sync_self_block
+  end
+
+  def self._sync_parents_info
+    @sync_parents
   end
 
   def self._sync_children_info
@@ -53,9 +55,7 @@ module ARSync
   def _sync_notify_parent(action, path: nil, data: nil)
     @sync_parents.each do |parent_name, (name, data_block)|
       parent = send parent_name
-      _records_block, child_data_block, multiple = parent.class._sync_children_info[name]
-      raise "Duplicate data_block `#{name}` in `#{parent.class}` and `#{self.class.name}`" if data_block && child_data_block
-      data_block ||= child_data_block
+      child_data_block, multiple = parent.class._sync_children_info[name]
       action2 = action
       if multiple
         data = instance_exec(&data_block) if path.nil?
@@ -65,7 +65,7 @@ module ARSync
         if path
           data2 = data
         else
-          data2 = instance_exec(&data_block)
+          data2 = instance_exec(&(data_block || child_data_block))
           action2 = :update
         end
       end
@@ -76,5 +76,69 @@ module ARSync
 
   def _sync_send(action, path, data)
     [self.class.name.underscore, id, action, path, data]
+  end
+
+  module Serializer
+    def self.serialize model, *args
+      _serialize(model, model.sync_data, parse_args(args))
+    end
+
+    def self._serialize(model, base_data, option)
+      data = extract_data base_data, only: option[:only], except: option[:except]
+      option[:children].each do |name, option|
+        child_data_block, multiple = model.class._sync_children_info[name]
+        if multiple
+          data[name] = model.instance_exec(&child_data_block).map do |record|
+            data_block = record.class._sync_parents_info.find{ |_p, (c, _b)| c == name }&.last&.last
+            serialize record, record.instance_exec(&data_block), option
+          end
+        else
+          child = child_data_block.call
+          if child.class.respond_to? :_sync_parents_info
+            data_block = child.class._sync_parents_info.find{ |_p, (c, _b)| c == name }&.last&.last
+            data[name] = serialize child, child.instance_exec(&data_block), option
+          else
+            data[name] = child
+          end
+        end
+      end
+      data
+    end
+
+    def self.parse_args(args)
+      parsed = {
+        only: nil,
+        except: nil,
+        children: {}
+      }
+      Array(args).each do |arg|
+        if arg.is_a? Symbol
+          parsed[:children][arg] = { children: [] }
+        elsif arg.is_a? Hash
+          arg.each do |key, value|
+            if %i[only except].include? key
+              parsed[key] = Array value
+            else
+              parsed[:children][key] = parse_args value
+            end
+          end
+        else
+          raise "Arg type missmatch(Symbol or Hash)"
+        end
+      end
+      parsed
+    end
+
+    def extract_data(data, only:, except:)
+      if only
+        set = Array(only).map { |key| [key, true] }
+        data = data.select { |k, _v| set[k] }
+      end
+      if except
+        set = Array(except).map { |key| [key, true] }
+        data = data.reject { |k, _v| set[k] }
+      end
+      data
+    end
   end
 end
