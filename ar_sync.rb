@@ -83,7 +83,7 @@ module ARSync
   end
 
   module Serializer
-    def self.serialize model, *args
+    def self.serialize(model, *args)
       _serialize model, model.sync_data, parse_args(args)
     end
 
@@ -97,7 +97,7 @@ module ARSync
             _serialize record, record.instance_eval(&data_block), child_option
           end
         else
-          child = model.instance_eval &child_data_block
+          child = model.instance_eval(&child_data_block)
           if child.class.respond_to? :_sync_parents_info
             _name, data_block = child.class._sync_parents_info[inverse_of]
             data[name] = _serialize child, child.instance_eval(&data_block), child_option
@@ -127,7 +127,7 @@ module ARSync
             end
           end
         else
-          raise "Arg type missmatch(Symbol or Hash)"
+          raise 'Arg type missmatch(Symbol or Hash)'
         end
       end
       parsed
