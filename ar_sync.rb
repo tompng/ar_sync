@@ -1,30 +1,41 @@
 module ARSync
   extend ActiveSupport::Concern
   module ClassMethods
-    def sync_has_data(name, &block)
-      sync_children name, inverse_of: nil, type: :data, &block
+    def sync_has_data(name, **option, &block)
+      raise unless (option.keys - %i[includes preload]).empty?
+      sync_children name, option.merge(type: :data), &block
     end
 
-    def sync_has_one(name, inverse_of: nil, &block)
-      sync_children name, inverse_of: inverse_of, type: :one, &block
+    def sync_has_one(name, **option, &block)
+      raise unless (option.keys - %i[inverse_of]).empty?
+      option = { type: :one, includes: name }.update option
+      sync_children name, option, &block
     end
 
-    def sync_has_many(name, inverse_of:, &block)
-      sync_children name, inverse_of: inverse_of, type: :many, &block
+    def sync_has_many(name, **option, &block)
+      raise unless (option.keys - %i[inverse_of]).empty?
+      option = { type: :many, includes: name }.update option
+      sync_children name, option, &block
     end
 
-    def sync_children(name, inverse_of:, type:, &data_block)
+    def sync_children(name, **option, &data_block)
+      raise unless (option.keys - %i[type inverse_of includes preload]).empty?
       data_block ||= name.to_sym.to_proc
-      _sync_children_info[name] = [data_block, inverse_of, type]
+      _sync_children_info[name] = option.merge data_block: data_block
     end
 
     def sync_self(&block)
       @sync_self_block = block || :sync_data.to_proc
     end
 
-    def sync_belongs_to(parent, as:, &data_block)
+    def sync_belongs_to(parent, as:, includes: nil, preload: nil, &data_block)
       data_block ||= :sync_data.to_proc
-      _sync_parents_info[parent] = [as, data_block]
+      _sync_parents_info[parent] = {
+        name: as,
+        includes: includes,
+        preload: preload,
+        data_block: data_block || :sync_data.to_proc
+      }
     end
 
     def _sync_self_block
@@ -45,6 +56,12 @@ module ARSync
     end
   end
 
+  def sync_includes
+  end
+
+  def sync_preload models
+  end
+
   def sync_data
     as_json
   end
@@ -56,10 +73,14 @@ module ARSync
   end
 
   def _sync_notify_parent(action, path: nil, data: nil)
-    self.class._sync_parents_info.each do |parent_name, (name, data_block)|
+    self.class._sync_parents_info.each do |parent_name, info|
+      name = info[:name]
+      data_block = info[:data_block]
       parent = send parent_name
       next unless parent
-      child_data_block, _inverse_of, type = parent.class._sync_children_info[name]
+      info = parent.class._sync_children_info[name]
+      child_data_block = info[:data_block]
+      type = info[:type]
       action2 = action
       if type == :many
         data2 = path ? data : instance_eval(&data_block)
@@ -98,16 +119,19 @@ module ARSync
     def self._serialize(model, base_data, option)
       data = extract_data base_data, only: option[:only], except: option[:except]
       option[:children].each do |name, child_option|
-        child_data_block, inverse_of, type = model.class._sync_children_info[name]
+        info = model.class._sync_children_info[name]
+        child_data_block = info[:data_block]
+        inverse_of = info[:inverse_of]
+        type = info[:type]
         if type == :many
           data[name] = model.instance_eval(&child_data_block).map do |record|
-            _name, data_block = record.class._sync_parents_info[inverse_of]
+            data_block = record.class._sync_parents_info[inverse_of][:data_block]
             _serialize record, record.instance_eval(&data_block), child_option
           end
         else
           child = model.instance_eval(&child_data_block)
           if type == :one
-            _name, data_block = child.class._sync_parents_info[inverse_of]
+            data_block = child.class._sync_parents_info[inverse_of][:data_block]
             data[name] = _serialize child, child.instance_eval(&data_block), child_option
           else
             data[name] = child
@@ -115,6 +139,11 @@ module ARSync
         end
       end
       data
+    end
+
+    def self.preload(*args)
+      @preloader ||= ActiveRecord::Associations::Preloader.new
+      @preloader.preload(*args)
     end
 
     def self.parse_args(args)

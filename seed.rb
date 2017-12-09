@@ -41,5 +41,3 @@ stars = Array.new 128 do
   Star.create user: users.sample, comment: comments.sample
 end
 p users.size, posts.size, comments.size, stars.size
-
-binding.pry
