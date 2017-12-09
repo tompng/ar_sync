@@ -1,13 +1,18 @@
-App.sync = App.cable.subscriptions.create("SyncChannel", {
-  connected: function() {
-    // Called when the subscription is ready for use on the server
+App.sync = App.cable.subscriptions.create({
+    channel: "SyncChannel",
+    key: 'aaa',
   },
+  {
+    connected: function() {
+      console.error('connected')
+    },
 
-  disconnected: function() {
-    // Called when the subscription has been terminated by the server
-  },
+    disconnected: function() {
+      console.error('disconnected')
+    },
 
-  received: function(data) {
-    // Called when there's incoming data on the websocket for this channel
+    received: function(data) {
+      console.error('receive', data)
+    }
   }
-});
+)
