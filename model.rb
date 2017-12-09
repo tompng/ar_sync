@@ -1,3 +1,7 @@
+require 'pry'
+require_relative 'db'
+require_relative 'ar_sync'
+
 class User < ActiveRecord::Base
   include ARSync
   has_many :posts
@@ -18,3 +22,5 @@ class Comment < ActiveRecord::Base
   belongs_to :post
   sync_belongs_to :post, as: :comments
 end
+
+binding.pry

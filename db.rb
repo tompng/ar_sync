@@ -1,14 +1,15 @@
 require 'benchmark'
 require 'active_record'
-ActiveRecord::Base.establish_connection(
+config = {
   adapter: 'sqlite3',
   database: 'development.sqlite3',
   pool: 5,
   timeout: 5000
-)
+}
+File.unlink config[:database] if File.exist? config[:database]
+ActiveRecord::Base.establish_connection config
 ActiveRecord::Base.logger = Logger.new(STDOUT)
-
-class TestMigration < ActiveRecord::Migration[5.1]
+ActiveRecord::Migration::Current.class_eval do
   create_table :users do |t|
     t.string :name
   end
