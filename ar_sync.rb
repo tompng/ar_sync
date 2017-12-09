@@ -1,5 +1,9 @@
 module ARSync
   extend ActiveSupport::Concern
+  def self.sync_has_data(name, &block)
+    sync_children name, inverse_of: nil, multiple: false, &block
+  end
+
   def self.sync_has_one(name, inverse_of: nil, &block)
     sync_children name, inverse_of: inverse_of, multiple: false, &block
   end
