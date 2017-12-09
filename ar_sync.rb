@@ -1,48 +1,49 @@
 module ARSync
   extend ActiveSupport::Concern
-  def self.sync_has_data(name, &block)
-    sync_children name, inverse_of: nil, multiple: false, &block
-  end
+  module ClassMethods
+    def sync_has_data(name, &block)
+      sync_children name, inverse_of: nil, multiple: false, &block
+    end
 
-  def self.sync_has_one(name, inverse_of: nil, &block)
-    sync_children name, inverse_of: inverse_of, multiple: false, &block
-  end
+    def sync_has_one(name, inverse_of: nil, &block)
+      sync_children name, inverse_of: inverse_of, multiple: false, &block
+    end
 
-  def self.sync_has_many(name, inverse_of:, &block)
-    sync_children name, inverse_of: inverse_of, multiple: true, &block
-  end
+    def sync_has_many(name, inverse_of:, &block)
+      sync_children name, inverse_of: inverse_of, multiple: true, &block
+    end
 
-  def self.sync_children(name, inverse_of:, multiple:, &data_block)
-    data_block ||= name.to_sym.to_proc
-    @sync_children ||= {}
-    @sync_children[name] = [data_block, inverse_of, multiple]
-  end
+    def sync_children(name, inverse_of:, multiple:, &data_block)
+      data_block ||= name.to_sym.to_proc
+      @sync_children ||= {}
+      @sync_children[name] = [data_block, inverse_of, multiple]
+    end
 
-  def self.sync_self(&block)
-    @sync_self_block = block || :sync_data.to_proc
-  end
+    def sync_self(&block)
+      @sync_self_block = block || :sync_data.to_proc
+    end
 
-  def self.sync_belongs_to(parent, as:, &data_block)
-    data_block ||= :sync_data.to_proc
-    @sync_parents ||= {}
-    @sync_parents[parent] = [as, data_block]
-  end
+    def sync_belongs_to(parent, as:, &data_block)
+      data_block ||= :sync_data.to_proc
+      @sync_parents ||= {}
+      @sync_parents[parent] = [as, data_block]
+    end
 
-  def self._sync_self_block
-    @sync_self_block
-  end
+    def _sync_self_block
+      @sync_self_block
+    end
 
-  def self._sync_parents_info
-    @sync_parents
-  end
+    def _sync_parents_info
+      @sync_parents
+    end
 
-  def self._sync_children_info
-    @sync_children
+    def _sync_children_info
+      @sync_children
+    end
   end
-
   included do
     %i[create update destroy].each do |action|
-      after_commit on: action { _sync_notify action }
+      after_commit(on: action) { _sync_notify action }
     end
   end
 

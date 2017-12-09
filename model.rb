@@ -5,7 +5,7 @@ require_relative 'ar_sync'
 class User < ActiveRecord::Base
   include ARSync
   has_many :posts
-  sync_has_many :posts
+  sync_has_many :posts, inverse_of: :user
 end
 
 class Post < ActiveRecord::Base
@@ -13,7 +13,7 @@ class Post < ActiveRecord::Base
   belongs_to :user
   has_many :comments
   sync_belongs_to :user, as: :posts
-  sync_has_many :comments
+  sync_has_many :comments, inverse_of: :post
 end
 
 class Comment < ActiveRecord::Base
