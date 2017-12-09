@@ -1,4 +1,14 @@
-ActiveRecord::Schema.define do
+require 'benchmark'
+require 'active_record'
+ActiveRecord::Base.establish_connection(
+  adapter: 'sqlite3',
+  database: 'development.sqlite3',
+  pool: 5,
+  timeout: 5000
+)
+ActiveRecord::Base.logger = Logger.new(STDOUT)
+
+class TestMigration < ActiveRecord::Migration[5.1]
   create_table :users do |t|
     t.string :name
   end
