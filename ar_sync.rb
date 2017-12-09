@@ -15,8 +15,7 @@ module ARSync
 
     def sync_children(name, inverse_of:, multiple:, &data_block)
       data_block ||= name.to_sym.to_proc
-      @sync_children ||= {}
-      @sync_children[name] = [data_block, inverse_of, multiple]
+      _sync_children_info[name] = [data_block, inverse_of, multiple]
     end
 
     def sync_self(&block)
@@ -25,8 +24,7 @@ module ARSync
 
     def sync_belongs_to(parent, as:, &data_block)
       data_block ||= :sync_data.to_proc
-      @sync_parents ||= {}
-      @sync_parents[parent] = [as, data_block]
+      _sync_parents_info[parent] = [as, data_block]
     end
 
     def _sync_self_block
@@ -34,11 +32,11 @@ module ARSync
     end
 
     def _sync_parents_info
-      @sync_parents
+      @sync_parents ||= {}
     end
 
     def _sync_children_info
-      @sync_children
+      @sync_children ||= {}
     end
   end
   included do
@@ -53,33 +51,34 @@ module ARSync
 
   def _sync_notify(action)
     sync_self_block = self.class._sync_self_block
-    _sync_send action, [], instance_exec(&sync_self_block) if sync_self_block
+    _sync_send action, path: [], data: instance_eval(&sync_self_block) if sync_self_block
     _sync_notify_parent action
   end
 
   def _sync_notify_parent(action, path: nil, data: nil)
-    @sync_parents.each do |parent_name, (name, data_block)|
+    self.class._sync_parents_info.each do |parent_name, (name, data_block)|
       parent = send parent_name
+      next unless parent
       child_data_block, _inverse_of, multiple = parent.class._sync_children_info[name]
       action2 = action
       if multiple
-        data = instance_exec(&data_block) if path.nil?
+        data = instance_eval(&data_block) if path.nil?
         path2 = [[name, id], *path]
       else
         path2 = [[name], *path]
         if path
           data2 = data
         else
-          data2 = instance_exec(&(data_block || child_data_block))
+          data2 = instance_eval(&(data_block || child_data_block))
           action2 = :update
         end
       end
-      parent._sync_send action2, path2, data2
-      parent._sync_notify_parent action2, path2, data2
+      parent._sync_send action2, path: path2, data: data2
+      parent._sync_notify_parent action2, path: path2, data: data2
     end
   end
 
-  def _sync_send(action, path, data)
+  def _sync_send(action, path:, data:)
     [self.class.name.underscore, id, action, path, data]
   end
 
@@ -93,15 +92,15 @@ module ARSync
       option[:children].each do |name, option|
         child_data_block, inverse_of, multiple = model.class._sync_children_info[name]
         if multiple
-          data[name] = model.instance_exec(&child_data_block).map do |record|
+          data[name] = model.instance_eval(&child_data_block).map do |record|
             _name, data_block = record.class._sync_parents_info[inverse_of]
-            serialize record, record.instance_exec(&data_block), option
+            serialize record, record.instance_eval(&data_block), option
           end
         else
           child = child_data_block.call
           if child.class.respond_to? :_sync_parents_info
             _name, data_block = child.class._sync_parents_info[inverse_of]
-            data[name] = serialize child, child.instance_exec(&data_block), option
+            data[name] = serialize child, child.instance_eval(&data_block), option
           else
             data[name] = child
           end
