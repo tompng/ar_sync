@@ -84,23 +84,23 @@ module ARSync
 
   module Serializer
     def self.serialize model, *args
-      _serialize(model, model.sync_data, parse_args(args))
+      _serialize model, model.sync_data, parse_args(args)
     end
 
     def self._serialize(model, base_data, option)
       data = extract_data base_data, only: option[:only], except: option[:except]
-      option[:children].each do |name, option|
+      option[:children].each do |name, child_option|
         child_data_block, inverse_of, multiple = model.class._sync_children_info[name]
         if multiple
           data[name] = model.instance_eval(&child_data_block).map do |record|
             _name, data_block = record.class._sync_parents_info[inverse_of]
-            serialize record, record.instance_eval(&data_block), option
+            _serialize record, record.instance_eval(&data_block), child_option
           end
         else
-          child = child_data_block.call
+          child = model.instance_eval &child_data_block
           if child.class.respond_to? :_sync_parents_info
             _name, data_block = child.class._sync_parents_info[inverse_of]
-            data[name] = serialize child, child.instance_eval(&data_block), option
+            data[name] = _serialize child, child.instance_eval(&data_block), child_option
           else
             data[name] = child
           end
@@ -133,7 +133,7 @@ module ARSync
       parsed
     end
 
-    def extract_data(data, only:, except:)
+    def self.extract_data(data, only:, except:)
       if only
         set = Array(only).map { |key| [key, true] }
         data = data.select { |k, _v| set[k] }
