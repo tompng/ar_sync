@@ -51,7 +51,7 @@ module ARSync
 
   def _sync_notify(action)
     sync_self_block = self.class._sync_self_block
-    _sync_send action, path: [], data: instance_eval(&sync_self_block) if sync_self_block
+    ARSync.sync_send to: self, action: action, path: [], data: instance_eval(&sync_self_block) if sync_self_block
     _sync_notify_parent action
   end
 
@@ -73,13 +73,17 @@ module ARSync
           action2 = :update
         end
       end
-      parent._sync_send action2, path: path2, data: data2
+      ARSync.sync_send to: parent, action: action2, path: path2, data: data2
       parent._sync_notify_parent action2, path: path2, data: data2
     end
   end
 
-  def _sync_send(action, path:, data:)
-    [self.class.name.underscore, id, action, path, data]
+  def self.configure &block
+    @sync_send_block = block
+  end
+
+  def self.sync_send(to:, action:, path:, data:)
+    @sync_send_block.call to: to, action: action, path: path, data: data
   end
 
   module Serializer
