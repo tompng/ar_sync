@@ -2,20 +2,20 @@ module ARSync
   extend ActiveSupport::Concern
   module ClassMethods
     def sync_has_data(name, &block)
-      sync_children name, inverse_of: nil, multiple: false, &block
+      sync_children name, inverse_of: nil, type: :data, &block
     end
 
     def sync_has_one(name, inverse_of: nil, &block)
-      sync_children name, inverse_of: inverse_of, multiple: false, &block
+      sync_children name, inverse_of: inverse_of, type: :one, &block
     end
 
     def sync_has_many(name, inverse_of:, &block)
-      sync_children name, inverse_of: inverse_of, multiple: true, &block
+      sync_children name, inverse_of: inverse_of, type: :many, &block
     end
 
-    def sync_children(name, inverse_of:, multiple:, &data_block)
+    def sync_children(name, inverse_of:, type:, &data_block)
       data_block ||= name.to_sym.to_proc
-      _sync_children_info[name] = [data_block, inverse_of, multiple]
+      _sync_children_info[name] = [data_block, inverse_of, type]
     end
 
     def sync_self(&block)
@@ -59,19 +59,23 @@ module ARSync
     self.class._sync_parents_info.each do |parent_name, (name, data_block)|
       parent = send parent_name
       next unless parent
-      child_data_block, _inverse_of, multiple = parent.class._sync_children_info[name]
+      child_data_block, _inverse_of, type = parent.class._sync_children_info[name]
       action2 = action
-      if multiple
-        data = instance_eval(&data_block) if path.nil?
+      if type == :many
+        data2 = path ? data : instance_eval(&data_block)
         path2 = [[name, id], *path]
       else
-        path2 = [[name], *path]
         if path
           data2 = data
         else
-          data2 = instance_eval(&(data_block || child_data_block))
+          if type == :data
+            data2 = parent.instance_eval(&child_data_block)
+          else
+            data2 = instance_eval(&data_block)
+          end
           action2 = :update
         end
+        path2 = [[name], *path]
       end
       ARSync.sync_send to: parent, action: action2, path: path2, data: data2
       parent._sync_notify_parent action2, path: path2, data: data2
@@ -94,15 +98,15 @@ module ARSync
     def self._serialize(model, base_data, option)
       data = extract_data base_data, only: option[:only], except: option[:except]
       option[:children].each do |name, child_option|
-        child_data_block, inverse_of, multiple = model.class._sync_children_info[name]
-        if multiple
+        child_data_block, inverse_of, type = model.class._sync_children_info[name]
+        if type == :many
           data[name] = model.instance_eval(&child_data_block).map do |record|
             _name, data_block = record.class._sync_parents_info[inverse_of]
             _serialize record, record.instance_eval(&data_block), child_option
           end
         else
           child = model.instance_eval(&child_data_block)
-          if child.class.respond_to? :_sync_parents_info
+          if type == :one
             _name, data_block = child.class._sync_parents_info[inverse_of]
             data[name] = _serialize child, child.instance_eval(&data_block), child_option
           else
