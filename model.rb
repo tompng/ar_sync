@@ -22,8 +22,15 @@ class Comment < ActiveRecord::Base
   include ARSync
   belongs_to :user
   belongs_to :post
+  has_many :stars
   sync_self
   sync_belongs_to :post, as: :comments
+  sync_has_data(:star_count) { stars.size }
 end
 
-binding.pry
+class Star < ActiveRecord::Base
+  include ARSync
+  belongs_to :user
+  belongs_to :comment
+  sync_belongs_to :comment, as: :star_count
+end
