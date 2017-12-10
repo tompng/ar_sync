@@ -152,7 +152,7 @@ module ARSync
         except: nil,
         children: {}
       }
-      Array(args).each do |arg|
+      (args.is_a?(Array) ? args : [args]).each do |arg|
         if arg.is_a? Symbol
           parsed[:children][arg] = { children: [] }
         elsif arg.is_a? Hash
