@@ -25,11 +25,9 @@ class Comment < ActiveRecord::Base
   has_many :stars
   sync_self
   sync_belongs_to :post, as: :comments
-  sync_has_data(:star_count) { stars.size }
-  # sync_has_data(:star_count, includes: :stars) { stars.size }
-  # sync_has_data(:star_count, preload: ->models{
-  #  [:star_count_by_id, Star.where(id: models.ids).group(:id).count]
-  # }) { |preload| preload[:star_count_by_id][id] || 0 }
+  sync_has_data(:star_count, preload: ->models{
+   Star.where(comment_id: models.map(&:id)).group(:comment_id).count
+  }) { |preload| preload[id] || 0 }
 end
 
 class Star < ActiveRecord::Base

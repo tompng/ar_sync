@@ -5,5 +5,6 @@ ARSync.configure do |to:, action:, path:, data:|
 end
 
 Star.last._sync_notify :update
-ARSync::Serializer.serialize Post.last, comments: :star_count;
+Comment.last._sync_notify :update
+ARSync.serialize Post.last, comments: :star_count;
 binding.pry
