@@ -6,7 +6,7 @@ module ARPreload
       @preloadable_info ||= {}
     end
 
-    def preloadable *names, includes: nil, preload: nil, &preload_block
+    def preloadable(*names, includes: nil, preload: nil, &preload_block)
       names.each do |name|
         preloadable_info[name] = {
           includes: includes,

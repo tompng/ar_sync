@@ -80,7 +80,7 @@ module ARSync
     data
   end
 
-  def _sync_data_for name
+  def _sync_data_for(name)
     info = self.class._sync_children_info[name]
     data_block = info[:data_block]
     includes = info[:includes]
@@ -108,7 +108,7 @@ module ARSync
         if path
           data2 = data
         else
-          data2 = (type == :data) ? parent._sync_data_for(name) : _sync_data
+          data2 = type == :data ? parent._sync_data_for(name) : _sync_data
           action2 = :update
         end
         path2 = [[name], *path]
