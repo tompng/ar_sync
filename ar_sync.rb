@@ -26,7 +26,7 @@ module ARSync
     end
 
     def _sync_data_block_fallback(name)
-      ->(_preload) { send name }
+      ->(_preload = nil) { send name }
     end
 
     def _sync_children(name, **option, &data_block)
