@@ -8,6 +8,7 @@ module ARPreload
 
     def preloadable(*names, includes: nil, preload: nil, &preload_block)
       names.each do |name|
+        includes = name if includes.nil? && reflect_on_association(name)
         preloadable_info[name] = {
           includes: includes,
           preload: preload,

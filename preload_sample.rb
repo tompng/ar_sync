@@ -2,14 +2,14 @@ require_relative 'model'
 class User
   include ARPreload
   preloadable :id, :name
-  preloadable :posts, includes: :posts
+  preloadable :posts
 end
 
 class Post
   include ARPreload
   preloadable :id, :title, :body
-  preloadable :user, includes: :user
-  preloadable :comments, includes: :comments
+  preloadable :user
+  preloadable :comments
   preloadable :comment_count, preload: lambda { |posts|
     Comment.where(post_id: posts.map(&:id)).group(:post_id).count
   } do |preload|
@@ -20,18 +20,18 @@ end
 class Comment
   include ARPreload
   preloadable :id, :body
-  preloadable :user, includes: :user
+  preloadable :user
   preloadable :stars_count, preload: lambda { |comments|
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   } do |preload|
     preload[id] || 0
   end
-  preloadable :stars, includes: :stars
+  preloadable :stars
 end
 
 class Star
   include ARPreload
-  preloadable :user, includes: :user
+  preloadable :user
 end
 
 ARPreload::Serializer.serialize User.first, :id, posts: { comments: :stars_count }

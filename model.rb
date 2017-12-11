@@ -20,6 +20,7 @@ class Post < ActiveRecord::Base
   sync_has_data :id
   sync_has_data :title
   sync_has_data :body
+  sync_has_data :user, includes: :user
   sync_has_many :comments, inverse_of: :post
 end
 
@@ -32,6 +33,7 @@ class Comment < ActiveRecord::Base
   sync_belongs_to :post, as: :comments
   sync_has_data :id
   sync_has_data :body
+  sync_has_data :user, includes: :user
   sync_has_data(:star_count, preload: lambda { |models|
     Star.where(comment_id: models.map(&:id)).group(:comment_id).count
   }) { |preload| preload[id] || 0 }
