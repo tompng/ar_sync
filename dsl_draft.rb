@@ -28,10 +28,10 @@ class Post < ActiveRecord::Base
 
   preloader(:foo) { |posts| custom_preload }
   preloader(:bar) { |posts| custom_preload }
-  preloadable :foooo, includes: :aaa, preloader: :foo do |preloaded_foos|
+  preloadable :foooo, includes: :aaa, preload: :foo do |preloaded_foos|
     preloaded_foos[id].foooo
   end
-  preloadable foobar, includes: :aaa, preloader: [:foo, :bar] do |foos, bars|
+  preloadable foobar, includes: :aaa, preload: [:foo, :bar] do |foos, bars|
     foos[id] + bars[id]
   end
 end

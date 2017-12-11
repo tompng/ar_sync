@@ -21,11 +21,25 @@ class Comment
   include ARPreload
   preloadable :id, :body
   preloadable :user
+
   preloadable :stars_count, preload: lambda { |comments|
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
-  } do |preload|
-    preload[id] || 0
+  } do |preloaded|
+    preloaded[id] || 0
   end
+
+  custom_preloader :star_count_loader do |comments|
+    Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
+  end
+
+  preloadable :stars_count_x5, preload: :star_count_loader do |preloaded|
+    (preloaded[id] || 0) * 5
+  end
+
+  preloadable :stars_count_x10, preload: :star_count_loader do |preloaded|
+    (preloaded[id] || 0) * 10
+  end
+
   preloadable :stars
 end
 
