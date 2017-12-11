@@ -2,7 +2,7 @@ require 'active_record'
 module ARPreload
   extend ActiveSupport::Concern
   module ClassMethods
-    def preloadable_info
+    def _preloadable_info
       @preloadable_info ||= {}
     end
 
@@ -10,13 +10,13 @@ module ARPreload
       if preload
         preloaders = Array(preload).map do |preloader|
           next preloader if preloader.is_a? Proc
-          raise "preloader not found: #{preloader}" unless custom_preloaders.has_key?(preloader)
-          custom_preloaders[preloader]
+          raise "preloader not found: #{preloader}" unless _custom_preloaders.has_key?(preloader)
+          _custom_preloaders[preloader]
         end
       end
       names.each do |name|
         includes = name if includes.nil? && reflect_on_association(name)
-        preloadable_info[name] = {
+        _preloadable_info[name] = {
           includes: includes,
           preloaders: preloaders,
           data: preload_block
@@ -24,12 +24,12 @@ module ARPreload
       end
     end
 
-    def custom_preloaders
+    def _custom_preloaders
       @custom_preloaders ||= {}
     end
 
     def define_preloader(name, &block)
-      custom_preloaders[name] = block
+      _custom_preloaders[name] = block
     end
   end
 
@@ -42,16 +42,16 @@ module ARPreload
 
     def self._serialize(value_outputs, arg)
       value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
-        next unless klass.respond_to? :preloadable_info
+        next unless klass.respond_to? :_preloadable_info
         models = value_outputs.map(&:first)
         arg.each_key do |name|
-          includes = klass.preloadable_info[name][:includes]
+          includes = klass._preloadable_info[name][:includes]
           preload models, includes if includes.present?
         end
 
         preloaders = []
         arg.each_key do |name|
-          preloaders << klass.preloadable_info[name][:preloaders]
+          preloaders << klass._preloadable_info[name][:preloaders]
         end
         preloader_values = preloaders.flatten.compact.uniq.map do |preloader|
           [preloader, preloader.call(models)]
@@ -59,7 +59,7 @@ module ARPreload
 
         arg.each do |name, sub_arg|
           sub_calls = []
-          info = klass.preloadable_info[name]
+          info = klass._preloadable_info[name]
           value_outputs.each do |value, output|
             if info[:data]
               if info[:preloaders]
