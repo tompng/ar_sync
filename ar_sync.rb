@@ -72,25 +72,14 @@ module ARSync
     _sync_notify_parent action
   end
 
-  def _sync_data
-    data = {}
-    self.class._sync_children_info.each do |name, info|
-      data[name] = _sync_data_for name if info[:type] == :data
+  def _sync_data(names = nil)
+    unless names
+      names = []
+      self.class._sync_children_info.each do |name, info|
+        names << name if info[:type] == :data
+      end
     end
-    data
-  end
-
-  def _sync_data_for(name)
-    info = self.class._sync_children_info[name]
-    data_block = info[:data_block]
-    includes = info[:includes]
-    preloader = info[:preload]
-    ARPreload::Serializer.preload self, includes if includes
-    if preloader
-      instance_exec(preloader.call([self]), &data_block)
-    else
-      instance_exec(&data_block)
-    end
+    ARPreload::Serializer.serialize self, *names
   end
 
   def _sync_notify_parent(action, path: nil, data: nil)
@@ -108,7 +97,7 @@ module ARSync
         if path
           data2 = data
         else
-          data2 = type == :data ? parent._sync_data_for(name) : _sync_data
+          data2 = type == :data ? parent._sync_data([name])[name] : _sync_data
           action2 = :update
         end
         path2 = [[name], *path]
