@@ -28,7 +28,7 @@ class Comment
     preloaded[id] || 0
   end
 
-  custom_preloader :star_count_loader do |comments|
+  define_preloader :star_count_loader do |comments|
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   end
 

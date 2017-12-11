@@ -28,7 +28,7 @@ module ARPreload
       @custom_preloaders ||= {}
     end
 
-    def custom_preloader(name, &block)
+    def define_preloader(name, &block)
       custom_preloaders[name] = block
     end
   end

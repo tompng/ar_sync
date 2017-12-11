@@ -38,7 +38,7 @@ class Comment < ActiveRecord::Base
     Star.where(comment_id: models.map(&:id)).group(:comment_id).count
   }) { |preload| preload[id] || 0 }
 
-  custom_preloader :star_count_loader do |comments|
+  define_preloader :star_count_loader do |comments|
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   end
 
