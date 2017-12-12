@@ -14,10 +14,10 @@ module ARSync
       _sync_define(:many, name, option, &data_block)
     end
 
-    def _sync_define(type, name, includes: nil, preload: nil, &data_block)
+    def _sync_define(type, name, option, &data_block)
       _sync_children_type[name] = type
       data_block ||= ->(*_preloads) { send name }
-      preloadable name, { includes: includes, preload: preload }, &data_block
+      preloadable name, option, &data_block
     end
 
     def sync_self
