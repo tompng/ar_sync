@@ -2,30 +2,22 @@ require_relative 'ar_preload'
 module ARSync
   extend ActiveSupport::Concern
   module ClassMethods
-    def sync_has_data(name, includes: nil, preload: nil, &data_block)
-      _sync_children name, type: :data
-      data_block ||= _sync_data_block_fallback name
+    def sync_has_data(name, **option, &data_block)
+      _sync_define(:data, name, option, &data_block)
+    end
+
+    def sync_has_one(name, **option, &data_block)
+      _sync_define(:one, name, option, &data_block)
+    end
+
+    def sync_has_many(name, **option, &data_block)
+      _sync_define(:many, name, option, &data_block)
+    end
+
+    def _sync_define(type, name, includes: nil, preload: nil, &data_block)
+      _sync_children_type[name] = type
+      data_block ||= ->(*_preloads) { send name }
       preloadable name, { includes: includes, preload: preload }, &data_block
-    end
-
-    def sync_has_one(name, &data_block)
-      _sync_children name, type: :one
-      data_block ||= _sync_data_block_fallback name
-      preloadable name, &data_block
-    end
-
-    def sync_has_many(name, &data_block)
-      _sync_children name, type: :many
-      data_block ||= _sync_data_block_fallback name
-      preloadable name, &data_block
-    end
-
-    def _sync_data_block_fallback(name)
-      ->(_preload = nil) { send name }
-    end
-
-    def _sync_children(name, **option)
-      _sync_children_info[name] = option
     end
 
     def sync_self
@@ -44,8 +36,8 @@ module ARSync
       @_sync_parents_inverse_of ||= {}
     end
 
-    def _sync_children_info
-      @_sync_children_info ||= {}
+    def _sync_children_type
+      @_sync_children_type ||= {}
     end
   end
 
@@ -66,8 +58,8 @@ module ARSync
   def _sync_data(names = nil)
     unless names
       names = []
-      self.class._sync_children_info.each do |name, info|
-        names << name if info[:type] == :data
+      self.class._sync_children_type.each do |name, type|
+        names << name if type == :data
       end
     end
     ARPreload::Serializer.serialize self, *names
@@ -77,8 +69,7 @@ module ARSync
     self.class._sync_parents_inverse_of.each do |parent_name, inverse_name|
       parent = send parent_name
       next unless parent
-      inverse_info = parent.class._sync_children_info[inverse_name]
-      type = inverse_info[:type]
+      type = parent.class._sync_children_type[inverse_name]
       action2 = action
       if type == :many
         data2 = path ? data : _sync_data
