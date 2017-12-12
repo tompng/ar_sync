@@ -1,15 +1,12 @@
 require_relative 'model'
 class User
   include ARPreload
-  preloadable :id, :name
-  preloadable :posts
+  preloadable :id, :name, :posts
 end
 
 class Post
   include ARPreload
-  preloadable :id, :title, :body
-  preloadable :user
-  preloadable :comments
+  preloadable :id, :title, :body, :user, :comments
   preloadable :comment_count, preload: lambda { |posts|
     Comment.where(post_id: posts.map(&:id)).group(:post_id).count
   } do |preload|
@@ -19,8 +16,7 @@ end
 
 class Comment
   include ARPreload
-  preloadable :id, :body
-  preloadable :user
+  preloadable :id, :body, :user, :stars
 
   preloadable :stars_count, preload: lambda { |comments|
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
@@ -40,15 +36,19 @@ class Comment
     (preloaded[id] || 0) * 10
   end
 
-  preloadable :stars
+  preloadable :current_user_stars, context: true, preload: -> (comments, context) {
+    Star.where(comment_id: comments.map(&:id), user_id: context[:current_user].id).group_by(&:comment_id)
+  } do |preloadeds, _context|
+    preloadeds[id] || []
+  end
 end
 
 class Star
   include ARPreload
-  preloadable :user
+  preloadable :id, :user
 end
 
-ARPreload::Serializer.serialize User.first, :id, posts: { comments: :stars_count }
+ARPreload::Serializer.serialize User.first, :id, posts: { comments: :stars_count }, context: { current_user: User.first }
 # User Load (0.2ms)  SELECT  "users".* FROM "users" ORDER BY "users"."id" ASC LIMIT ?  [["LIMIT", 1]]
 # Post Load (0.3ms)  SELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1
 # Comment Load (2.9ms)  SELECT "comments".* FROM "comments" WHERE "comments"."post_id" IN (1, 7, 8, 10, 15)

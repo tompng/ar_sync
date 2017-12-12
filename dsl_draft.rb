@@ -35,3 +35,20 @@ class Post < ActiveRecord::Base
     foos[id] + bars[id]
   end
 end
+
+ARPreload::Serializer.serialize(
+  user,
+  :name,
+  posts: [
+    :title,
+    :body,
+    user: :name,
+    comments: [
+      :title,
+      :star_count,
+      user: :name,
+      my_star: { args: current_user }
+    ]
+  ],
+  context: { current_user: current_user }
+)

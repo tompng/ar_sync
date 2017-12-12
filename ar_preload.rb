@@ -6,7 +6,7 @@ module ARPreload
       @_preloadable_info ||= {}
     end
 
-    def preloadable(*names, includes: nil, preload: nil, &preload_block)
+    def preloadable(*names, includes: nil, preload: nil, context: false, &data_block)
       if preload
         preloaders = Array(preload).map do |preloader|
           next preloader if preloader.is_a? Proc
@@ -19,7 +19,8 @@ module ARPreload
         _preloadable_info[name] = {
           includes: includes,
           preloaders: preloaders,
-          data: preload_block
+          data: data_block || ->(*args) { send name, *args },
+          context: context
         }
       end
     end
@@ -35,12 +36,14 @@ module ARPreload
 
   module Serializer
     def self.serialize(model, *args)
+      args = args.dup
+      context = args.last.is_a?(Hash) && args.last.delete(:context)
       output = {}
-      _serialize [[model, output]], parse_args(args)
+      _serialize [[model, output]], parse_args(args), context
       output
     end
 
-    def self._serialize(value_outputs, arg)
+    def self._serialize(value_outputs, arg, context)
       value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
         next unless klass.respond_to? :_preloadable_info
         models = value_outputs.map(&:first)
@@ -49,29 +52,24 @@ module ARPreload
           preload models, includes if includes.present?
         end
 
-        preloaders = []
-        arg.each_key do |name|
-          preloaders << klass._preloadable_info[name][:preloaders]
-        end
-        preloader_values = preloaders.flatten.compact.uniq.map do |preloader|
-          [preloader, preloader.call(models)]
+        preloaders = arg.each_key.map { |name| klass._preloadable_info[name][:preloaders] }.flatten
+        preloader_values = preloaders.compact.uniq.map do |preloader|
+          if preloader.arity == 1
+            [preloader, preloader.call(models)]
+          else
+            [preloader, preloader.call(models, context)]
+          end
         end.to_h
 
         arg.each do |name, sub_arg|
           sub_calls = []
           info = klass._preloadable_info[name]
           value_outputs.each do |value, output|
-            if info[:data]
-              if info[:preloaders]
-                preloadeds = info[:preloaders].map { |preloader| preloader_values[preloader] }
-                child = value.instance_exec(*preloadeds, &info[:data])
-              else
-                child = value.instance_exec(&info[:data])
-              end
-            else
-              child = value.send name
-            end
-            if child.is_a? ActiveRecord::Relation
+            preloadeds = info[:preloaders].map(&preloader_values) if info[:preloaders]
+            args = info[:context] ? [*preloadeds, context] : preloadeds
+            child = value.instance_exec(*args, &info[:data])
+            is_array_of_model = child.is_a?(Array) && child.grep(ActiveRecord::Base).size == child.size
+            if child.is_a?(ActiveRecord::Relation) || is_array_of_model
               array = []
               child.each do |record|
                 data = {}
@@ -87,7 +85,7 @@ module ARPreload
               output[name] = child
             end
           end
-          _serialize sub_calls, sub_arg
+          _serialize sub_calls, sub_arg, context
         end
       end
     end
