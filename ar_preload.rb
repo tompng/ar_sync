@@ -3,7 +3,7 @@ module ARPreload
   extend ActiveSupport::Concern
   module ClassMethods
     def _preloadable_info
-      @preloadable_info ||= {}
+      @_preloadable_info ||= {}
     end
 
     def preloadable(*names, includes: nil, preload: nil, &preload_block)
@@ -25,7 +25,7 @@ module ARPreload
     end
 
     def _custom_preloaders
-      @custom_preloaders ||= {}
+      @_custom_preloaders ||= {}
     end
 
     def define_preloader(name, &block)
