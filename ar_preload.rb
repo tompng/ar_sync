@@ -14,12 +14,15 @@ module ARPreload
           _custom_preloaders[preloader]
         end
       end
+      preloaders ||= []
       names.each do |name|
         includes = name if includes.nil? && reflect_on_association(name)
+        block = data_block || ->() { send name }
         _preloadable_info[name] = {
           includes: includes,
           preloaders: preloaders,
-          data: data_block || ->() { send name },
+          context_required: block.arity == preloaders.size + 1,
+          data: block
         }
       end
     end
@@ -65,9 +68,9 @@ module ARPreload
           info = klass._preloadable_info[name]
           preloadeds = info[:preloaders]&.map(&preloader_values) || []
           data_block = info[:data]
-          args = data_block.arity.size == preloadeds.size + 1 ? [*preloadeds, context] : preloadeds
+          args = info[:context_required] ? [*preloadeds, context] : preloadeds
           value_outputs.each do |value, output|
-            child = value.instance_exec(*args, &info[:data])
+            child = value.instance_exec(*args, &data_block)
             is_array_of_model = child.is_a?(Array) && child.grep(ActiveRecord::Base).size == child.size
             if child.is_a?(ActiveRecord::Relation) || is_array_of_model
               array = []

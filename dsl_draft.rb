@@ -43,6 +43,8 @@ ARPreload::Serializer.serialize(
     :title,
     :body,
     user: :name,
+    created_at: { as: :published_at },
+    updated_at: { as: :modified_at },
     comments: [
       :title,
       :star_count,
