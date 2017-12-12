@@ -6,7 +6,7 @@ module ARPreload
       @_preloadable_info ||= {}
     end
 
-    def preloadable(*names, includes: nil, preload: nil, context: false, &data_block)
+    def preloadable(*names, includes: nil, preload: nil, &data_block)
       if preload
         preloaders = Array(preload).map do |preloader|
           next preloader if preloader.is_a? Proc
@@ -19,8 +19,7 @@ module ARPreload
         _preloadable_info[name] = {
           includes: includes,
           preloaders: preloaders,
-          data: data_block || ->(*args) { send name, *args },
-          context: context
+          data: data_block || ->() { send name },
         }
       end
     end
@@ -64,9 +63,10 @@ module ARPreload
         arg.each do |name, sub_arg|
           sub_calls = []
           info = klass._preloadable_info[name]
+          preloadeds = info[:preloaders]&.map(&preloader_values) || []
+          data_block = info[:data]
+          args = data_block.arity.size == preloadeds.size + 1 ? [*preloadeds, context] : preloadeds
           value_outputs.each do |value, output|
-            preloadeds = info[:preloaders].map(&preloader_values) if info[:preloaders]
-            args = info[:context] ? [*preloadeds, context] : preloadeds
             child = value.instance_exec(*args, &info[:data])
             is_array_of_model = child.is_a?(Array) && child.grep(ActiveRecord::Base).size == child.size
             if child.is_a?(ActiveRecord::Relation) || is_array_of_model

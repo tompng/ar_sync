@@ -36,7 +36,7 @@ class Comment
     (preloaded[id] || 0) * 10
   end
 
-  preloadable :current_user_stars, context: true, preload: -> (comments, context) {
+  preloadable :current_user_stars, preload: -> (comments, context) {
     Star.where(comment_id: comments.map(&:id), user_id: context[:current_user].id).group_by(&:comment_id)
   } do |preloadeds, _context|
     preloadeds[id] || []

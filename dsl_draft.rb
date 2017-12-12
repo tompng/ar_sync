@@ -52,3 +52,7 @@ ARPreload::Serializer.serialize(
   ],
   context: { current_user: current_user }
 )
+
+# sync
+class Comment
+  sync_has_data :id, :body
