@@ -8,7 +8,7 @@ class User < ActiveRecord::Base
   sync_self
   sync_has_data :id
   sync_has_data :name
-  sync_has_many :posts, inverse_of: :user
+  sync_has_many :posts
 end
 
 class Post < ActiveRecord::Base
@@ -21,7 +21,7 @@ class Post < ActiveRecord::Base
   sync_has_data :title
   sync_has_data :body
   sync_has_data :user, includes: :user
-  sync_has_many :comments, inverse_of: :post
+  sync_has_many :comments
 end
 
 class Comment < ActiveRecord::Base

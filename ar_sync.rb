@@ -2,59 +2,50 @@ require_relative 'ar_preload'
 module ARSync
   extend ActiveSupport::Concern
   module ClassMethods
-    def sync_has_data(name, **option, &data_block)
-      raise unless (option.keys - %i[includes preload]).empty?
+    def sync_has_data(name, includes: nil, preload: nil, &data_block)
+      _sync_children name, type: :data
       data_block ||= _sync_data_block_fallback name
-      _sync_children name, option.merge(type: :data), &data_block
-      preloadable name, option, &data_block
+      preloadable name, { includes: includes, preload: preload }, &data_block
     end
 
-    def sync_has_one(name, **option, &data_block)
-      raise unless (option.keys - %i[inverse_of]).empty?
-      option = { type: :one, includes: name }.update option
+    def sync_has_one(name, &data_block)
+      _sync_children name, type: :one
       data_block ||= _sync_data_block_fallback name
-      _sync_children name, option, &data_block
-      preloadable name, includes: name, &data_block
+      preloadable name, &data_block
     end
 
-    def sync_has_many(name, **option, &data_block)
-      raise unless (option.keys - %i[inverse_of]).empty?
-      option = { type: :many, includes: name }.update option
+    def sync_has_many(name, &data_block)
+      _sync_children name, type: :many
       data_block ||= _sync_data_block_fallback name
-      _sync_children name, option, &data_block
-      preloadable name, includes: name, &data_block
+      preloadable name, &data_block
     end
 
     def _sync_data_block_fallback(name)
       ->(_preload = nil) { send name }
     end
 
-    def _sync_children(name, **option, &data_block)
-      _sync_children_info[name] = option.merge data_block: data_block
+    def _sync_children(name, **option)
+      _sync_children_info[name] = option
     end
 
     def sync_self
-      @sync_self = true
+      @_sync_self = true
     end
 
-    def sync_belongs_to(parent, as:, includes: nil, preload: nil)
-      _sync_parents_info[parent] = {
-        name: as,
-        includes: includes,
-        preload: preload
-      }
+    def sync_belongs_to(parent, as:)
+      _sync_parents_inverse_of[parent] = as
     end
 
     def _sync_self?
-      @sync_self
+      @_sync_self
     end
 
-    def _sync_parents_info
-      @sync_parents ||= {}
+    def _sync_parents_inverse_of
+      @_sync_parents_inverse_of ||= {}
     end
 
     def _sync_children_info
-      @sync_children ||= {}
+      @_sync_children_info ||= {}
     end
   end
 
@@ -83,24 +74,23 @@ module ARSync
   end
 
   def _sync_notify_parent(action, path: nil, data: nil)
-    self.class._sync_parents_info.each do |parent_name, info|
-      name = info[:name]
+    self.class._sync_parents_inverse_of.each do |parent_name, inverse_name|
       parent = send parent_name
       next unless parent
-      inverse_info = parent.class._sync_children_info[name]
+      inverse_info = parent.class._sync_children_info[inverse_name]
       type = inverse_info[:type]
       action2 = action
       if type == :many
         data2 = path ? data : _sync_data
-        path2 = [[name, id], *path]
+        path2 = [[inverse_name, id], *path]
       else
         if path
           data2 = data
         else
-          data2 = type == :data ? parent._sync_data([name])[name] : _sync_data
+          data2 = type == :data ? parent._sync_data([inverse_name])[inverse_name] : _sync_data
           action2 = :update
         end
-        path2 = [[name], *path]
+        path2 = [[inverse_name], *path]
       end
       ARSync.sync_send to: parent, action: action2, path: path2, data: data2
       parent._sync_notify_parent action2, path: path2, data: data2
