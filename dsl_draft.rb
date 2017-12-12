@@ -55,4 +55,13 @@ ARPreload::Serializer.serialize(
 
 # sync
 class Comment
-  sync_has_data :id, :body
+  sync_has_data :id, :body, :user, :stars
+  sync_has_data :current_user_star, preload: ->(comments, context){} do |prelaoded, context|
+    preloaded[id]
+  end
+end
+
+class Star
+  sync_parent :comment, as: :stars
+  sync_parent :comment, as: :current_user_star, only_to: -> { user }
+end

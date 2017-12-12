@@ -16,7 +16,7 @@ class Post < ActiveRecord::Base
   belongs_to :user
   has_many :comments
   sync_self
-  sync_belongs_to :user, as: :posts
+  sync_parent :user, as: :posts
   sync_has_data :id
   sync_has_data :title
   sync_has_data :body
@@ -30,7 +30,7 @@ class Comment < ActiveRecord::Base
   belongs_to :post
   has_many :stars
   sync_self
-  sync_belongs_to :post, as: :comments
+  sync_parent :post, as: :comments
   sync_has_data :id
   sync_has_data :body
   sync_has_data :user, includes: :user
@@ -49,5 +49,5 @@ class Star < ActiveRecord::Base
   include ARSync
   belongs_to :user
   belongs_to :comment
-  sync_belongs_to :comment, as: :star_count
+  sync_parent :comment, as: :star_count
 end
