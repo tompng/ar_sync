@@ -24,16 +24,19 @@ module ARSync
       @_sync_self = true
     end
 
-    def sync_parent(parent, inverse_of:)
-      _sync_parents_inverse_of[parent] = inverse_of
+    def sync_parent(parent, inverse_of:, only_to: nil)
+      _sync_parents_info[parent] = {
+        inverse_name: inverse_of,
+        only_to: only_to
+      }
     end
 
     def _sync_self?
       @_sync_self
     end
 
-    def _sync_parents_inverse_of
-      @_sync_parents_inverse_of ||= {}
+    def _sync_parents_info
+      @_sync_parents_info ||= {}
     end
 
     def _sync_children_type
@@ -55,18 +58,23 @@ module ARSync
     _sync_notify_parent action
   end
 
-  def _sync_data(names = nil)
+  def _sync_data(names = nil, to_user: nil)
     unless names
       names = []
       self.class._sync_children_type.each do |name, type|
         names << name if type == :data
       end
     end
-    ARPreload::Serializer.serialize self, *names
+    ARPreload::Serializer.serialize self, *names, context: to_user
   end
 
-  def _sync_notify_parent(action, path: nil, data: nil)
-    self.class._sync_parents_inverse_of.each do |parent_name, inverse_name|
+  def _sync_notify_parent(action, path: nil, data: nil, only_to_user: nil)
+    self.class._sync_parents_info.each do |parent_name, inverse_name:, only_to:|
+      if only_to
+        to_user = instance_exec(&only_to)
+        next unless to_user
+        next if only_to_user && only_to_user != to_user
+      end
       parent = send parent_name
       next unless parent
       type = parent.class._sync_children_type[inverse_name]
@@ -74,23 +82,21 @@ module ARSync
       if type == :many
         data2 = path ? data : _sync_data
         path2 = [[inverse_name, id], *path]
+      elsif path
+        data2 = data
+        path2 = [[inverse_name], *path]
       else
-        if path
-          data2 = data
-          path2 = [[inverse_name], *path]
+        action2 = :update
+        if type == :data
+          data2 = parent._sync_data([inverse_name], to_user: to_user)
+          path2 = []
         else
-          action2 = :update
-          if type == :data
-            data2 = parent._sync_data([inverse_name])
-            path2 = []
-          else
-            data2 = _sync_data
-            path2 = [[inverse_name]]
-          end
+          data2 = _sync_data
+          path2 = [[inverse_name]]
         end
       end
-      ARSync.sync_send to: parent, action: action2, path: path2, data: data2 if path2.present?
-      parent._sync_notify_parent action2, path: path2, data: data2
+      ARSync.sync_send to: parent, action: action2, path: path2, data: data2, to_user: to_user || only_to_user
+      parent._sync_notify_parent action2, path: path2, data: data2, only_to_user: to_user || only_to_user
     end
   end
 
@@ -98,8 +104,8 @@ module ARSync
     @sync_send_block = block
   end
 
-  def self.sync_send(to:, action:, path:, data:)
-    @sync_send_block.call to: to, action: action, path: path, data: data
+  def self.sync_send(to:, action:, path:, data:, to_user: nil)
+    @sync_send_block.call to: to, action: action, path: path, data: data, to_user: to_user
   end
 
   def self.serialize(model, *args)

@@ -16,11 +16,13 @@ class Post < ActiveRecord::Base
   belongs_to :user
   has_many :comments
   sync_self
-  sync_parent :user, as: :posts
+  sync_parent :user, inverse_of: :posts
   sync_has_data :id
   sync_has_data :title
   sync_has_data :body
-  sync_has_data :user, includes: :user
+  sync_has_data :user, includes: :user do
+    { name: user.name }
+  end
   sync_has_many :comments
 end
 
@@ -30,10 +32,12 @@ class Comment < ActiveRecord::Base
   belongs_to :post
   has_many :stars
   sync_self
-  sync_parent :post, as: :comments
+  sync_parent :post, inverse_of: :comments
   sync_has_data :id
   sync_has_data :body
-  sync_has_data :user, includes: :user
+  sync_has_data :user, includes: :user do
+    { name: user.name }
+  end
   sync_has_data(:star_count, preload: lambda { |models|
     Star.where(comment_id: models.map(&:id)).group(:comment_id).count
   }) { |preload| preload[id] || 0 }
@@ -43,11 +47,24 @@ class Comment < ActiveRecord::Base
   end
 
   sync_has_data(:star_count_by_custom_preloader, preload: [:star_count_loader]) { |preload| preload[id] || 0 }
+
+  sync_has_many :my_stars, preload: ->(comments, user) {
+    Star.where(user: user, comment_id: comments.map(&:id)).group_by(&:comment_id)
+  } do |preloaded|
+    preloaded[id] || []
+  end
 end
 
 class Star < ActiveRecord::Base
   include ARSync
   belongs_to :user
   belongs_to :comment
-  sync_parent :comment, as: :star_count
+  sync_has_data :id
+  sync_has_data :created_at
+  sync_has_data :user, includes: :user do
+    { name: user.name }
+  end
+  sync_parent :comment, inverse_of: :star_count
+  sync_parent :comment, inverse_of: :star_count_by_custom_preloader
+  sync_parent :comment, inverse_of: :my_stars, only_to: -> { user }
 end
