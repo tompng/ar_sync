@@ -2,22 +2,24 @@ require_relative 'ar_preload'
 module ARSync
   extend ActiveSupport::Concern
   module ClassMethods
-    def sync_has_data(name, **option, &data_block)
-      _sync_define(:data, name, option, &data_block)
+    def sync_has_data(*names, **option, &data_block)
+      _sync_define(:data, names, option, &data_block)
     end
 
-    def sync_has_one(name, **option, &data_block)
-      _sync_define(:one, name, option, &data_block)
+    def sync_has_one(*names, **option, &data_block)
+      _sync_define(:one, names, option, &data_block)
     end
 
-    def sync_has_many(name, **option, &data_block)
-      _sync_define(:many, name, option, &data_block)
+    def sync_has_many(*names, **option, &data_block)
+      _sync_define(:many, names, option, &data_block)
     end
 
-    def _sync_define(type, name, option, &data_block)
-      _sync_children_type[name] = type
-      data_block ||= ->(*_preloads) { send name }
-      preloadable name, option, &data_block
+    def _sync_define(type, names, option, &data_block)
+      names.each do |name|
+        _sync_children_type[name] = type
+        data_block ||= ->(*_preloads) { send name }
+        preloadable name, option, &data_block
+      end
     end
 
     def sync_self

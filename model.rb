@@ -17,9 +17,7 @@ class Post < ActiveRecord::Base
   has_many :comments
   sync_self
   sync_parent :user, inverse_of: :posts
-  sync_has_data :id
-  sync_has_data :title
-  sync_has_data :body
+  sync_has_data :id, :title, :body
   sync_has_data :user, includes: :user do
     { name: user.name }
   end
@@ -33,8 +31,7 @@ class Comment < ActiveRecord::Base
   has_many :stars
   sync_self
   sync_parent :post, inverse_of: :comments
-  sync_has_data :id
-  sync_has_data :body
+  sync_has_data :id, :body
   sync_has_data :user, includes: :user do
     { name: user.name }
   end
@@ -59,8 +56,7 @@ class Star < ActiveRecord::Base
   include ARSync
   belongs_to :user
   belongs_to :comment
-  sync_has_data :id
-  sync_has_data :created_at
+  sync_has_data :id, :created_at
   sync_has_data :user, includes: :user do
     { name: user.name }
   end
