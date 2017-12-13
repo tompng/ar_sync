@@ -24,8 +24,8 @@ module ARSync
       @_sync_self = true
     end
 
-    def sync_parent(parent, as:)
-      _sync_parents_inverse_of[parent] = as
+    def sync_parent(parent, inverse_of:)
+      _sync_parents_inverse_of[parent] = inverse_of
     end
 
     def _sync_self?
