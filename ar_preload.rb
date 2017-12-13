@@ -16,10 +16,10 @@ module ARPreload
       end
       preloaders ||= []
       names.each do |name|
-        includes = name if includes.nil? && reflect_on_association(name)
+        sub_includes = includes || (name if reflect_on_association(name))
         block = data_block || ->() { send name }
         _preloadable_info[name] = {
-          includes: includes,
+          includes: sub_includes,
           preloaders: preloaders,
           context_required: block.arity == preloaders.size + 1,
           data: block
@@ -41,20 +41,23 @@ module ARPreload
       args = args.dup
       context = args.last.is_a?(Hash) && args.last.delete(:context)
       output = {}
-      _serialize [[model, output]], parse_args(args), context
+      _serialize [[model, output]], parse_args(args)[:attributes], context
       output
     end
 
-    def self._serialize(value_outputs, arg, context)
+    def self._serialize(value_outputs, attributes, context)
       value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
         next unless klass.respond_to? :_preloadable_info
         models = value_outputs.map(&:first)
-        arg.each_key do |name|
+        attributes.each_key do |name|
+          unless klass._preloadable_info.has_key? name
+            raise "No preloadable attribte `#{name}` for #{klass}"
+          end
           includes = klass._preloadable_info[name][:includes]
           preload models, includes if includes.present?
         end
 
-        preloaders = arg.each_key.map { |name| klass._preloadable_info[name][:preloaders] }.flatten
+        preloaders = attributes.each_key.map { |name| klass._preloadable_info[name][:preloaders] }.flatten
         preloader_values = preloaders.compact.uniq.map do |preloader|
           if preloader.arity == 1
             [preloader, preloader.call(models)]
@@ -63,8 +66,10 @@ module ARPreload
           end
         end.to_h
 
-        arg.each do |name, sub_arg|
+        attributes.each do |name, sub_arg|
           sub_calls = []
+          column_name = sub_arg[:column_name] || name
+          sub_attributes = sub_arg[:attributes]
           info = klass._preloadable_info[name]
           preloadeds = info[:preloaders]&.map(&preloader_values) || []
           data_block = info[:data]
@@ -79,16 +84,16 @@ module ARPreload
                 array << data
                 sub_calls << [record, data]
               end
-              output[name] = array
+              output[column_name] = array
             elsif child.is_a? ActiveRecord::Base
               data = {}
               sub_calls << [child, data]
-              output[name] = data
+              output[column_name] = data
             else
-              output[name] = child
+              output[column_name] = child
             end
           end
-          _serialize sub_calls, sub_arg, context
+          _serialize sub_calls, sub_attributes, context if sub_attributes
         end
       end
     end
@@ -98,20 +103,32 @@ module ARPreload
       @preloader.preload(*args)
     end
 
-    def self.parse_args(args)
-      parsed = {}
+    def self.parse_args(args, only_attributes: false)
+      attributes = {}
+      column_name = nil
       (args.is_a?(Array) ? args : [args]).each do |arg|
         if arg.is_a? Symbol
-          parsed[arg] = {}
+          attributes[arg] = {}
         elsif arg.is_a? Hash
           arg.each do |key, value|
-            parsed[key] = parse_args value
+            if only_attributes
+              attributes[key] = parse_args(value)
+              next
+            end
+            if key == :as
+              column_name = value
+            elsif key == :attributes
+              attributes.update parse_args(value, only_attributes: true)
+            else
+              attributes[key] = parse_args(value)
+            end
           end
         else
           raise "Arg type missmatch(Symbol or Hash): #{arg}"
         end
       end
-      parsed
+      return attributes if only_attributes
+      { attributes: attributes, column_name: column_name }
     end
   end
 end

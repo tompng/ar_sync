@@ -42,7 +42,7 @@ ARPreload::Serializer.serialize(
   posts: [
     :title,
     :body,
-    user: :name,
+    user: { as: :owner, attributes: [:name]},
     created_at: { as: :published_at },
     updated_at: { as: :modified_at },
     comments: [

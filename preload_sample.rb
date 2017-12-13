@@ -49,6 +49,7 @@ class Star
 end
 
 ARPreload::Serializer.serialize User.first, :id, posts: { comments: :stars_count }, context: { current_user: User.first }
+ARPreload::Serializer.serialize User.first, :id, posts: { title: { as: 'タイトル' }, user: { as: '作者', attributes: [:id, :name]} }
 # User Load (0.2ms)  SELECT  "users".* FROM "users" ORDER BY "users"."id" ASC LIMIT ?  [["LIMIT", 1]]
 # Post Load (0.3ms)  SELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1
 # Comment Load (2.9ms)  SELECT "comments".* FROM "comments" WHERE "comments"."post_id" IN (1, 7, 8, 10, 15)
