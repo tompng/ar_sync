@@ -77,13 +77,19 @@ module ARSync
       else
         if path
           data2 = data
+          path2 = [[inverse_name], *path]
         else
-          data2 = type == :data ? parent._sync_data([inverse_name])[inverse_name] : _sync_data
           action2 = :update
+          if type == :data
+            data2 = parent._sync_data([inverse_name])
+            path2 = []
+          else
+            data2 = _sync_data
+            path2 = [[inverse_name]]
+          end
         end
-        path2 = [[inverse_name], *path]
       end
-      ARSync.sync_send to: parent, action: action2, path: path2, data: data2
+      ARSync.sync_send to: parent, action: action2, path: path2, data: data2 if path2.present?
       parent._sync_notify_parent action2, path: path2, data: data2
     end
   end
