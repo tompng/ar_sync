@@ -49,6 +49,7 @@ class ARSyncStore {
 
   static parseQuery(query, attrsonly){
     const attributes = {}
+    if (query.constructor !== Array) query = [query]
     for (const arg of query) {
       if (typeof(arg) === 'string') {
         attributes[arg] = {}
