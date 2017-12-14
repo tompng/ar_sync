@@ -1,12 +1,12 @@
 class ARSyncStore {
-  init(keys, query, data) {
+  constructor(keys, query, data) {
     this.data = data
     this.query = ARSyncStore.parseQuery(query)
   }
   update(action, path, patch) {
-    const query = this.query
-    const data = this.data
-    for(const i of path) {
+    let query = this.query
+    let data = this.data
+    for(const i in path) {
       const name = path[i][0]
       const id = path[i][1]
       if (!query[name]) return
@@ -49,7 +49,7 @@ class ARSyncStore {
     const attributes = {}
     for (const arg of query) {
       if (typeof(arg) === 'string') {
-        attributs[arg] = {}
+        attributes[arg] = {}
       } else if (typeof(arg) == 'object') {
         for (const key in arg){
           const value = arg[key]
@@ -68,6 +68,7 @@ class ARSyncStore {
         }
       }
     }
+    return attributes
   }
-  return attributes
 }
+module.exports = ARSyncStore

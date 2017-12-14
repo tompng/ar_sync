@@ -6,8 +6,7 @@ class User < ActiveRecord::Base
   include ARSync
   has_many :posts
   sync_self
-  sync_has_data :id
-  sync_has_data :name
+  sync_has_data :id, :name
   sync_has_many :posts
 end
 

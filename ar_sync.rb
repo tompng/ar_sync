@@ -17,8 +17,8 @@ module ARSync
     def _sync_define(type, names, option, &data_block)
       names.each do |name|
         _sync_children_type[name] = type
-        data_block ||= ->(*_preloads) { send name }
-        preloadable name, option, &data_block
+        block = data_block || ->(*_preloads) { send name }
+        preloadable name, option, &block
       end
     end
 
