@@ -61,13 +61,16 @@ module ARSync
   end
 
   def _sync_data(names = nil, to_user: nil)
+    has_many_arrays = {}
     unless names
       names = []
       self.class._sync_children_type.each do |name, type|
         names << name if type == :data
+        has_many_arrays[name] = [] if type == :many
       end
     end
-    ARPreload::Serializer.serialize self, *names, context: to_user
+    data = ARPreload::Serializer.serialize self, *names, context: to_user
+    data.update has_many_arrays
   end
 
   def _sync_notify_parent(action, path: nil, data: nil, only_to_user: nil)

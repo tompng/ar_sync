@@ -6,7 +6,7 @@ class ARSyncStore {
   update(action, path, patch) {
     let query = this.query
     let data = this.data
-    for(const i in path) {
+    for(let i=0; i<path.length; i++) {
       const name = path[i][0]
       const id = path[i][1]
       if (!query[name]) return
@@ -19,7 +19,9 @@ class ARSyncStore {
           }
           if (id) {
             const array = data[name]
-            if (array && !array.find(o => o.id == id)) data[name].push(obj)
+            if (array && !array.find(o => o.id === id)) {
+              data[name].push(obj)
+            }
           } else {
             data[name] = obj
           }

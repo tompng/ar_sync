@@ -21,6 +21,7 @@ begin
   newcomment2 = User.first.posts.last.comments.create body: 'newcomment2', user: User.all.sample
   jspatch :patches1
   jsvar :data1, ARSync.sync_api(User.first, User.first, *query)[:data]
+
   star1 = newcomment1.stars.create user: User.last
   star2 = newcomment2.stars.create user: User.first
   jspatch :patches2
@@ -43,15 +44,44 @@ ensure
         store.update(patch.action, patch.path, patch.data)
       })
     }
+    function compare(a, b, path, key){
+      if (!path) path = []
+      if (key) (path = [].concat(path)).push(key)
+      function withmessage(val){
+        if (!val) console.error(`${path}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`)
+        return val
+      }
+      if (a.constructor !== b.constructor) return withmessage(false)
+      if (a.constructor === Array) {
+        const len = Math.max(a.length, b.length)
+        for (let i=0; i<len; i++) {
+          if (i >= a.length || i >= b.length) {
+            console.error(`${path} at index ${i}: ${JSON.stringify(a[i])} != ${JSON.stringify(b[i])})}`)
+            return false
+          }
+          if (!compare(a[i], b[i], path, i)) return false
+        }
+      } else if (a.constructor === Object) {
+        const akeys = Object.keys(a).sort()
+        const bkeys = Object.keys(b).sort()
+        if (akeys.join('') != bkeys.join('')) {
+          console.error(`${path} keys: ${JSON.stringify(akeys)} != ${JSON.stringify(bkeys)}`)
+          return false
+        }
+        for (const i in a) {
+          if (!compare(a[i], b[i], path, i)) return false
+        }
+      } else {
+        return withmessage(a === b)
+      }
+      return true
+    }
     applyPatches(patches1)
-    console.error(JSON.stringify(store.data))
-    console.error(JSON.stringify(data1))
+    console.error(compare(store.data, data1))
     applyPatches(patches2)
-    console.error(JSON.stringify(store.data))
-    console.error(JSON.stringify(data2))
+    console.error(compare(store.data, data2))
     applyPatches(patches3)
-    console.error(JSON.stringify(store.data))
-    console.error(JSON.stringify(data3))
+    console.error(compare(store.data, data3))
   CODE
   `node generated_test.js`
 end
