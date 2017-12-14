@@ -1,10 +1,11 @@
 require_relative 'model'
-ARSync.configure do |to:, action:, path:, data:, to_user:|
-  msg = { to: [to.class.name, to.id], action: action, path: path, data: data, to_user: to_user }.inspect
+ARSync.configure do |key:, action:, path:, data:|
+  msg = { key: key, action: action, path: path, data: data }.inspect
   puts "\e[1m#{msg}\e[m"
 end
 
-Star.last._sync_notify :update
+Star.joins(comment: :post).where(user: User.first, comments: {posts: {user_id: User.first.id}}).last._sync_notify :update
 Comment.last._sync_notify :update
-ARSync.serialize Post.last, comments: :star_count;
+ARPreload::Serializer.serialize Post.last, comments: :star_count
+p ARSync.sync_api(User.first, User.first, :name, posts: [:id, :user, :title, comments: [:id, :star_count, :user, my_stars: :id]])
 binding.pry

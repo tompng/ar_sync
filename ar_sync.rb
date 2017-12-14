@@ -27,10 +27,10 @@ module ARSync
     end
 
     def sync_parent(parent, inverse_of:, only_to: nil)
-      _sync_parents_info[parent] = {
-        inverse_name: inverse_of,
-        only_to: only_to
-      }
+      _sync_parents_info << [
+        parent,
+        { inverse_name: inverse_of, only_to: only_to }
+      ]
     end
 
     def _sync_self?
@@ -38,7 +38,7 @@ module ARSync
     end
 
     def _sync_parents_info
-      @_sync_parents_info ||= {}
+      @_sync_parents_info ||= []
     end
 
     def _sync_children_type
@@ -107,10 +107,41 @@ module ARSync
   end
 
   def self.sync_send(to:, action:, path:, data:, to_user: nil)
-    @sync_send_block.call to: to, action: action, path: path, data: data, to_user: to_user
+    key = sync_key to, path.map(&:first), to_user
+    @sync_send_block.call key: key, action: action, path: path, data: data
   end
 
-  def self.serialize(model, *args)
-    ARPreload::Serializer.serialize model, *args
+  def self.sync_key(model, path, to_user = nil)
+    secret = ENV['SYNC_SECRET']
+    key = [to_user&.id, model.class.name, model.id, path].join '_'
+    return key unless secret
+    Digest::SHA256.hexdigest secret + key
+  end
+
+  def self.sync_api(model, current_user, *args)
+    paths = _extract_paths args
+    keys = paths.flat_map do |path|
+      [sync_key(model, path), sync_key(model, path, current_user)]
+    end
+    {
+      keys: keys,
+      data: ARPreload::Serializer.serialize(model, *args, context: current_user)
+    }
+  end
+
+  def self._extract_paths(args)
+    parsed = ARPreload::Serializer.parse_args args
+    paths = []
+    extract = lambda do |path, attributes|
+      paths << path
+      attributes.each do |key, value|
+        sub_attributes = value[:attributes]
+        next unless sub_attributes
+        sub_path = [*path, key]
+        extract.call sub_path, sub_attributes
+      end
+    end
+    extract.call [], parsed[:attributes]
+    paths
   end
 end

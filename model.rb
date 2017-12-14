@@ -45,7 +45,7 @@ class Comment < ActiveRecord::Base
 
   sync_has_data(:star_count_by_custom_preloader, preload: [:star_count_loader]) { |preload| preload[id] || 0 }
 
-  sync_has_many :my_stars, preload: ->(comments, user) {
+  sync_has_many :my_stars, preload: lambda { |comments, user|
     Star.where(user: user, comment_id: comments.map(&:id)).group_by(&:comment_id)
   } do |preloaded|
     preloaded[id] || []
