@@ -1,28 +1,76 @@
+class NormalUpdator { // overwrites object. ex: Vue.js
+  add(tree, path, column, value) {
+    let data = tree
+    path.forEach(key => { data = data[key] })
+    data[column] = value
+    return tree
+  }
+  remove(tree, path, column) {
+    let data = tree
+    path.forEach(p => { data = data[p] })
+    if (data.constructor === Array) {
+      data.splice(column, 1)
+    } else {
+      data[column] = null
+    }
+    return tree
+  }
+}
+class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
+  constructor() {
+    this.markedObjects = []
+  }
+  mark(obj) {
+    if (obj.__mark__) return obj
+    let marked
+    if (obj.constructor === Array) {
+      marked = [].concat(obj)
+      marked.__mark__ = true
+    } else {
+      marked = Object.assign({ __mark__: true }, obj)
+    }
+    this.markedObjects.push(marked)
+    return marked
+  }
+  trace(data, path) {
+    path.forEach(key => {
+      data[key] = this.mark(data[key])
+      data = data[key]
+    })
+    return data
+  }
+  add(tree, path, column, value) {
+    const root = this.mark(tree)
+    this.trace(root, path)[column] = value
+    return root
+  }
+  remove(tree, path, column) {
+    const root = this.mark(tree)
+    let data = this.trace(root, path)
+    if (data.constructor === Array) {
+      data.splice(column, 1)
+    } else {
+      data[column] = null
+    }
+    return root
+  }
+  cleanup() {
+    this.markedObjects.forEach(marked => {
+      delete marked.__mark__
+    })
+    this.markedObjects = []
+  }
+}
+
 class ARSyncStore {
   constructor(keys, query, data) {
     this.data = data
     this.query = ARSyncStore.parseQuery(query).attributes
   }
   update(action, path, patch) {
-    const updator = {
-      add(data, path, column, obj) {
-        let d = data
-        path.forEach(p => {d = d[p]})
-        d[column] = obj
-        return data
-      },
-      remove(data, path, column) {
-        let d = data
-        path.forEach(p => {d = d[p]})
-        if (d.constructor === Array) {
-          d.splice(column, 1)
-        } else {
-          d[column] = null
-        }
-        return data
-      }
-    }
+    const updator = new ImmutableUpdator
     this._update(action, path, patch, updator)
+    if (updator.cleanup) updator.cleanup()
   }
   _update(action, path, patch, updator) {
     let query = this.query
