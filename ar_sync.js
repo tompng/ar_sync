@@ -66,17 +66,28 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
     this.markedObjects.forEach(marked => {
       delete marked.__mark__
     })
-    this.markedObjects = []
   }
 }
 
 class ARSyncStore {
-  constructor(keys, query, data) {
+  constructor(keys, query, data, updatorClass) {
     this.data = data
+    this.keys = keys
     this.query = ARSyncStore.parseQuery(query).attributes
+    this.updatorClass = updatorClass
+  }
+  batchUpdate(patches) {
+    const updator = this.updatorClass && new this.updatorClass()
+    patches.forEach(patch => {
+      if (this.keys.indexOf(patch.key) === -1) return
+      this._update(patch.action, patch.path, patch.data, updator)
+    })
+    if (!updator) return
+    if (updator.cleanup) updator.cleanup()
+    return updator.changed
   }
   update(action, path, patch) {
-    const updator = new ImmutableUpdator
+    const updator = new this.updatorClass
     this._update(action, path, patch, updator)
     if (updator.cleanup) updator.cleanup()
   }
@@ -194,4 +205,4 @@ class ARSyncStore {
     return { attributes, column }
   }
 }
-module.exports = ARSyncStore
+module.exports = { ARSyncStore, NormalUpdator, ImmutableUpdator }

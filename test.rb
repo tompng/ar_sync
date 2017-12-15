@@ -36,15 +36,8 @@ ensure
     model.destroy rescue nil
   end
   File.write 'generated_test.js', <<~CODE
-    const ARSyncStore = require('./ar_sync.js')
+    const { ARSyncStore, NormalUpdator, ImmutableUpdator } = require('./ar_sync.js')
     #{$jscode.join("\n")}
-    const store = new ARSyncStore(initial.keys, query, initial.data)
-    function applyPatches(patches){
-      patches.forEach((patch)=>{
-        if (initial.keys.indexOf(patch.key) === -1) return
-        store.update(patch.action, patch.path, patch.data)
-      })
-    }
     function compare(a, b, path, key){
       if (!path) path = []
       if (key) (path = [].concat(path)).push(key)
@@ -79,12 +72,16 @@ ensure
       }
       return true
     }
-    applyPatches(patches1)
-    console.log(compare(store.data, data1))
-    applyPatches(patches2)
-    console.log(compare(store.data, data2))
-    applyPatches(patches3)
-    console.log(compare(store.data, data3))
+    function dup(obj) { return JSON.parse(JSON.stringify(obj)) }
+    [null, NormalUpdator, ImmutableUpdator].forEach(klass => {
+      const store = new ARSyncStore(initial.keys, query, dup(initial.data), klass)
+      store.batchUpdate(dup(patches1))
+      console.log(compare(store.data, data1))
+      store.batchUpdate(dup(patches2))
+      console.log(compare(store.data, data2))
+      store.batchUpdate(dup(patches3))
+      console.log(compare(store.data, data3))
+    })
   CODE
   output = `node generated_test.js`
   puts output
