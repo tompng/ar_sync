@@ -36,7 +36,7 @@ ensure
     model.destroy rescue nil
   end
   File.write 'generated_test.js', <<~CODE
-    const ARSyncStore = require('./arsync.js')
+    const ARSyncStore = require('./ar_sync.js')
     #{$jscode.join("\n")}
     const store = new ARSyncStore(initial.keys, query, initial.data)
     function applyPatches(patches){
