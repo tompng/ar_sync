@@ -1,11 +1,16 @@
 class NormalUpdator { // overwrites object. ex: Vue.js
+  constructor() {
+    this.changed = []
+  }
   add(tree, path, column, value) {
+    this.changed.push([path, column, true])
     let data = tree
     path.forEach(key => { data = data[key] })
     data[column] = value
     return tree
   }
   remove(tree, path, column) {
+    this.changed.push([path, column, false])
     let data = tree
     path.forEach(p => { data = data[p] })
     if (data.constructor === Array) {
@@ -18,6 +23,7 @@ class NormalUpdator { // overwrites object. ex: Vue.js
 }
 class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
   constructor() {
+    this.changed = []
     this.markedObjects = []
   }
   mark(obj) {
@@ -40,11 +46,13 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
     return data
   }
   add(tree, path, column, value) {
+    this.changed.push([path, column, true])
     const root = this.mark(tree)
     this.trace(root, path)[column] = value
     return root
   }
   remove(tree, path, column) {
+    this.changed.push([path, column, false])
     const root = this.mark(tree)
     let data = this.trace(root, path)
     if (data.constructor === Array) {
