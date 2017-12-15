@@ -60,17 +60,20 @@ module ARSync
     _sync_notify_parent action
   end
 
-  def _sync_data(names = nil, to_user: nil)
-    has_many_arrays = {}
+  def _sync_data(names = nil, to_user: nil, new_record: false)
+    fallbacks = {}
     unless names
       names = []
       self.class._sync_children_type.each do |name, type|
         names << name if type == :data
-        has_many_arrays[name] = [] if type == :many
+        if new_record
+          fallbacks[name] = [] if type == :many
+          fallbacks[name] = nil if type == :one
+        end
       end
     end
     data = ARPreload::Serializer.serialize self, *names, context: to_user
-    data.update has_many_arrays
+    fallbacks.update data
   end
 
   def _sync_notify_parent(action, path: nil, data: nil, only_to_user: nil)
@@ -85,14 +88,14 @@ module ARSync
       type = parent.class._sync_children_type[inverse_name]
       action2 = action
       if type == :many
-        data2 = path ? data : _sync_data
+        data2 = path ? data : _sync_data(new_record: action == :create)
         path2 = [[inverse_name, id], *path]
       elsif path
         data2 = data
         path2 = [[inverse_name], *path]
       else
-        action2 = :update
         if type == :data
+          action2 = :update
           data2 = parent._sync_data([inverse_name], to_user: to_user)
           path2 = []
         else

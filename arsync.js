@@ -32,6 +32,7 @@ class ARSyncStore {
           } else {
             data[name] = null
           }
+          return
         }
       }
       data = data[name]
@@ -44,6 +45,9 @@ class ARSyncStore {
     }
     for (const key in patch) {
       if (query[key]) data[key] = patch[key]
+    }
+    for (const key in patch.fallbacks) {
+      if (query[key]) data[key] = data[key] || patch.fallbacks[key]
     }
   }
 

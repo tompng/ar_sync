@@ -13,12 +13,13 @@ begin
     jsvar name, $patches
     $patches = []
   end
-  query = [:name, posts: [:id, :user, :title, comments: [:id, :star_count, :user, my_stars: :id]]]
+  query = [:name, posts: [:id, :user, :title, my_comments: [:id, :star_count], comments: [:id, :star_count, :user, my_stars: :id, my_star: :id]]]
   jsvar :query, query
   jsvar :initial, ARSync.sync_api(User.first, User.first, *query)
   newpost = User.first.posts.create title: 'newposttitle', body: 'newpostbody', user: User.all.sample
   newcomment1 = User.first.posts.first.comments.create body: 'newcomment1', user: User.all.sample
-  newcomment2 = User.first.posts.last.comments.create body: 'newcomment2', user: User.all.sample
+  newcomment2 = User.first.posts.last.comments.create body: 'newcomment2', user: User.first
+  newpost.update title: 'newposttitle2'
   jspatch :patches1
   jsvar :data1, ARSync.sync_api(User.first, User.first, *query)[:data]
 
@@ -48,9 +49,11 @@ ensure
       if (!path) path = []
       if (key) (path = [].concat(path)).push(key)
       function withmessage(val){
-        if (!val) console.error(`${path}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`)
+        if (!val) console.error(`${path.join('/')}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`)
         return val
       }
+      if (a === b) return true
+      if (!a || !b) return withmessage(false)
       if (a.constructor !== b.constructor) return withmessage(false)
       if (a.constructor === Array) {
         const len = Math.max(a.length, b.length)
