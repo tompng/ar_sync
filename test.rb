@@ -49,7 +49,7 @@ ensure
       if (!path) path = []
       if (key) (path = [].concat(path)).push(key)
       function withmessage(val){
-        if (!val) console.error(`${path.join('/')}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`)
+        if (!val) console.log(`${path.join('/')}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`)
         return val
       }
       if (a === b) return true
@@ -59,7 +59,7 @@ ensure
         const len = Math.max(a.length, b.length)
         for (let i=0; i<len; i++) {
           if (i >= a.length || i >= b.length) {
-            console.error(`${path} at index ${i}: ${JSON.stringify(a[i])} != ${JSON.stringify(b[i])})}`)
+            console.log(`${path} at index ${i}: ${JSON.stringify(a[i])} != ${JSON.stringify(b[i])})}`)
             return false
           }
           if (!compare(a[i], b[i], path, i)) return false
@@ -68,7 +68,7 @@ ensure
         const akeys = Object.keys(a).sort()
         const bkeys = Object.keys(b).sort()
         if (akeys.join('') != bkeys.join('')) {
-          console.error(`${path} keys: ${JSON.stringify(akeys)} != ${JSON.stringify(bkeys)}`)
+          console.log(`${path} keys: ${JSON.stringify(akeys)} != ${JSON.stringify(bkeys)}`)
           return false
         }
         for (const i in a) {
@@ -80,11 +80,19 @@ ensure
       return true
     }
     applyPatches(patches1)
-    console.error(compare(store.data, data1))
+    console.log(compare(store.data, data1))
     applyPatches(patches2)
-    console.error(compare(store.data, data2))
+    console.log(compare(store.data, data2))
     applyPatches(patches3)
-    console.error(compare(store.data, data3))
+    console.log(compare(store.data, data3))
   CODE
-  `node generated_test.js`
+  output = `node generated_test.js`
+  puts output
+  errors = output.lines.reject{|s|s.strip=='true'}
+  if errors.present?
+    puts "\e[31mFAILED\e[m"
+    exit -1
+  else
+    puts "\e[32mPASSED\e[m"
+  end
 end
