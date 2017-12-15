@@ -4,8 +4,30 @@ class ARSyncStore {
     this.query = ARSyncStore.parseQuery(query).attributes
   }
   update(action, path, patch) {
+    const updator = {
+      add(data, path, column, obj) {
+        let d = data
+        path.forEach(p => {d = d[p]})
+        d[column] = obj
+        return data
+      },
+      remove(data, path, column) {
+        let d = data
+        path.forEach(p => {d = d[p]})
+        if (d.constructor === Array) {
+          d.splice(column, 1)
+        } else {
+          d[column] = null
+        }
+        return data
+      }
+    }
+    this._update(action, path, patch, updator)
+  }
+  _update(action, path, patch, updator) {
     let query = this.query
     let data = this.data
+    const actualPath = []
     for(let i=0; i<path.length; i++) {
       const name = path[i][0]
       const id = path[i][1]
@@ -24,32 +46,66 @@ class ARSyncStore {
           if (id) {
             const array = data[column]
             if (array && !array.find(o => o.id === id)) {
-              data[column].push(obj)
+              actualPath.push(column)
+              if (updator) {
+                this.data = updator.add(this.data, actualPath, array.length, obj)
+              } else {
+                array.push(obj)
+              }
             }
           } else {
-            data[column] = obj
+            if (updator) {
+              this.data = updator.add(this.data, actualPath, column, obj)
+            } else {
+              data[column] = obj
+            }
           }
           return
         } else if (action === 'destroy') {
           if (id) {
-            if (data[column]) data[column] = data[column].filter(o => o.id != id)
+            const array = data[column]
+            const idx = array.findIndex(o => o.id === id)
+            if (idx >= 0) {
+              if (updator) {
+                actualPath.push(column)
+                this.data = updator.remove(this.data, actualPath, idx)
+              } else {
+                array.splice(idx, 1)
+              }
+            }
           } else {
-            data[column] = null
+            if (updator) {
+              this.data = updator.remove(this.data, actualPath, column)
+            } else {
+              data[column] = null
+            }
           }
           return
         }
       }
+      actualPath.push(column)
       data = data[column]
       if (!data) return
       if (id) {
-        const item = data.find(o => o.id == id)
-        data = item
+        const idx = data.findIndex(o => o.id === id)
+        actualPath.push(idx)
+        data = data[idx]
       }
       if (!data) return
     }
     for (const key in patch) {
       const subq = query[key]
-      if (subq) data[subq.column || key] = patch[key]
+      const value = patch[key]
+      if (subq) {
+        const subcol = subq.column || key
+        if (data[subcol] !== value) {
+          if (updator) {
+            this.data = updator.add(this.data, actualPath, subcol, value)
+          } else {
+            data[subcol] = value
+          }
+        }
+      }
     }
   }
 
@@ -60,7 +116,7 @@ class ARSyncStore {
     for (const arg of query) {
       if (typeof(arg) === 'string') {
         attributes[arg] = {}
-      } else if (typeof(arg) == 'object') {
+      } else if (typeof(arg) === 'object') {
         for (const key in arg){
           const value = arg[key]
           if (attrsonly) {
