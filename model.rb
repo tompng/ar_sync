@@ -44,20 +44,14 @@ class Comment < ActiveRecord::Base
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   }) { |preload| preload[id] || 0 }
 
-  define_preloader :star_count_loader do |comments|
-    Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
-  end
-
-  sync_has_data(:star_count_by_custom_preloader, preload: [:star_count_loader]) { |preload| preload[id] || 0 }
-
-  sync_has_one :my_star, preload: lambda { |comments, user|
-    Star.where(user: user, comment_id: comments.map(&:id)).index_by(&:comment_id)
-  } do |preloaded|
-    preloaded[id]
-  end
-  sync_has_many :my_stars, preload: lambda { |comments, user|
+  define_preloader :my_stars_loader do |comments, user|
     Star.where(user: user, comment_id: comments.map(&:id)).group_by(&:comment_id)
-  } do |preloaded|
+  end
+
+  sync_has_one :my_star, preload: :my_stars_loader do |preloaded|
+    preloaded[id]&.first
+  end
+  sync_has_many :my_stars, preload: :my_stars_loader do |preloaded|
     preloaded[id] || []
   end
 end
@@ -71,7 +65,6 @@ class Star < ActiveRecord::Base
     { name: user.name }
   end
   sync_parent :comment, inverse_of: :star_count
-  sync_parent :comment, inverse_of: :star_count_by_custom_preloader
   sync_parent :comment, inverse_of: :my_star, only_to: -> { user }
   sync_parent :comment, inverse_of: :my_stars, only_to: -> { user }
 end
