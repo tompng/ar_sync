@@ -1,7 +1,25 @@
-# This file should contain all the record creation needed to seed the database with its default values.
-# The data can then be loaded with the rails db:seed command (or created alongside the database with db:setup).
-#
-# Examples:
-#
-#   movies = Movie.create([{ name: 'Star Wars' }, { name: 'Lord of the Rings' }])
-#   Character.create(name: 'Luke', movie: movies.first)
+srand 0
+users = Array.new(4) { |i| User.create name: "user#{i}" }
+posts = Array.new(8) do |i|
+  Post.create(
+    user: users.sample,
+    title: "Title #{i}",
+    body: "Body #{i}. " * rand(10)
+  )
+end
+comments = Array.new(16) do |i|
+  posts.sample.comments.create(
+    user: users.sample,
+    body: "Comment #{i}" * rand(4)
+  )
+end
+(posts + comments).each do |record|
+  users.sample(rand * users.size).each do |user|
+    record.reactions.create kind: Reaction::Kinds.sample, user: user
+  end
+end
+users.each do |user|
+  (users - [user]).sample(rand(users.size)).each do |target_user|
+    user.followings.create to: target_user
+  end
+end
