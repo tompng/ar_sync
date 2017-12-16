@@ -1,1 +1,4 @@
-h1 login
+h1 Sign in
+- User.all.each do |user|
+  = link_to sessions_path(login_id: user.id), method: :post do
+    div = "sign in with #{user.name}"

@@ -14,5 +14,7 @@ Rails.application.routes.draw do
   get '/followings', to: 'follows#followings'
   get '/followeds', to: 'follows#followees'
   resources :follows, only: [:create, :destroy]
-  resources :sessions, only: [:new, :create, :destroy]
+  resources :sessions, only: [:new, :create] do
+    collection { get :destroy }
+  end
 end
