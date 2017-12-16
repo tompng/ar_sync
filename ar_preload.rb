@@ -38,14 +38,20 @@ module ARPreload
 
   module Serializer
     def self.serialize(model, *args)
-      args = args.dup
-      context = args.last.is_a?(Hash) && args.last.delete(:context)
+      last = args.last
+      if last.is_a?(Hash) && (last.has_key?(:context) || last.has_key?(:include_id))
+        last = last.dup
+        context = last.delete :context
+        include_id = last.delete :include_id
+        args = args.dup
+        args[-1] = last
+      end
       output = {}
-      _serialize [[model, output]], parse_args(args)[:attributes], context
+      _serialize [[model, output]], parse_args(args)[:attributes], context, include_id
       output
     end
 
-    def self._serialize(value_outputs, attributes, context)
+    def self._serialize(value_outputs, attributes, context, include_id)
       value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
         next unless klass.respond_to? :_preloadable_info
         models = value_outputs.map(&:first)
@@ -80,20 +86,20 @@ module ARPreload
             if child.is_a?(ActiveRecord::Relation) || is_array_of_model
               array = []
               child.each do |record|
-                data = {}
+                data = include_id ? { id: record.id } : {}
                 array << data
                 sub_calls << [record, data]
               end
               output[column_name] = array
             elsif child.is_a? ActiveRecord::Base
-              data = {}
+              data = include_id ? { id: child.id } : {}
               sub_calls << [child, data]
               output[column_name] = data
             else
               output[column_name] = child
             end
           end
-          _serialize sub_calls, sub_attributes, context if sub_attributes
+          _serialize sub_calls, sub_attributes, context, include_id if sub_attributes
         end
       end
     end

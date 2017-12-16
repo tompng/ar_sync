@@ -13,7 +13,7 @@ begin
     jsvar name, $patches
     $patches = []
   end
-  query = [name: { as: '名前' }, posts: [:id, :user, :title, as: :articles, my_comments: [:id, :star_count, as: :my_opinions], comments: [:id, :star_count, :user, my_stars: :id, my_star: [:id, as: :my_reaction]]]]
+  query = [name: { as: '名前' }, posts: [:user, :title, as: :articles, my_comments: [:star_count, as: :my_opinions], comments: [:star_count, :user, my_stars: :id, my_star: { as: :my_reaction }]]]
   jsvar :query, query
   jsvar :initial, ARSync.sync_api(User.first, User.first, *query)
   newpost = User.first.posts.create title: 'newposttitle', body: 'newpostbody', user: User.all.sample

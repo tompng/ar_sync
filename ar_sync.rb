@@ -131,7 +131,7 @@ module ARSync
     end
     {
       keys: keys,
-      data: ARPreload::Serializer.serialize(model, *args, context: current_user)
+      data: ARPreload::Serializer.serialize(model, *args, context: current_user, include_id: true)
     }
   end
 

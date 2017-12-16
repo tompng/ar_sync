@@ -105,9 +105,13 @@ class ARSyncStore {
         if (action === 'create') {
           const obj = {}
           for (const key in patch) {
-            const subq = query[key]
-            if (subq) {
-              obj[subq.column || key] = patch[key]
+            if (key === 'id') {
+              obj.id = patch.id
+            } else {
+              const subq = query[key]
+              if (subq) {
+                obj[subq.column || key] = patch[key]
+              }
             }
           }
           if (id) {
