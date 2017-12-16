@@ -36,7 +36,7 @@ ensure
     model.destroy rescue nil
   end
   File.write 'generated_test.js', <<~CODE
-    const { ARSyncStore, NormalUpdator, ImmutableUpdator } = require('./ar_sync.js')
+    const { ARSyncStore, NormalUpdator, ImmutableUpdator } = require('../ar_sync.js')
     #{$jscode.join("\n")}
     function compare(a, b, path, key){
       if (!path) path = []

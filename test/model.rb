@@ -1,6 +1,6 @@
 require 'pry'
 require_relative 'db'
-require_relative 'ar_sync'
+require_relative '../ar_sync'
 
 class User < ActiveRecord::Base
   include ARSync
