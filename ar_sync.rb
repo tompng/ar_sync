@@ -48,6 +48,7 @@ module ARSync
 
   included do
     include ARPreload
+    sync_has_data :id
     %i[create update destroy].each do |action|
       after_commit(on: action) { _sync_notify action }
     end
