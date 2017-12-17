@@ -1,16 +1,16 @@
 srand 0
-users = Array.new(4) { |i| User.create name: "user#{i}" }
-posts = Array.new(8) do |i|
+users = Array.new(8) { |i| User.create name: "user#{i}" }
+posts = Array.new(16) do |i|
   Post.create(
     user: users.sample,
     title: "Title #{i}",
-    body: "Body #{i}. " * rand(10)
+    body: "Body #{i}. " * rand(4..10)
   )
 end
-comments = Array.new(16) do |i|
+comments = Array.new(32) do |i|
   posts.sample.comments.create(
     user: users.sample,
-    body: "Comment #{i}" * rand(4)
+    body: "Comment #{i}" * rand(1..4)
   )
 end
 (posts + comments).each do |record|

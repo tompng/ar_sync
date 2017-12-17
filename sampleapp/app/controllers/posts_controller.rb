@@ -36,7 +36,6 @@ class PostsController < ApplicationController
     end
   end
 
-
   def permitted_params
     params[:post].permit :title, :body
   end
