@@ -15,10 +15,11 @@ javascript:
     | {{kind}}:{{count}}
   hr
   div v-for='comment in comments'
-    div
-      | {{comment.user.name}}
     p
-      | {{comment.body}}
+      b
+        | {{comment.user.name}}:
+      span
+        | {{comment.body}}
     div v-for='(count, kind) in reaction_summary'
       | {{kind}}:{{count}}
     hr

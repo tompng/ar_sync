@@ -4,7 +4,7 @@ class FoobarController < ApplicationController
   end
 
   def broadcast
-    ActionCable.server.broadcast("sync_#{params[:key]}", params[:data])
+    ActionCable.server.broadcast("#{params[:key]}", params[:data])
     render html: 'ok'
   end
 end

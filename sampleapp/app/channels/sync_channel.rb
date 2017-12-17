@@ -1,7 +1,6 @@
 class SyncChannel < ApplicationCable::Channel
   def subscribed
-    puts "#\e[1msync_#{params}\e[m"
-    stream_from "sync_#{params[:key]}"
+    stream_from params[:key]
   end
 
   def unsubscribed

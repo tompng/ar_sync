@@ -16,11 +16,11 @@ function syncStart(url, query) {
   const option = { credentials: 'include', method: 'POST', headers, body }
   fetch(url, option).then(res => res.json()).then(syncdata => {
     const el = document.querySelector('.vue-root')
-    const store = new ARSyncStore(null, query, syncdata.data)
+    const store = new ARSyncStore(query, syncdata.data)
     currentSync.subscriptions = syncdata.keys.map(key => {
       return App.cable.subscriptions.create(
-        { channel: "SyncChannel", key: key },
-        patch => store.update(patch.action, patch.path, patch.data)
+        { channel: "SyncChannel", key },
+        { received(patch) { store.update(patch) } }
       )
     })
     currentSync.vm = new Vue({ el: '#syncbody', data: store.data })
