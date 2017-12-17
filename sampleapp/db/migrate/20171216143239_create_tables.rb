@@ -30,6 +30,7 @@ class CreateTables < ActiveRecord::Migration[5.1]
       t.references :target, polymorphic: true, index: false
       t.references :user
       t.string :kind
+      t.timestamps
       t.index [:target_type, :target_id, :user_id], unique: true
     end
   end

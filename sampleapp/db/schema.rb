@@ -45,6 +45,8 @@ ActiveRecord::Schema.define(version: 20171216143239) do
     t.integer "target_id"
     t.integer "user_id"
     t.string "kind"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
     t.index ["target_type", "target_id", "user_id"], name: "index_reactions_on_target_type_and_target_id_and_user_id", unique: true
     t.index ["user_id"], name: "index_reactions_on_user_id"
   end
