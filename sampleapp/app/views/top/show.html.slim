@@ -1,1 +1,14 @@
-h1 top
+javascript:
+  syncStart('/users/profile_sync_api', ['name', { posts: ['title', 'comments_count'] }])
+
+#syncbody
+  h1 Top Page: welcome {{name}}!
+  a href='/posts/new' Create New Post
+  hr
+  h2 Your posts
+  div v-for='post in posts'
+    div
+      a v-bind:href="'/posts/' + post.id"
+        b
+          | {{post.title}}
+      span comments:{{post.comments_count}}
