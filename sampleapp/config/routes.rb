@@ -11,7 +11,7 @@ Rails.application.routes.draw do
     collection { get :profile_sync_api; post :profile_sync_api }
   end
 
-  resources :comments, only: [:create, :show, :destroy] do
+  resources :comments, except: [:new, :index] do
     post :reaction
     member { get :sync_api; post :sync_api }
   end

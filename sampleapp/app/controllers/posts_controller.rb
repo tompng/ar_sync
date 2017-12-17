@@ -52,6 +52,7 @@ class PostsController < ApplicationController
     else
       reaction&.destroy!
     end
+    head :ok
   end
 
   def permitted_params

@@ -21,6 +21,11 @@ javascript:
         | {{comment.user.name}}:
       span
         | {{comment.body}}
+      span v-if='comment.user.id == currentUser.id'
+        | &nbsp;
+        a v-bind:href="'/comments/' + comment.id + '.json'" data-remote=true data-method='delete' delete
+        | &nbsp;
+        a v-bind:href="'/comments/' + comment.id + '/edit'" edit
     div v-for='(count, kind) in comment.reaction_summary'
       | {{kind}}:{{count}}
     hr

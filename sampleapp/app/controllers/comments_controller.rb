@@ -5,6 +5,11 @@ class CommentsController < ApplicationController
   end
 
   def show
+    @comment = Comment.find params[:id]
+  end
+
+  def edit
+    @comment = current_user.comments.find params[:id]
   end
 
   def create
@@ -14,14 +19,21 @@ class CommentsController < ApplicationController
   end
 
   def update
-    comment = current_user.commentsfind_by(id: params[:id], user: current_user)
+    comment = current_user.comments.find_by(id: params[:id], user: current_user)
     comment.update! permitted_params
-    head :ok
+    respond_to do |format|
+      format.html { redirect_to comment.post }
+      format.json { head :ok }
+    end
   end
 
   def destroy
-    current_user.comments.find_by(user: current_user, id: params[:id]).destroy!
-    head :ok
+    comment = current_user.comments.find_by!(user: current_user, id: params[:id])
+    comment.destroy!
+    respond_to do |format|
+      format.html { redirect_to comment.post }
+      format.json { head :ok }
+    end
   end
 
   def reaction
@@ -36,6 +48,7 @@ class CommentsController < ApplicationController
     else
       reaction&.destroy
     end
+    head :ok
   end
 
   def permitted_params

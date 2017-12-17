@@ -1,0 +1,14 @@
+javascript:
+  syncStart(location.pathname + '/sync_api', ['body', 'post_id', 'reaction_summary', 'user'])
+
+#syncbody
+  a v-bind:href="'/posts/' + post_id" Back
+  div
+    b
+      | {{user.name}}:
+    span
+      | {{body}}
+  a v-bind:href="'/comments/' + id + '/edit'" v-if='user.id == currentUser.id' edit comment
+  div v-for='(count, kind) in reaction_summary'
+    | {{kind}}:{{count}}
+  hr
