@@ -16,6 +16,7 @@ function syncStart(url, query) {
   const option = { credentials: 'include', method: 'POST', headers, body }
   fetch(url, option).then(res => res.json()).then(syncdata => {
     const el = document.querySelector('.vue-root')
+    syncdata.data.currentUser = JSON.parse(document.querySelector('#current_user').value)
     const store = new ARSyncStore(query, syncdata.data)
     currentSync.subscriptions = syncdata.keys.map(key => {
       return App.cable.subscriptions.create(

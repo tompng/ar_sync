@@ -8,8 +8,6 @@ class Comment < ApplicationRecord
   sync_parent :post, inverse_of: :comments
   sync_parent :post, inverse_of: :comments_count
   sync_has_data :body
-  sync_has_data :user, includes: :user do
-    { name: user.name }
-  end
+  sync_has_data(:user, includes: :user) { user.as_json(only: [:id, :name]) }
   include SyncReactionConcern
 end

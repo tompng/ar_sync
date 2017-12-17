@@ -8,10 +8,10 @@ javascript:
 
 #syncbody
   h1
-    | {{title}}({{user.name}}){{id}}
+    | {{title}}({{user.name}})
   p
     | {{body}}
-  a v-bind:href="'/posts/' + id + '/edit'" edit post
+  a v-bind:href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id' edit post
   div v-for='(count, kind) in reaction_summary'
     | {{kind}}:{{count}}
   hr

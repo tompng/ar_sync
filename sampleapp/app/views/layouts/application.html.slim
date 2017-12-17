@@ -8,6 +8,9 @@ html
     = javascript_include_tag 'application', 'data-turbolinks-track': 'reload'
   body
     - if user_signed_in?
+      a href='/' Back to top page
+      | &nbsp;
       b = "#{current_user.name}"
       div = link_to 'Sign out', sessions_path
+    = hidden_field_tag :current_user, current_user.to_json
     = yield
