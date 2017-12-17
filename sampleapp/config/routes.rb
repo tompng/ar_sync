@@ -6,7 +6,7 @@ Rails.application.routes.draw do
     post :reaction
     member { get :sync_api; post :sync_api }
   end
-  resources :users, only: :index do
+  resources :users, only: [:index, :show] do
     member { get :sync_api; post :sync_api }
     collection { get :profile_sync_api; post :profile_sync_api }
   end

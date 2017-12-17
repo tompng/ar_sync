@@ -1,6 +1,12 @@
-p#notice = notice
+javascript:
+  syncStart(location.pathname + '/sync_api', ['name', { posts: ['title', 'comments_count'] }])
 
-
-=> link_to 'Edit', edit_user_path(@user)
-'|
-=< link_to 'Back', users_path
+#syncbody
+  h2
+    | {{name}}'s posts
+  div v-for='post in posts'
+    div
+      a v-bind:href="'/posts/' + post.id"
+        b
+          | {{post.title}}
+      span comments:{{post.comments_count}}

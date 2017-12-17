@@ -3,7 +3,10 @@ javascript:
 
 #syncbody
   h1 Top Page: welcome {{name}}!
+  hr
   a href='/posts/new' Create New Post
+  | &nbsp;
+  a href='/users' Find friends
   hr
   h2 Your posts
   div v-for='post in posts'
