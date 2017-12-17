@@ -14,7 +14,7 @@ class CommentsController < ApplicationController
 
   def create
     post = Post.find(params[:post_id])
-    post.comments.where(user: current_user).create! permitted_params
+    post.comments.where(user: current_user).new(permitted_params).save!
     head :ok
   end
 
@@ -43,7 +43,7 @@ class CommentsController < ApplicationController
       if reaction
         reaction.update kind: kind
       else
-        Comment.find(params[:id]).reactions.create(user: current_user, kind: kind)
+        Comment.find(params[:id]).reactions.new(user: current_user, kind: kind).save!
       end
     else
       reaction&.destroy

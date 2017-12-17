@@ -16,7 +16,8 @@ class PostsController < ApplicationController
   end
 
   def create
-    post = current_user.posts.create permitted_params
+    post = current_user.posts.new permitted_params
+    post.save!
     respond_to do |format|
       format.html { redirect_to post }
       format.json { head :ok }
@@ -47,7 +48,7 @@ class PostsController < ApplicationController
       if reaction
         reaction.update! kind: kind
       else
-        Post.find(params[:id]).reactions.create!(user: current_user, kind: kind)
+        Post.find(params[:id]).reactions.new(user: current_user, kind: kind).save!
       end
     else
       reaction&.destroy!
