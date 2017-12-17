@@ -74,7 +74,7 @@ ensure
     }
     function dup(obj) { return JSON.parse(JSON.stringify(obj)) }
     [null, NormalUpdator, ImmutableUpdator].forEach(klass => {
-      const store = new ARSyncStore(initial.keys, query, dup(initial.data), klass)
+      const store = new ARSyncStore(query, dup(initial.data), klass, initial.keys)
       store.batchUpdate(dup(patches1))
       console.log(compare(store.data, data1))
       store.batchUpdate(dup(patches2))

@@ -70,7 +70,7 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
 }
 
 class ARSyncStore {
-  constructor(keys, query, data, updatorClass) {
+  constructor(query, data, updatorClass, keys) {
     this.data = data
     this.keys = keys
     this.query = ARSyncStore.parseQuery(query).attributes
@@ -79,7 +79,7 @@ class ARSyncStore {
   batchUpdate(patches) {
     const updator = this.updatorClass && new this.updatorClass()
     patches.forEach(patch => {
-      if (this.keys.indexOf(patch.key) === -1) return
+      if (this.keys && this.keys.indexOf(patch.key) === -1) return
       this._update(patch.action, patch.path, patch.data, updator)
     })
     if (!updator) return
