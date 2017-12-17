@@ -1,13 +1,13 @@
 srand 0
-users = Array.new(8) { |i| User.create name: "user#{i}" }
-posts = Array.new(16) do |i|
+users = (1..8).map { |i| User.create name: "user#{i}" }
+posts = (1..16).map do |i|
   Post.create(
     user: users.sample,
-    title: "Title #{i}",
+    title: "Title #{i+1}",
     body: "Body #{i}. " * rand(4..10)
   )
 end
-comments = Array.new(32) do |i|
+comments = (1..32).map do |i|
   posts.sample.comments.create(
     user: users.sample,
     body: "Comment #{i}" * rand(1..4)
