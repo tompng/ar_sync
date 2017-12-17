@@ -8,10 +8,13 @@ javascript:
 
 #syncbody
   h1
-    | {{title}}({{user.name}})
+    | {{title}}
+    a v-bind:href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id'
+      i.material-icons edit
+  p
+    b author: {{user.name}}
   p
     | {{body}}
-  a v-bind:href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id' edit post
   div v-for='(count, kind) in reaction_summary'
     | {{kind}}:{{count}}
   hr
@@ -23,9 +26,11 @@ javascript:
         | {{comment.body}}
       span v-if='comment.user.id == currentUser.id'
         | &nbsp;
-        a v-bind:href="'/comments/' + comment.id + '.json'" data-remote=true data-method='delete' delete
+        a v-bind:href="'/comments/' + comment.id + '.json'" data-remote=true data-method='delete'
+          i.material-icons clear
         | &nbsp;
-        a v-bind:href="'/comments/' + comment.id + '/edit'" edit
+        a v-bind:href="'/comments/' + comment.id + '/edit'"
+          i.material-icons edit
     div v-for='(count, kind) in comment.reaction_summary'
       | {{kind}}:{{count}}
     hr
