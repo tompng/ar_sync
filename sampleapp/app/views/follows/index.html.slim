@@ -1,0 +1,12 @@
+javascript:
+  syncStart('/users/profile_sync_api', ['name', { followeds: 'from', followings: 'to' }])
+
+#syncbody [v-cloak]
+  h1 Following: {{followings.length}}
+  div v-for='following in followings'
+    a :href="'/users/' + following.to.id"
+      | {{following.to.name}}
+  h1 Followers: {{followeds.length}}
+  div v-for='followed in followeds'
+    a :href="'/users/' + followed.from.id"
+      | {{followed.from.name}}
