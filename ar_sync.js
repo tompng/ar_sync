@@ -86,10 +86,8 @@ class ARSyncStore {
     if (updator.cleanup) updator.cleanup()
     return updator.changed
   }
-  update(action, path, patch) {
-    const updator = new this.updatorClass
-    this._update(action, path, patch, updator)
-    if (updator.cleanup) updator.cleanup()
+  update(patch) {
+    return this.batchUpdate([patch])
   }
   _update(action, path, patch, updator) {
     let query = this.query
