@@ -22,7 +22,7 @@ class CommentsController < ApplicationController
     comment = current_user.comments.find_by(id: params[:id], user: current_user)
     comment.update! permitted_params
     respond_to do |format|
-      format.html { redirect_to comment.post }
+      format.html { redirect_to comment }
       format.json { head :ok }
     end
   end
