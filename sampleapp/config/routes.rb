@@ -30,7 +30,8 @@ Rails.application.routes.draw do
       post :unfollow
     end
   end
-  resources :sessions, only: [:new, :create] do
-    collection { get :destroy }
-  end
+
+  get '/user/sign_in', to: 'sessions#new', as: :sign_in
+  post '/user/sign_in', to: 'sessions#create'
+  get '/user/sign_out', to: 'sessions#destroy', as: :sign_out
 end

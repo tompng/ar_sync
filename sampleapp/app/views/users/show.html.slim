@@ -1,7 +1,7 @@
 javascript:
   syncStart(location.pathname + '/sync_api', ['name', { posts: ['title', 'comments_count'] }])
 
-#syncbody
+#syncbody [v-cloak]
   h2
     | {{name}}'s posts
   div v-for='post in posts'

@@ -3,17 +3,17 @@ Vue.component('reactions', {
   template: `
     <div>
       <a class='reaction-button' :class="{active: mine && mine.kind == 'like'}">
-        <i class=material-icons @click='like'>thumb_up</i>
+        <i class='material-icons material-icons-large' @click='like'>thumb_up</i>
       </a>
       <a class='reaction-button' :class="{active: mine && mine.kind == 'dislike'}">
-        <i class=material-icons @click='dislike'>thumb_down</i>
+        <i class='material-icons material-icons-large' @click='dislike'>thumb_down</i>
       </a>
       <small>
         <span v-if='summary.like'>
-          <i class='material-icons material-icons-small'>thumb_up</i>:{{summary.like}}
+          <i class='material-icons'>thumb_up</i>:{{summary.like}}
         </span>
         <span v-if='summary.dislike'>
-          <i class='material-icons material-icons-small'>thumb_down</i>:{{summary.dislike}}
+          <i class='material-icons'>thumb_down</i>:{{summary.dislike}}
         </span>
       </small>
     </div>

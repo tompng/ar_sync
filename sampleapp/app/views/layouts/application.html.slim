@@ -10,9 +10,14 @@ html
     = javascript_include_tag 'application', 'data-turbolinks-track': 'reload'
   body
     - if user_signed_in?
-      a href='/' Back to top page
-      | &nbsp;
-      b = "#{current_user.name}"
-      div = link_to 'Sign out', sessions_path
+      div.header
+        a.header-item href='/'
+          i.material-icons apps
+        .header-right
+          .header-item.header-item-current-user
+            i.material-icons person_pin
+            = "#{current_user.name}"
+          a.header-item href='/user/sign_out'
+            i.material-icons exit_to_app
     = hidden_field_tag :current_user, current_user.to_json
     = yield

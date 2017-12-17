@@ -17,4 +17,34 @@
 a { cursor: pointer; }
 .reaction-button { color: #eee; }
 .reaction-button.active { color: blue; }
-.material-icons-small { font-size: 14px; }
+.material-icons { font-size: 1em; }
+.material-icons-large { font-size: 32px; }
+
+div.header {
+  font-size: 32px;
+  position: fixed;
+  height: 64px;
+  line-height: 64px;
+  background: #abc;
+  width: 100%;
+  top: 0;
+  left: 0;
+  box-shadow: 0 0 2px black;
+}
+.header-item {
+  line-height: 64px;
+  display: inline-block;
+  height: 64px;
+  overflow: hidden;
+  margin: 0 8px;
+}
+.header-item-current-user {
+  font-size: 18px
+}
+.header-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+body { padding-top: 40px; }
+[v-cloak] { display: none; }

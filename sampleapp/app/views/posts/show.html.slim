@@ -7,7 +7,7 @@ javascript:
     }
   ])
 
-#syncbody
+#syncbody [v-cloak]
   h1
     | {{title}}
     a :href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id'
