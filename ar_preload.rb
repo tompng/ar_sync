@@ -126,7 +126,7 @@ module ARPreload
             elsif key == :attributes
               attributes.update parse_args(value, only_attributes: true)
             else
-              attributes[key] = parse_args(value)
+              attributes[key.to_sym] = parse_args(value)
             end
           end
         else
