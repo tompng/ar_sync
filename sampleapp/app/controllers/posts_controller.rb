@@ -38,6 +38,6 @@ class PostsController < ApplicationController
 
 
   def permitted_params
-    @params.permit :title, :body
+    params[:post].permit :title, :body
   end
 end

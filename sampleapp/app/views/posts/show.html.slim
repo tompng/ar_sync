@@ -8,15 +8,20 @@ javascript:
 
 #syncbody
   h1
-    | Hello{{title}}
+    | {{title}}({{user.name}}){{id}}
   p
     | {{body}}
   div v-for='(count, kind) in reaction_summary'
     | {{kind}}:{{count}}
   hr
   div v-for='comment in comments'
+    div
+      | {{comment.user.name}}
     p
       | {{comment.body}}
     div v-for='(count, kind) in reaction_summary'
       | {{kind}}:{{count}}
     hr
+  form v-bind:action="'/comments?post_id='+id" method='post' data-remote=true
+    input name='comment[body]'
+    input type='submit' value='Send Comment'

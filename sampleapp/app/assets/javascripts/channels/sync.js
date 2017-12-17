@@ -3,9 +3,11 @@ document.addEventListener('turbolinks:load', ()=>{
 
 })
 
-let currentView
+let currentSync = {}
 function syncStart(url, query) {
-  if (currentView) currentView.$destroy()
+  if (currentSync.vm) currentSync.vm.$destroy()
+  if (currentSync.subscriptions) currentSync.subscriptions.forEach(a => a.unsubscribe())
+  currentSync = {}
   const headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
@@ -14,26 +16,13 @@ function syncStart(url, query) {
   const option = { credentials: 'include', method: 'POST', headers, body }
   fetch(url, option).then(res => res.json()).then(syncdata => {
     const el = document.querySelector('.vue-root')
-    // el.style.display = 'block'
-    // console.error(`<div>${el.innerHTML}</div>`)
-    currentView = new Vue({ el: '#syncbody', data: syncdata.data })//, template: `<div>${el.innerHTML}</div>` })
+    const store = new ARSyncStore(null, query, syncdata.data)
+    currentSync.subscriptions = syncdata.keys.map(key => {
+      return App.cable.subscriptions.create(
+        { channel: "SyncChannel", key: key },
+        patch => store.update(patch.action, patch.path, patch.data)
+      )
+    })
+    currentSync.vm = new Vue({ el: '#syncbody', data: store.data })
   })
 }
-App.sync = App.cable.subscriptions.create({
-    channel: "SyncChannel",
-    key: 'aaa',
-  },
-  {
-    connected: function() {
-      console.error('connected')
-    },
-
-    disconnected: function() {
-      console.error('disconnected')
-    },
-
-    received: function(data) {
-      console.error('receive', data)
-    }
-  }
-)

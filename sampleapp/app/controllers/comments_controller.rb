@@ -8,17 +8,19 @@ class CommentsController < ApplicationController
   end
 
   def create
-    Post.find(params[:post_id]).comments.create permitted_params
+    post = Post.find(params[:post_id])
+    post.comments.where(user: current_user).create! permitted_params
     head :ok
   end
 
   def update
-    current_user.comments.find(params[:id]).update permitted_params
+    comment = current_user.commentsfind_by(id: params[:id], user: current_user)
+    comment.update! permitted_params
     head :ok
   end
 
   def destroy
-    current_user.comments.find(params[:id]).destroy
+    current_user.comments.find_by(user: current_user, id: params[:id]).destroy!
     head :ok
   end
 
@@ -37,6 +39,6 @@ class CommentsController < ApplicationController
   end
 
   def permitted_params
-    @params.permit :body
+    params[:comment].permit :body
   end
 end
