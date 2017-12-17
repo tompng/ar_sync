@@ -11,6 +11,7 @@ javascript:
     | {{title}}({{user.name}}){{id}}
   p
     | {{body}}
+  a v-bind:href="'/posts/' + id + '/edit'" edit post
   div v-for='(count, kind) in reaction_summary'
     | {{kind}}:{{count}}
   hr
@@ -20,7 +21,7 @@ javascript:
         | {{comment.user.name}}:
       span
         | {{comment.body}}
-    div v-for='(count, kind) in reaction_summary'
+    div v-for='(count, kind) in comment.reaction_summary'
       | {{kind}}:{{count}}
     hr
   form v-bind:action="'/comments?post_id='+id" method='post' data-remote=true

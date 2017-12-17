@@ -7,19 +7,37 @@ class PostsController < ApplicationController
   def show
   end
 
+  def new
+    @post = Post.new
+  end
+
+  def edit
+    @post = current_user.posts.find params[:id]
+  end
+
   def create
-    current_user.posts.create permitted_params
-    head :ok
+    post = current_user.posts.create permitted_params
+    respond_to do |format|
+      format.html { redirect_to post }
+      format.json { head :ok }
+    end
   end
 
   def update
-    current_user.posts.find(params[:id]).update permitted_params
-    head :ok
+    post = current_user.posts.find(params[:id])
+    post.update! permitted_params
+    respond_to do |format|
+      format.html { redirect_to post }
+      format.json { head :ok }
+    end
   end
 
   def destroy
-    current_user.posts.find(params[:id]).destroy
-    head :ok
+    current_user.posts.find(params[:id]).destroy!
+    respond_to do |format|
+      format.html { redirect_to root_path }
+      format.json { head :ok }
+    end
   end
 
   def reaction
@@ -27,12 +45,12 @@ class PostsController < ApplicationController
     reaction = Post.find(params[:id]).reactions.find_by(user: current_user)
     if kind
       if reaction
-        reaction.update kind: kind
+        reaction.update! kind: kind
       else
-        Post.find(params[:id]).reactions.create(user: current_user, kind: kind)
+        Post.find(params[:id]).reactions.create!(user: current_user, kind: kind)
       end
     else
-      reaction&.destroy
+      reaction&.destroy!
     end
   end
 
