@@ -1,8 +1,12 @@
 javascript:
-  syncStart('/users/profile_sync_api', ['name', { posts: ['title', 'comments_count'] }])
+  syncStart('/users/profile_sync_api', ['name', 'followed_count', 'following_count', { posts: ['title', 'comments_count'] }])
 
 #syncbody [v-cloak]
   h1 Top Page: welcome {{name}}!
+  h2
+    | Following: {{following_count}}
+    | &nbsp;&nbsp;
+    | Followers: {{followed_count}}
   hr
   a href='/posts/new' Create New Post
   | &nbsp;

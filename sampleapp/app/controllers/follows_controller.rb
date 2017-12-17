@@ -1,8 +1,9 @@
-class FollowController < ApplicationController
+class FollowsController < ApplicationController
   def followings
   end
 
   def followeds
+  end
 
   def follow
     current_user.followings.where(to: User.find(params[:user_id])).first_or_create
