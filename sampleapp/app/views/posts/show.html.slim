@@ -2,21 +2,21 @@ javascript:
   syncStart(location.pathname + '/sync_api', [
     'title', 'body', 'reaction_summary', 'user',
     {
-      comments: ['body', 'reaction_summary', 'user']
+      my_reaction: 'kind',
+      comments: ['body', 'reaction_summary', 'user', { my_reaction: 'kind' }]
     }
   ])
 
 #syncbody
   h1
     | {{title}}
-    a v-bind:href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id'
+    a :href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id'
       i.material-icons edit
   p
     b author: {{user.name}}
   p
     | {{body}}
-  div v-for='(count, kind) in reaction_summary'
-    | {{kind}}:{{count}}
+  reactions :url="'/posts/' + id + '/reaction'" :summary='reaction_summary' :mine='my_reaction'
   hr
   div v-for='comment in comments'
     p
@@ -24,16 +24,17 @@ javascript:
         | {{comment.user.name}}:
       span
         | {{comment.body}}
+      a :href="'/comments/' + comment.id"
+        i.material-icons link
       span v-if='comment.user.id == currentUser.id'
         | &nbsp;
-        a v-bind:href="'/comments/' + comment.id + '.json'" data-remote=true data-method='delete'
+        a :href="'/comments/' + comment.id + '.json'" data-remote=true data-method='delete'
           i.material-icons clear
         | &nbsp;
-        a v-bind:href="'/comments/' + comment.id + '/edit'"
+        a :href="'/comments/' + comment.id + '/edit'"
           i.material-icons edit
-    div v-for='(count, kind) in comment.reaction_summary'
-      | {{kind}}:{{count}}
+    reactions :url="'/comments/' + comment.id + '/reaction'" :summary='comment.reaction_summary' :mine='comment.my_reaction'
     hr
-  form v-bind:action="'/comments?post_id='+id" method='post' data-remote=true
+  form :action="'/comments?post_id='+id" method='post' data-remote=true
     input name='comment[body]'
     input type='submit' value='Send Comment'

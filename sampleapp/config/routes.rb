@@ -3,8 +3,11 @@ Rails.application.routes.draw do
   get 'foobar/:key', to: 'foobar#broadcast'
   root to: 'top#show'
   resources :posts, except: :index do
-    post :reaction
-    member { get :sync_api; post :sync_api }
+    member do
+      post :reaction
+      get :sync_api
+      post :sync_api
+    end
   end
   resources :users, only: [:index, :show] do
     member { get :sync_api; post :sync_api }
@@ -12,8 +15,11 @@ Rails.application.routes.draw do
   end
 
   resources :comments, except: [:new, :index] do
-    post :reaction
-    member { get :sync_api; post :sync_api }
+    member do
+      post :reaction
+      get :sync_api
+      post :sync_api
+    end
   end
 
   get '/followings', to: 'follows#followings'

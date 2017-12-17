@@ -11,7 +11,7 @@ javascript:
   h2 Your posts
   div v-for='post in posts'
     div
-      a v-bind:href="'/posts/' + post.id"
+      a :href="'/posts/' + post.id"
         b
           | {{post.title}}
       span comments:{{post.comments_count}}

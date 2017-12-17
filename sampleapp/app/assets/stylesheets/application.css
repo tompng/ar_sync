@@ -13,3 +13,8 @@
  *= require_tree .
  *= require_self
  */
+
+a { cursor: pointer; }
+.reaction-button { color: #eee; }
+.reaction-button.active { color: blue; }
+.material-icons-small { font-size: 14px; }
