@@ -6,4 +6,11 @@ class UsersController < ApplicationController
   def profile_sync_api
     render json: ARSync.sync_api(current_user, current_user, *params[:query])
   end
+
+  def index
+    @users = User.all
+  end
+
+  def show
+  end
 end
