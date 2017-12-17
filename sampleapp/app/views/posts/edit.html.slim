@@ -1,8 +1,10 @@
-h1 Edit post
-
-= link_to @post, method: :delete do
-  | delete post
+h1
+  = link_to @post do
+    i.material-icons reply
+  | &nbsp;
+  | Edit post
+  | &nbsp;
+  = link_to @post, method: :delete, data: { confirm: 'do you want to delete?' } do
+    i.material-icons delete
 
 == render 'form'
-
-= link_to 'Back', @post

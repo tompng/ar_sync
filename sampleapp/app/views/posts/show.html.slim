@@ -10,31 +10,32 @@ javascript:
 #syncbody [v-cloak]
   h1
     | {{title}}
+    | &nbsp;
     a :href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id'
       i.material-icons edit
   p
     b author: {{user.name}}
-  p
+  article
     | {{body}}
-  reactions :url="'/posts/' + id + '/reaction'" :summary='reaction_summary' :mine='my_reaction'
+  reactions :url="'/posts/' + id + '/reaction'" :summary='reaction_summary' :mine='my_reaction' :iconclass="'material-icons-large'"
   hr
-  div v-for='comment in comments'
-    p
-      b
-        | {{comment.user.name}}:
-      span
-        | {{comment.body}}
-      a :href="'/comments/' + comment.id"
-        i.material-icons link
-      span v-if='comment.user.id == currentUser.id'
+  div style='margin-left: 50px'
+    div v-for='comment in comments'
+      p
+        b
+          | {{comment.user.name}}:&nbsp;
+        span
+          | {{comment.body}}
         | &nbsp;
-        a :href="'/comments/' + comment.id + '.json'" data-remote=true data-method='delete'
-          i.material-icons clear
-        | &nbsp;
-        a :href="'/comments/' + comment.id + '/edit'"
-          i.material-icons edit
-    reactions :url="'/comments/' + comment.id + '/reaction'" :summary='comment.reaction_summary' :mine='comment.my_reaction'
-    hr
-  form :action="'/comments?post_id='+id" method='post' data-remote=true
-    input name='comment[body]'
-    input type='submit' value='Send Comment'
+        a :href="'/comments/' + comment.id"
+          i.material-icons link
+        span v-if='comment.user.id == currentUser.id'
+          | &nbsp;
+          a :href="'/comments/' + comment.id + '.json'" data-remote=true data-method='delete'
+            i.material-icons clear
+          | &nbsp;
+          a :href="'/comments/' + comment.id + '/edit'"
+            i.material-icons edit
+      reactions :url="'/comments/' + comment.id + '/reaction'" :summary='comment.reaction_summary' :mine='comment.my_reaction'
+      hr
+    comment-form :post_id='id'

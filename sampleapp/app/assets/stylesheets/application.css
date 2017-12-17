@@ -48,3 +48,25 @@ div.header {
 }
 body { padding-top: 40px; }
 [v-cloak] { display: none; }
+
+.comment-form {
+  padding-bottom: 20px;
+  font-size: 24px;
+}
+.comment-form input {
+  font-size: 24px;
+  width: 400px;
+}
+article {
+  white-space: pre;
+}
+
+form input {
+  font-size: 24px;
+  width: 400px;
+}
+form textarea {
+  font-size: 24px;
+  width: 400px;
+  height: 200px;
+}

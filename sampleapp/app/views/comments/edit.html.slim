@@ -1,8 +1,10 @@
-h1 Edit comment
-
-= link_to @comment, method: :delete do
-  | delete comment
+h1
+  = link_to @comment do
+    i.material-icons reply
+  | &nbsp;
+  | Edit comment
+  | &nbsp;
+  = link_to @comment, method: :delete, data: { confirm: 'do you want to delete?' } do
+    i.material-icons delete
 
 == render 'form'
-
-= link_to 'Back', @comment

@@ -10,6 +10,7 @@ javascript:
       | {{user.name}}:
     span
       | {{body}}
+    | &nbsp;
     a :href="'/comments/' + id + '/edit'" v-if='user.id == currentUser.id'
       i.material-icons edit
   reactions :url="'/comments/' + id + '/reaction'" :summary='reaction_summary' :mine='my_reaction'
