@@ -1,3 +1,5 @@
+document.addEventListener('turbolinks:load', ()=>{
+})
 App.sync = App.cable.subscriptions.create({
     channel: "SyncChannel",
     key: 'aaa',
