@@ -1,7 +1,7 @@
 class Post < ApplicationRecord
   belongs_to :user
-  has_many :comments
-  has_many :reactions, as: :target
+  has_many :comments, dependent: :destroy
+  has_many :reactions, as: :target, dependent: :destroy
 
   include ARSync
   sync_parent :user, inverse_of: :posts
