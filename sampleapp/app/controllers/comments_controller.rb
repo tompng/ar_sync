@@ -1,6 +1,7 @@
 class CommentsController < ApplicationController
+  protect_from_forgery except: :sync_api
   def sync_api
-    render json: ARSync.sync_api(Comment.find(params[:id]), current_user, *params[:query])
+    render json: ARSync.sync_api(Comment.find(params[:id]), current_user, *params[:query].as_json)
   end
 
   def show

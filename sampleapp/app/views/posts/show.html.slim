@@ -1,9 +1,22 @@
-p#notice = notice
+javascript:
+  syncStart(location.pathname + '/sync_api', [
+    'title', 'body', 'reaction_summary', 'user',
+    {
+      comments: ['body', 'reaction_summary', 'user']
+    }
+  ])
 
-p
-  strong [title:
-  = @post.[title
-
-=> link_to 'Edit', edit_post_path(@post)
-'|
-=< link_to 'Back', posts_path
+#syncbody
+  h1
+    | Hello{{title}}
+  p
+    | {{body}}
+  div v-for='(count, kind) in reaction_summary'
+    | {{kind}}:{{count}}
+  hr
+  div v-for='comment in comments'
+    p
+      | {{comment.body}}
+    div v-for='(count, kind) in reaction_summary'
+      | {{kind}}:{{count}}
+    hr
