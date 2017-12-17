@@ -113,8 +113,8 @@ module ARPreload
       attributes = {}
       column_name = nil
       (args.is_a?(Array) ? args : [args]).each do |arg|
-        if arg.is_a? Symbol
-          attributes[arg] = {}
+        if arg.is_a?(Symbol) || arg.is_a?(String)
+          attributes[arg.to_sym] = {}
         elsif arg.is_a? Hash
           arg.each do |key, value|
             if only_attributes
@@ -130,7 +130,7 @@ module ARPreload
             end
           end
         else
-          raise "Arg type missmatch(Symbol or Hash): #{arg}"
+          raise "Arg type missmatch(Symbol, String or Hash): #{arg}"
         end
       end
       return attributes if only_attributes
