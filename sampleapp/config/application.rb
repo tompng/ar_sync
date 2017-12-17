@@ -4,6 +4,10 @@ require 'rails/all'
 
 require_relative '../../ar_sync'
 
+ARSync.configure do |key:, action:, path:, data:|
+  ActionCable.server.broadcast key, action: action, path: path, data: data
+end
+
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)

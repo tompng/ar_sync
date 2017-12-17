@@ -4,11 +4,16 @@ Rails.application.routes.draw do
   root to: 'top#show'
   resources :posts, except: :index do
     post :reaction
+    member { get :sync_api }
   end
-  resources :users, only: :index
+  resources :users, only: :index do
+    member { get :sync_api }
+    collection { get :profile_sync_api }
+  end
 
   resources :comments, only: [:create, :destroy] do
     post :reaction
+    member { get :sync_api }
   end
 
   get '/followings', to: 'follows#followings'
