@@ -7,12 +7,15 @@ javascript:
 #syncbody [v-cloak]
   h1
     | {{name}}
-    small v-if='is_followed' &nbsp;(follows you)
-  div v-if='is_following'
-    | following&nbsp;&nbsp;
-    a.button :href="'/follows/unfollow?user_id=' + id" data-remote=true data-method='post' unfollow
-  div v-else=true
-    a.button :href="'/follows/follow?user_id=' + id" data-remote=true data-method='post' follow
+    small v-if='is_followed' &nbsp;&nbsp;(follows you)
+    small v-if='id == currentUser.id'
+      | &nbsp;&nbsp;It's me
+  div v-if='id != currentUser.id'
+    div v-if='is_following'
+      | following&nbsp;&nbsp;
+      a.button :href="'/follows/unfollow?user_id=' + id" data-remote=true data-method='post' unfollow
+    div [v-else]
+      a.button :href="'/follows/follow?user_id=' + id" data-remote=true data-method='post' follow
   h2
     | {{name}}'s posts
   div v-for='post in posts'
