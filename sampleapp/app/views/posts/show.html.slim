@@ -1,5 +1,5 @@
 javascript:
-  syncStart(location.pathname + '/sync_api', [
+  sync(location.pathname + '/sync_api', [
     'title', 'body', 'reaction_summary', 'user',
     {
       my_reaction: 'kind',
@@ -14,7 +14,10 @@ javascript:
     a :href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id'
       i.material-icons edit
   p
-    b author: {{user.name}}
+    b
+      | author:
+      a :href="'/users/' + user.id"
+        | {{user.name}}
   article
     | {{body}}
   reactions :url="'/posts/' + id + '/reaction'" :summary='reaction_summary' :mine='my_reaction' :iconclass="'material-icons-large'"
@@ -23,7 +26,9 @@ javascript:
     div v-for='comment in comments'
       p
         b
-          | {{comment.user.name}}:&nbsp;
+          a :href="'/users/' + comment.user.id"
+            | {{comment.user.name}}
+          | :&nbsp;
         span
           | {{comment.body}}
         | &nbsp;

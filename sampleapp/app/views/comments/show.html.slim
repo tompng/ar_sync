@@ -1,5 +1,5 @@
 javascript:
-  syncStart(location.pathname + '/sync_api', [
+  sync(location.pathname + '/sync_api', [
     'body', 'post_id', 'reaction_summary', 'user', { my_reaction: 'kind' }
   ])
 
@@ -9,7 +9,9 @@ javascript:
     | Back
   div
     b
-      | {{user.name}}:
+      a :href="'/users/' + user.id"
+        | {{user.name}}
+      | :
     span
       | {{body}}
     | &nbsp;

@@ -1,5 +1,5 @@
 javascript:
-  syncStart(location.pathname + '/sync_api', [
+  sync(location.pathname + '/sync_api', [
     'name', 'is_following', 'is_followed',
     { posts: ['title', 'comments_count'] }
   ])

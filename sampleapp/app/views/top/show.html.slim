@@ -1,5 +1,5 @@
 javascript:
-  syncStart('/users/profile_sync_api', ['name', 'followed_count', 'following_count', { posts: ['title', 'comments_count'] }])
+  sync('/users/profile_sync_api', ['name', 'followed_count', 'following_count', { posts: ['title', 'comments_count'] }])
 
 #syncbody [v-cloak]
   h1 Top Page: welcome {{name}}!
