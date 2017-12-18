@@ -1,6 +1,6 @@
 javascript:
   sync(location.pathname + '/sync_api', [
-    'title', 'body', 'reaction_summary', 'user',
+    'title', 'body', 'reaction_summary', 'user', 'created_at',
     {
       my_reaction: 'kind',
       comments: ['body', 'reaction_summary', 'user', { my_reaction: 'kind' }]
@@ -18,6 +18,8 @@ javascript:
       | author:
       a :href="'/users/' + user.id"
         | {{user.name}}
+      | &nbsp;&nbsp;date: {{created_at | date}}
+
   article
     | {{body}}
   reactions :url="'/posts/' + id + '/reaction'" :summary='reaction_summary' :mine='my_reaction' :iconclass="'material-icons-large'"

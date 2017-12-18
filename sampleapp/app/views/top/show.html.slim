@@ -1,5 +1,9 @@
 javascript:
-  sync('/users/profile_sync_api', ['name', 'followed_count', 'following_count', { posts: ['title', 'comments_count'] }])
+  sync('/users/profile_sync_api', [
+    'name', 'followed_count', 'following_count',
+    {
+      posts: ['title', 'comments_count', 'created_at']
+    }])
 
 #syncbody [v-cloak]
   h1 Top Page: welcome {{name}}!
@@ -20,4 +24,6 @@ javascript:
       a :href="'/posts/' + post.id"
         b
           | {{post.title}}
-      span comments:{{post.comments_count}}
+      | &nbsp;&nbsp;
+      small date: {{post.created_at | date}}
+      small &nbsp;&nbsp;comments:{{post.comments_count}}

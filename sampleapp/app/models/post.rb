@@ -6,7 +6,7 @@ class Post < ApplicationRecord
   include ARSync
   sync_parent :user, inverse_of: :posts
   sync_self
-  sync_has_data :title, :body
+  sync_has_data :title, :body, :created_at, :updated_at
   sync_has_many :comments
   sync_has_data :comments_count, preload: lambda { |posts|
     Comment.where(post_id: posts.map(&:id)).group(:post_id).count
