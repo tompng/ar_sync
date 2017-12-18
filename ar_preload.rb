@@ -117,16 +117,17 @@ module ARPreload
           attributes[arg.to_sym] = {}
         elsif arg.is_a? Hash
           arg.each do |key, value|
+            sym_key = key.to_sym
             if only_attributes
-              attributes[key] = parse_args(value)
+              attributes[sym_key] = parse_args(value)
               next
             end
-            if key == :as
+            if sym_key == :as
               column_name = value
-            elsif key == :attributes
+            elsif sym_key == :attributes
               attributes.update parse_args(value, only_attributes: true)
             else
-              attributes[key.to_sym] = parse_args(value)
+              attributes[sym_key] = parse_args(value)
             end
           end
         else
