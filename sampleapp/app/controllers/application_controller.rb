@@ -3,7 +3,7 @@ class ApplicationController < ActionController::Base
   before_action :authenticate_user!
 
   def authenticate_user!
-    redirect_to new_session_path unless current_user
+    redirect_to sign_in_path unless current_user
   end
 
   helper_method def user_signed_in?
