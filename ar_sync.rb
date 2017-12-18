@@ -50,7 +50,9 @@ module ARSync
     include ARPreload
     sync_has_data :id
     %i[create update destroy].each do |action|
-      after_commit(on: action) { _sync_notify action }
+      after_commit on: action do
+        self.class.default_scoped.scoping { _sync_notify action }
+      end
     end
   end
 

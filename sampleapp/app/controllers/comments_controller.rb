@@ -43,7 +43,7 @@ class CommentsController < ApplicationController
       if reaction
         reaction.update kind: kind
       else
-        Comment.find(params[:id]).reactions.new(user: current_user, kind: kind).save!
+        Comment.find(params[:id]).reactions.create(user: current_user, kind: kind)
       end
     else
       reaction&.destroy

@@ -3,7 +3,7 @@ class FollowsController < ApplicationController
   end
 
   def follow
-    current_user.followings.where(to: User.find(params[:user_id])).first_or_initialize.save!
+    current_user.followings.where(to: User.find(params[:user_id])).first_or_create!
     head :ok
   end
 
