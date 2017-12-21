@@ -70,19 +70,18 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
 }
 
 class ARSyncStore {
-  constructor(query, data, updatorClass, keys) {
+  constructor(query, data, option = {}) {
     this.data = data
-    this.keys = keys
     this.query = ARSyncStore.parseQuery(query).attributes
-    this.updatorClass = updatorClass
+    this.updatorClass = option.updatorClass || (
+      option.immutable ? ImmutableUpdator : NormalUpdator
+    )
   }
   batchUpdate(patches) {
     const updator = this.updatorClass && new this.updatorClass()
     patches.forEach(patch => {
-      if (this.keys && this.keys.indexOf(patch.key) === -1) return
       this._update(patch.action, patch.path, patch.data, updator)
     })
-    if (!updator) return
     if (updator.cleanup) updator.cleanup()
     return updator.changed
   }
@@ -116,18 +115,10 @@ class ARSyncStore {
             const array = data[column]
             if (array && !array.find(o => o.id === id)) {
               actualPath.push(column)
-              if (updator) {
-                this.data = updator.add(this.data, actualPath, array.length, obj)
-              } else {
-                array.push(obj)
-              }
+              this.data = updator.add(this.data, actualPath, array.length, obj)
             }
           } else {
-            if (updator) {
-              this.data = updator.add(this.data, actualPath, column, obj)
-            } else {
-              data[column] = obj
-            }
+            this.data = updator.add(this.data, actualPath, column, obj)
           }
           return
         } else if (action === 'destroy') {
@@ -135,19 +126,11 @@ class ARSyncStore {
             const array = data[column]
             const idx = array.findIndex(o => o.id === id)
             if (idx >= 0) {
-              if (updator) {
-                actualPath.push(column)
-                this.data = updator.remove(this.data, actualPath, idx)
-              } else {
-                array.splice(idx, 1)
-              }
+              actualPath.push(column)
+              this.data = updator.remove(this.data, actualPath, idx)
             }
           } else {
-            if (updator) {
-              this.data = updator.remove(this.data, actualPath, column)
-            } else {
-              data[column] = null
-            }
+            this.data = updator.remove(this.data, actualPath, column)
           }
           return
         }
@@ -168,11 +151,7 @@ class ARSyncStore {
       if (subq) {
         const subcol = subq.column || key
         if (data[subcol] !== value) {
-          if (updator) {
-            this.data = updator.add(this.data, actualPath, subcol, value)
-          } else {
-            data[subcol] = value
-          }
+          this.data = updator.add(this.data, actualPath, subcol, value)
         }
       }
     }
@@ -207,4 +186,4 @@ class ARSyncStore {
     return { attributes, column }
   }
 }
-module.exports = { ARSyncStore, NormalUpdator, ImmutableUpdator }
+module.exports = ARSyncStore

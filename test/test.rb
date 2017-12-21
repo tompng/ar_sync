@@ -36,7 +36,7 @@ ensure
     model.destroy rescue nil
   end
   File.write 'generated_test.js', <<~CODE
-    const { ARSyncStore, NormalUpdator, ImmutableUpdator } = require('../ar_sync.js')
+    const ARSyncStore = require('../ar_sync.js')
     #{$jscode.join("\n")}
     function compare(a, b, path, key){
       if (!path) path = []
@@ -73,13 +73,16 @@ ensure
       return true
     }
     function dup(obj) { return JSON.parse(JSON.stringify(obj)) }
-    [null, NormalUpdator, ImmutableUpdator].forEach(klass => {
-      const store = new ARSyncStore(query, dup(initial.data), klass, initial.keys)
-      store.batchUpdate(dup(patches1))
+    function selectPatch(patches) {
+      return dup(patches).filter(arr => initial.keys.indexOf(arr.key) >= 0)
+    }
+    [true, false].forEach(immutable => {
+      const store = new ARSyncStore(query, dup(initial.data), { immutable })
+      store.batchUpdate(selectPatch(patches1))
       console.log(compare(store.data, data1))
-      store.batchUpdate(dup(patches2))
+      store.batchUpdate(selectPatch(patches2))
       console.log(compare(store.data, data2))
-      store.batchUpdate(dup(patches3))
+      store.batchUpdate(selectPatch(patches3))
       console.log(compare(store.data, data3))
     })
   CODE
