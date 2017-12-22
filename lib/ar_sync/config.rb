@@ -3,6 +3,7 @@ module ARSync
   config_keys = %i[
     key_secret
     key_prefix
+    current_user_method
   ]
   class Config < Struct.new(*config_keys); end
 

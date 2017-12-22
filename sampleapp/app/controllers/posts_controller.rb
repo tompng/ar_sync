@@ -1,7 +1,7 @@
 class PostsController < ApplicationController
   protect_from_forgery except: :sync_api
   def sync_api
-    render json: ARSync.sync_api(Post.find(params[:id]), current_user, *params[:query].as_json)
+    send_sync_api Post.find(params[:id]), params[:query]
   end
 
   def show
