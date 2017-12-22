@@ -1,5 +1,5 @@
 require 'active_record'
-module ARPreload
+module ARSync::ARPreload
   extend ActiveSupport::Concern
   module ClassMethods
     def _preloadable_info

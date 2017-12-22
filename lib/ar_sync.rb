@@ -1,4 +1,5 @@
-require_relative 'ar_preload'
+module ARSync; end
+require 'ar_sync/ar_preload'
 module ARSync
   extend ActiveSupport::Concern
   module ClassMethods

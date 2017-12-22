@@ -1,2 +1,10 @@
-development.sqlite3
-generated_*
+/.bundle/
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
+/test/*.sqlite3
+/test/generated_test.js
