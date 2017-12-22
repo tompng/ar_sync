@@ -48,6 +48,7 @@ module ARSync
 
     def _initialize_sync_callbacks
       return if instance_variable_defined? '@_sync_callbacks_initialized'
+      sync_has_data :id
       @_sync_callbacks_initialized = true
       %i[create update destroy].each do |action|
         after_commit on: action do
@@ -59,7 +60,6 @@ module ARSync
 
   included do
     include ARPreload
-    sync_has_data :id
   end
 
   def _sync_notify(action)
