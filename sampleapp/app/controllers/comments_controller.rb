@@ -1,9 +1,4 @@
 class CommentsController < ApplicationController
-  protect_from_forgery except: :sync_api
-  def sync_api
-    send_sync_api Comment.find(params[:id]), params[:query]
-  end
-
   def show
     @comment = Comment.find params[:id]
   end

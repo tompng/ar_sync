@@ -1,9 +1,4 @@
 class PostsController < ApplicationController
-  protect_from_forgery except: :sync_api
-  def sync_api
-    send_sync_api Post.find(params[:id]), params[:query]
-  end
-
   def show
   end
 
