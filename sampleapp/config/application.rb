@@ -6,10 +6,6 @@ require 'rails/all'
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
-ARSync.on_update do |key:, action:, path:, data:|
-  ActionCable.server.broadcast key, action: action, path: path, data: data
-end
-
 module Sampleapp
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
