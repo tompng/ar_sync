@@ -1,21 +1,32 @@
 javascript:
-  sync(location.pathname + '/sync_api', [
-    'body', 'post_id', 'reaction_summary', 'user', { my_reaction: 'kind' }
-  ])
+  syncAll({
+    currentUser: {
+      api: 'profile',
+      query: ['id', 'name']
+    },
+    comment: {
+      api: 'comment',
+      params: { id: location.pathname.match(/\d+/)[0] },
+      query: [
+        'body', 'post_id', 'reaction_summary', 'user', { my_reaction: 'kind' }
+      ]
+    }
+  })
+
 
 #syncbody [v-cloak]
-  a :href="'/posts/' + post_id"
+  a :href="'/posts/' + comment.post_id"
     i.material-icons reply
     | Back
   div
     b
-      a :href="'/users/' + user.id"
-        | {{user.name}}
+      a :href="'/users/' + comment.user.id"
+        | {{comment.user.name}}
       | :
     span
-      | {{body}}
+      | {{comment.body}}
     | &nbsp;
-    a :href="'/comments/' + id + '/edit'" v-if='user.id == currentUser.id'
+    a :href="'/comments/' + comment.id + '/edit'" v-if='comment.user.id == currentUser.id'
       i.material-icons edit
-  reactions :url="'/comments/' + id + '/reaction'" :summary='reaction_summary' :mine='my_reaction'
+  reactions :url="'/comments/' + comment.id + '/reaction'" :summary='comment.reaction_summary' :mine='comment.my_reaction'
   hr

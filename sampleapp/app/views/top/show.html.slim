@@ -1,16 +1,21 @@
 javascript:
-  sync('/users/profile_sync_api', [
-    'name', 'followed_count', 'following_count',
-    {
-      posts: ['title', 'comments_count', 'created_at']
-    }])
+  syncAll({
+    currentUser: {
+      api: 'profile',
+      query: [
+        'name', 'followed_count', 'following_count',
+        { posts: ['title', 'comments_count', 'created_at'] }
+      ]
+    }
+  })
+
 
 #syncbody [v-cloak]
-  h1 Top Page: welcome {{name}}!
+  h1 Top Page: welcome {{currentUser.name}}!
   h2
-    | Following: {{following_count}}
+    | Following: {{currentUser.following_count}}
     | &nbsp;&nbsp;
-    | Followers: {{followed_count}}
+    | Followers: {{currentUser.followed_count}}
     | &nbsp;
     a href='/follows' detail
   hr
@@ -19,7 +24,7 @@ javascript:
   a href='/users' Find friends
   hr
   h2 Your posts
-  div v-for='post in posts'
+  div v-for='post in currentUser.posts'
     div
       a :href="'/posts/' + post.id"
         b

@@ -1,31 +1,43 @@
 javascript:
-  sync(location.pathname + '/sync_api', [
-    'title', 'body', 'reaction_summary', 'user', 'created_at',
-    {
-      my_reaction: 'kind',
-      comments: ['body', 'reaction_summary', 'user', { my_reaction: 'kind' }]
+  syncAll({
+    currentUser: {
+      api: 'profile',
+      query: ['id', 'name']
+    },
+    post: {
+      api: 'post',
+      params: { id: location.pathname.match(/\d+/)[0] },
+      query: [
+        'title', 'body', 'reaction_summary', 'user', 'created_at',
+        {
+          my_reaction: 'kind',
+          comments: ['body', 'reaction_summary', 'user', { my_reaction: 'kind' }]
+        }
+      ]
     }
-  ])
+  })
+
+
 
 #syncbody [v-cloak]
   h1
-    | {{title}}
+    | {{post.title}}
     | &nbsp;
-    a :href="'/posts/' + id + '/edit'" v-if='user.id == currentUser.id'
+    a :href="'/posts/' + post.id + '/edit'" v-if='post.user.id == currentUser.id'
       i.material-icons edit
   p
     b
       | author:
-      a :href="'/users/' + user.id"
-        | {{user.name}}
-      | &nbsp;&nbsp;date: {{created_at | date}}
+      a :href="'/users/' + post.user.id"
+        | {{post.user.name}}
+      | &nbsp;&nbsp;date: {{post.created_at | date}}
 
   article
-    | {{body}}
-  reactions :url="'/posts/' + id + '/reaction'" :summary='reaction_summary' :mine='my_reaction' :iconclass="'material-icons-large'"
+    | {{post.body}}
+  reactions :url="'/posts/' + post.id + '/reaction'" :summary='post.reaction_summary' :mine='post.my_reaction' iconclass='material-icons-large'
   hr
   div style='margin-left: 50px'
-    div v-for='comment in comments'
+    div v-for='comment in post.comments'
       p
         b
           a :href="'/users/' + comment.user.id"
@@ -45,4 +57,4 @@ javascript:
             i.material-icons edit
       reactions :url="'/comments/' + comment.id + '/reaction'" :summary='comment.reaction_summary' :mine='comment.my_reaction'
       hr
-    comment-form :post_id='id'
+    comment-form :post_id='post.id'

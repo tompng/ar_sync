@@ -47,7 +47,8 @@ module ARSync
         api_name = req[:api]
         api = self.class.configured_apis[api_name.to_s]
         raise "Sync API named `#{api_name}` not configured" unless api
-        model = instance_exec req[:param], &api
+        api_params = req[:params] || {}
+        model = instance_exec api_params, &api
         api_responses[name] = ARSync.sync_api(model, current_user, *req[:query].as_json) if model
       end
       render json: api_responses

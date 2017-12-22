@@ -1,24 +1,34 @@
 javascript:
-  sync(location.pathname + '/sync_api', [
-    'name', 'is_following', 'is_followed',
-    { posts: ['title', 'comments_count', 'created_at'] }
-  ])
+  syncAll({
+    currentUser: {
+      api: 'profile',
+      query: ['id', 'name']
+    },
+    user: {
+      api: 'user',
+      params: { id: location.pathname.match(/\d+/)[0] },
+      query: [
+        'name', 'is_following', 'is_followed',
+        { posts: ['title', 'comments_count', 'created_at'] }
+      ]
+    }
+  })
 
 #syncbody [v-cloak]
   h1
-    | {{name}}
-    small v-if='is_followed' &nbsp;&nbsp;(follows you)
-    small v-if='id == currentUser.id'
+    | {{user.name}}
+    small v-if='user.is_followed' &nbsp;&nbsp;(follows you)
+    small v-if='user.id == currentUser.id'
       | &nbsp;&nbsp;It's me
-  div v-if='id != currentUser.id'
-    div v-if='is_following'
+  div v-if='user.id != currentUser.id'
+    div v-if='user.is_following'
       | following&nbsp;&nbsp;
-      a.button :href="'/follows/unfollow?user_id=' + id" data-remote=true data-method='post' unfollow
+      a.button :href="'/follows/unfollow?user_id=' + user.id" data-remote=true data-method='post' unfollow
     div [v-else]
-      a.button :href="'/follows/follow?user_id=' + id" data-remote=true data-method='post' follow
+      a.button :href="'/follows/follow?user_id=' + user.id" data-remote=true data-method='post' follow
   h2
-    | {{name}}'s posts
-  div v-for='post in posts'
+    | {{user.name}}'s posts
+  div v-for='post in user.posts'
     div
       a :href="'/posts/' + post.id"
         b
