@@ -2,15 +2,13 @@ require_relative 'boot'
 
 require 'rails/all'
 
-require 'ar_sync'
+# Require the gems listed in Gemfile, including any gems
+# you've limited to :test, :development, or :production.
+Bundler.require(*Rails.groups)
 
 ARSync.configure do |key:, action:, path:, data:|
   ActionCable.server.broadcast key, action: action, path: path, data: data
 end
-
-# Require the gems listed in Gemfile, including any gems
-# you've limited to :test, :development, or :production.
-Bundler.require(*Rails.groups)
 
 module Sampleapp
   class Application < Rails::Application
