@@ -1,18 +1,23 @@
 javascript:
-  sync('/users/profile_sync_api', [
-    'name',
-    {
-      followeds: { from: { as: 'user' } },
-      followings: { to: { as: 'user' } }
+  syncAll({
+    currentUser: {
+      api: 'profile',
+      query: [
+        'name',
+        {
+          followeds: { from: { as: 'user' } },
+          followings: { to: { as: 'user' } }
+        }
+      ]
     }
-  ])
+  })
 
 #syncbody [v-cloak]
-  h1 Following: {{followings.length}}
-  div v-for='following in followings'
+  h1 Following: {{currentUser.followings.length}}
+  div v-for='following in currentUser.followings'
     a :href="'/users/' + following.user.id"
       | {{following.user.name}}
-  h1 Followers: {{followeds.length}}
-  div v-for='followed in followeds'
+  h1 Followers: {{currentUser.followeds.length}}
+  div v-for='followed in currentUser.followeds'
     a :href="'/users/' + followed.user.id"
       | {{followed.user.name}}
