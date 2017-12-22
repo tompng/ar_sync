@@ -26,7 +26,10 @@ Vue.component('reactions', {
       this.changeReaction(this.mine && this.mine.kind === 'dislike' ? null : 'dislike')
     },
     changeReaction(kind) {
-      fetch(this.url + '?kind=' + kind, { credentials: 'include', method: 'POST' })
+      const headers = {
+        'X-CSRF-Token': document.querySelector('meta[name=csrf-token]').content
+      }
+      fetch(this.url + '?kind=' + kind, { headers, credentials: 'include', method: 'POST' })
     }
   }
 })
@@ -46,7 +49,8 @@ Vue.component('comment-form', {
       const url = '/comments?post_id=' + this.post_id
       const headers = {
         'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name=csrf-token]').content
       }
       const body = JSON.stringify({ comment: { body:  this.text }})
       const option = { credentials: 'include', method: 'POST', headers, body }
@@ -54,6 +58,4 @@ Vue.component('comment-form', {
       this.text = ''
     }
   }
-
-
 })
