@@ -6,7 +6,11 @@ class NormalUpdator { // overwrites object. ex: Vue.js
     this.changed.push([path, column, true])
     let data = tree
     path.forEach(key => { data = data[key] })
-    data[column] = value
+    if (data.constructor === Array && data.length === column) {
+      data.push(value)
+    } else {
+      data[column] = value
+    }
     return tree
   }
   remove(tree, path, column) {
