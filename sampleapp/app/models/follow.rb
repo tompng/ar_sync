@@ -1,7 +1,6 @@
 class Follow < ApplicationRecord
   belongs_to :from, class_name: 'User'
   belongs_to :to, class_name: 'User'
-  include ARSync
   sync_parent :from, inverse_of: :following_count
   sync_parent :to, inverse_of: :followed_count
   sync_parent :from, inverse_of: :followings

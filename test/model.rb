@@ -3,7 +3,6 @@ require_relative 'db'
 require 'ar_sync'
 
 class User < ActiveRecord::Base
-  include ARSync
   has_many :posts
   sync_self
   sync_has_data :id, :name
@@ -11,7 +10,6 @@ class User < ActiveRecord::Base
 end
 
 class Post < ActiveRecord::Base
-  include ARSync
   belongs_to :user
   has_many :comments
   sync_self
@@ -29,7 +27,6 @@ class Post < ActiveRecord::Base
 end
 
 class Comment < ActiveRecord::Base
-  include ARSync
   belongs_to :user
   belongs_to :post
   has_many :stars
@@ -57,7 +54,6 @@ class Comment < ActiveRecord::Base
 end
 
 class Star < ActiveRecord::Base
-  include ARSync
   belongs_to :user
   belongs_to :comment
   sync_has_data :id, :created_at

@@ -3,7 +3,6 @@ class Post < ApplicationRecord
   has_many :comments, dependent: :destroy
   has_many :reactions, as: :target, dependent: :destroy
 
-  include ARSync
   sync_parent :user, inverse_of: :posts
   sync_self
   sync_has_data :title, :body, :created_at, :updated_at

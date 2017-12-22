@@ -3,7 +3,6 @@ class Reaction < ApplicationRecord
   belongs_to :target, polymorphic: true
   belongs_to :user
 
-  include ARSync
   sync_has_data :kind, :created_at
   sync_has_data :user, includes: :user do
     { name: user.name }

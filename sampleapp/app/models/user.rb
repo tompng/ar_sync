@@ -7,7 +7,6 @@ class User < ApplicationRecord
   has_many :following_users, through: :followings, source: :to
   has_many :followed_users, through: :followeds, source: :from
 
-  include ARSync
   sync_self
   sync_has_data :name
   sync_has_many :posts

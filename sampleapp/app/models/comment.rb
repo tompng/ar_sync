@@ -3,7 +3,6 @@ class Comment < ApplicationRecord
   belongs_to :post
   has_many :reactions, as: :target, dependent: :destroy
 
-  include ARSync
   sync_self
   sync_parent :post, inverse_of: :comments
   sync_parent :post, inverse_of: :comments_count
