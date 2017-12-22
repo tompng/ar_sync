@@ -117,11 +117,11 @@ module ARSync
     end
   end
 
-  def self.configure(&block)
+  def self.on_update(&block)
     @sync_send_block = block
   end
 
-  self.configure do end
+  self.on_update do end
 
   def self.sync_send(to:, action:, path:, data:, to_user: nil)
     key = sync_key to, path.map(&:first), to_user
@@ -129,10 +129,9 @@ module ARSync
   end
 
   def self.sync_key(model, path, to_user = nil)
-    secret = ENV['SYNC_SECRET']
-    key = [to_user&.id, model.class.name, model.id, path].join '_'
-    return key unless secret
-    Digest::SHA256.hexdigest secret + key
+    key = [to_user&.id, model.class.name, model.id, path].join '/'
+    key = Digest::SHA256.hexdigest "#{config.key_secret}#{key}" if config.key_secret
+    "#{config.key_prefix}#{key}"
   end
 
   def self.sync_api(model, current_user, *args)
