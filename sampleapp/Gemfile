@@ -19,6 +19,8 @@ gem 'uglifier', '>= 1.3.0'
 
 gem 'slim-rails'
 
+gem 'ar_sync', path: '../'
+
 group :production do
   # Use Redis adapter to run Action Cable in production
   gem 'redis', '~> 3.0'

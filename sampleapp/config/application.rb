@@ -2,7 +2,7 @@ require_relative 'boot'
 
 require 'rails/all'
 
-require_relative '../../ar_sync'
+require 'ar_sync'
 
 ARSync.configure do |key:, action:, path:, data:|
   ActionCable.server.broadcast key, action: action, path: path, data: data

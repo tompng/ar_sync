@@ -1,3 +1,9 @@
+PATH
+  remote: ..
+  specs:
+    ar_sync (0.1.0)
+      activerecord
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -177,6 +183,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  ar_sync!
   byebug
   capybara (~> 2.13)
   listen (>= 3.0.5, < 3.2)
