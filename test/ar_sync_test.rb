@@ -4,7 +4,7 @@ File.unlink database_name if File.exist? database_name
 
 require_relative 'seed'
 $patches = []
-ARSync.configure do |key:, action:, path:, data:|
+ARSync.on_update do |key:, action:, path:, data:|
   $patches << { key: key, action: action, path: path, data: data }
 end
 

@@ -1,5 +1,5 @@
 require_relative 'model'
-ARSync.configure do |key:, action:, path:, data:|
+ARSync.on_update do |key:, action:, path:, data:|
   msg = { key: key, action: action, path: path, data: data }.inspect
   puts "\e[1m#{msg}\e[m"
 end
