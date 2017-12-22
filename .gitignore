@@ -7,4 +7,4 @@
 /spec/reports/
 /tmp/
 /test/*.sqlite3
-/test/generated_test.js
+/test/*.js

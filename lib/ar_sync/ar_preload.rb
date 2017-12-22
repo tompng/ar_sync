@@ -51,8 +51,8 @@ module ARSync::ARPreload
       output
     end
 
-    def self._serialize(value_outputs, attributes, context, include_id)
-      value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
+    def self._serialize(mixed_value_outputs, attributes, context, include_id)
+      mixed_value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
         next unless klass.respond_to? :_preloadable_info
         models = value_outputs.map(&:first)
         attributes.each_key do |name|

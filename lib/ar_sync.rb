@@ -37,7 +37,7 @@ module ARSync
     end
 
     def _sync_self?
-      @_sync_self
+      instance_variable_defined? '@_sync_self'
     end
 
     def _sync_parents_info
@@ -49,7 +49,7 @@ module ARSync
     end
 
     def _initialize_sync_callbacks
-      return if @_sync_callbacks_initialized
+      return if instance_variable_defined? '@_sync_callbacks_initialized'
       @_sync_callbacks_initialized = true
       %i[create update destroy].each do |action|
         after_commit on: action do
@@ -122,6 +122,8 @@ module ARSync
   def self.configure(&block)
     @sync_send_block = block
   end
+
+  self.configure do end
 
   def self.sync_send(to:, action:, path:, data:, to_user: nil)
     key = sync_key to, path.map(&:first), to_user
