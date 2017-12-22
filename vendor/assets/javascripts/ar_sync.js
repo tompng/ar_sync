@@ -186,4 +186,4 @@ class ARSyncStore {
     return { attributes, column }
   }
 }
-module.exports = ARSyncStore
+try { module.exports = ARSyncStore } catch (e) {}
