@@ -23,10 +23,12 @@ module ARSync
     end
 
     def sync_self
+      _initialize_sync_callbacks
       @_sync_self = true
     end
 
     def sync_parent(parent, inverse_of:, only_to: nil)
+      _initialize_sync_callbacks
       _sync_parents_info << [
         parent,
         { inverse_name: inverse_of, only_to: only_to }
@@ -44,16 +46,21 @@ module ARSync
     def _sync_children_type
       @_sync_children_type ||= {}
     end
+
+    def _initialize_sync_callbacks
+      return if @_sync_callbacks_initialized
+      @_sync_callbacks_initialized = true
+      %i[create update destroy].each do |action|
+        after_commit on: action do
+          self.class.default_scoped.scoping { _sync_notify action }
+        end
+      end
+    end
   end
 
   included do
     include ARPreload
     sync_has_data :id
-    %i[create update destroy].each do |action|
-      after_commit on: action do
-        self.class.default_scoped.scoping { _sync_notify action }
-      end
-    end
   end
 
   def _sync_notify(action)
