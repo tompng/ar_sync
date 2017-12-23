@@ -40,7 +40,7 @@ ensure
     model.destroy rescue nil
   end
   File.write 'test/generated_test.js', <<~CODE
-    const ARSyncStore = require('../index.js')
+    const { ARSyncStore } = require('../index.js')
     #{$jscode.join("\n")}
     function compare(a, b, path, key){
       if (!path) path = []
