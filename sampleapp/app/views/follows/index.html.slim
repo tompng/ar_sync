@@ -1,5 +1,5 @@
 javascript:
-  syncAll({
+  new ARSyncData({
     currentUser: {
       api: 'profile',
       query: [
@@ -10,6 +10,8 @@ javascript:
         }
       ]
     }
+  }).load((vueData) => {
+    new Vue({ el: '#syncbody', data: vueData })
   })
 
 #syncbody [v-cloak]

@@ -1,5 +1,5 @@
 javascript:
-  syncAll({
+  new ARSyncData({
     currentUser: {
       api: 'profile',
       query: ['id', 'name']
@@ -11,6 +11,8 @@ javascript:
         'body', 'post_id', 'reaction_summary', 'user', { my_reaction: 'kind' }
       ]
     }
+  }).load((vueData) => {
+    new Vue({ el: '#syncbody', data: vueData })
   })
 
 
