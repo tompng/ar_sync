@@ -2,7 +2,7 @@ require 'benchmark'
 require 'active_record'
 config = {
   adapter: 'sqlite3',
-  database: ENV['DATABASE_NAME'] || 'development.sqlite3',
+  database: ENV['DATABASE_NAME'] || 'test/development.sqlite3',
   pool: 5,
   timeout: 5000
 }
