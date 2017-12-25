@@ -125,7 +125,7 @@ module ARSync
         ARSync.sync_send(
           to: [self.class, name],
           action: action,
-          data: data || _sync_data,
+          data: data || _sync_data(new_record: action == :create),
           path: [[:collection, id]],
           to_user: only_to_user
         )
@@ -191,15 +191,17 @@ module ARSync
   def self.sync_collection_api(klass, name, current_user, *args)
     paths = _extract_paths args
     keys = paths.flat_map do |path|
-      [sync_key([klass, name], path), sync_key([klass, name], path, current_user)]
+      [sync_key([klass, name], [:collection, *path]), sync_key([klass, name], [:collection, *path], current_user)]
     end
-    info = _sync_collection_info[name]
+    info = klass._sync_collection_info[name]
     records = klass.order(id: info[:order]).limit(info[:limit])
     {
       keys: keys,
-      limit: info[:limit],
-      order: info[:order],
-      data: ARPreload::Serializer.serialize(records, *args, context: current_user, include_id: true)
+      data: {
+        limit: info[:limit],
+        order: info[:order],
+        collection: ARPreload::Serializer.serialize(records.to_a, *args, context: current_user, include_id: true)
+      }
     }
   end
 

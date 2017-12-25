@@ -46,9 +46,17 @@ module ARSync::ARPreload
         args = args.dup
         args[-1] = last
       end
-      output = {}
-      _serialize [[model, output]], parse_args(args)[:attributes], context, include_id
-      output
+      if model.is_a?(ActiveRecord::Base)
+        output = {}
+        _serialize [[model, output]], parse_args(args)[:attributes], context, include_id
+        output
+      else
+        sets = model.to_a.map do |record|
+          [record, {}]
+        end
+        _serialize sets, parse_args(args)[:attributes], context, include_id
+        sets.map(&:last)
+      end
     end
 
     def self._serialize(mixed_value_outputs, attributes, context, include_id)

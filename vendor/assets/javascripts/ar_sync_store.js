@@ -87,6 +87,16 @@ class ARSyncStore {
       this._update(patch.action, patch.path, patch.data, updator)
     })
     if (updator.cleanup) updator.cleanup()
+    if (this.data.order) {
+      this.data.collection.sort((a, b) => {
+        return a.id == b.id ? 0 : (a.id < b.id ? -1 : 1) * (this.data.order == 'asc' ? 1 : -1)
+      })
+    }
+    if (this.data.limit) {
+      while (this.data.collection.length > this.data.limit) {
+        this.data.collection.pop()
+      }
+    }
     return updator.changed
   }
   update(patch) {
