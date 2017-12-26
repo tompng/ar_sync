@@ -24,6 +24,9 @@ class NormalUpdator { // overwrites object. ex: Vue.js
     }
     return tree
   }
+  isMutatable(array) {
+    return true
+  }
 }
 class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
   constructor() {
@@ -66,6 +69,9 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
     }
     return root
   }
+  isMutatable(array) {
+    return array.__mark__
+  }
   cleanup() {
     this.markedObjects.forEach(marked => {
       delete marked.__mark__
@@ -88,17 +94,19 @@ class ARSyncStore {
     patches.forEach(patch => {
       this._update(patch.action, patch.path, patch.data, updator)
     })
-    if (updator.cleanup) updator.cleanup()
-    if (this.order) {
-      this.data.sort((a, b) => {
-        return a.id == b.id ? 0 : (a.id < b.id ? -1 : 1) * (this.order == 'asc' ? 1 : -1)
-      })
-    }
-    if (this.limit) {
-      while (this.data.length > this.limit) {
-        this.data.pop()
+    if ((this.order || this.limit) && updator.isMutatable(this.data)) {
+      if (this.order) {
+        this.data.sort((a, b) => {
+          return a.id == b.id ? 0 : (a.id < b.id ? -1 : 1) * (this.order == 'asc' ? 1 : -1)
+        })
+      }
+      if (this.limit) {
+        while (this.data.length > this.limit) {
+          this.data.pop()
+        }
       }
     }
+    if (updator.cleanup) updator.cleanup()
     return updator.changed
   }
   update(patch) {
