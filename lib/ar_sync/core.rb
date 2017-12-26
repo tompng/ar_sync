@@ -1,5 +1,8 @@
 module ARSync
   extend ActiveSupport::Concern
+
+  class Collection < Struct.new(:klass, :name); end
+
   module ClassMethods
     def sync_has_data(*names, **option, &data_block)
       _sync_define(:data, names, option, &data_block)
@@ -37,6 +40,13 @@ module ARSync
     def sync_define_collection(name, limit: nil, order: :asc)
       _initialize_sync_callbacks
       _sync_collection_info[name] = { limit: limit, order: order }
+    end
+
+    def sync_collection(name)
+      unless _sync_collection_info.key? name
+        raise "No such collection `#{name}` defined in `#{self}`"
+      end
+      Collection.new self, name
     end
 
     def _sync_self?
@@ -96,11 +106,12 @@ module ARSync
 
   def _sync_notify_collection(action, path:, data:, only_to_user:)
     self.class._sync_collection_info.each do |name, order:, limit:|
+      collenction = Collection.new self.class, name
       ids = self.class.order(id: order).limit(limit).pluck(:id) if limit
       if path
         if !limit || ids.include?(id)
           ARSync.sync_send(
-            to: [self.class, name],
+            to: collenction,
             action: action,
             path: [id, *path],
             data: data,
@@ -115,7 +126,7 @@ module ARSync
           next if order == :desc && id < ids.min
         end
         ARSync.sync_send(
-          to: [self.class, name],
+          to: collenction,
           action: :destroy,
           data: nil,
           path: [id],
@@ -123,7 +134,7 @@ module ARSync
         )
       elsif !limit || ids.include?(id)
         ARSync.sync_send(
-          to: [self.class, name],
+          to: collenction,
           action: action,
           data: data || _sync_data(new_record: action == :create),
           path: [id],
@@ -178,9 +189,8 @@ module ARSync
   end
 
   def self.sync_key(model, path, to_user = nil)
-    if model.is_a? Array
-      klass, collection_name = model
-      key = [to_user&.id, klass.name, collection_name, path].join '/'
+    if model.is_a? ARSync::Collection
+      key = [to_user&.id, model.klass.name, model.name, path].join '/'
     else
       key = [to_user&.id, model.class.name, model.id, path].join '/'
     end
@@ -188,13 +198,13 @@ module ARSync
     "#{config.key_prefix}#{key}"
   end
 
-  def self.sync_collection_api(klass, name, current_user, *args)
+  def self.sync_collection_api(collection, current_user, *args)
     paths = _extract_paths args
     keys = paths.flat_map do |path|
-      [sync_key([klass, name], path), sync_key([klass, name], path, current_user)]
+      [sync_key(collection, path), sync_key(collection, path, current_user)]
     end
-    info = klass._sync_collection_info[name]
-    records = klass.order(id: info[:order]).limit(info[:limit])
+    info = collection.klass._sync_collection_info[collection.name]
+    records = collection.klass.order(id: info[:order]).limit(info[:limit])
     {
       keys: keys,
       limit: info[:limit],
@@ -228,5 +238,9 @@ module ARSync
     end
     extract.call [], parsed[:attributes]
     paths
+  end
+
+  def self.serialize(record_or_records, current_user = nil, query)
+    ARPreload::Serializer.serialize record_or_records, *query, context: current_user
   end
 end

@@ -22,27 +22,27 @@ begin
   jsvar :query, query
   jsvar :cquery, collection_query
   jsvar :initial, ARSync.sync_api(User.first, User.first, *query)
-  jsvar :cinitial, ARSync.sync_collection_api(Post, :last10, User.first, *collection_query)
+  jsvar :cinitial, ARSync.sync_collection_api(Post.sync_collection(:last10), User.first, *collection_query)
   newpost = User.first.posts.create title: 'newposttitle', body: 'newpostbody', user: User.all.sample
   newcomment1 = User.first.posts.first.comments.create body: 'newcomment1', user: User.all.sample
   newcomment2 = User.first.posts.last.comments.create body: 'newcomment2', user: User.first
   newpost.update title: 'newposttitle2'
   jspatch :patches1
   jsvar :data1, ARSync.sync_api(User.first, User.first, *query)[:data]
-  jsvar :cdata1, ARSync.sync_collection_api(Post, :last10, User.first, *collection_query)[:data]
+  jsvar :cdata1, ARSync.sync_collection_api(Post.sync_collection(:last10), User.first, *collection_query)[:data]
 
   star1 = newcomment1.stars.create user: User.last
   star2 = newcomment2.stars.create user: User.first
   jspatch :patches2
   jsvar :data2, ARSync.sync_api(User.first, User.first, *query)[:data]
-  jsvar :cdata2, ARSync.sync_collection_api(Post, :last10, User.first, *collection_query)[:data]
+  jsvar :cdata2, ARSync.sync_collection_api(Post.sync_collection(:last10), User.first, *collection_query)[:data]
   star1.destroy
   star2.destroy
   newpost.destroy
   User.first.posts.create title: 'newposttitle2', body: 'newpostbody2', user: User.all.sample
   jspatch :patches3
   jsvar :data3, ARSync.sync_api(User.first, User.first, *query)[:data]
-  jsvar :cdata3, ARSync.sync_collection_api(Post, :last10, User.first, *collection_query)[:data]
+  jsvar :cdata3, ARSync.sync_collection_api(Post.sync_collection(:last10), User.first, *collection_query)[:data]
 rescue => e
   $error = e
 ensure

@@ -11,16 +11,16 @@ module ARSync
   self.config.key_prefix = 'ar_sync_'
   self.config.current_user_method = :current_user
 
-  module ARSyncApiControllerConcern
-    def send_sync_api(model, query)
+  module StaticJsonConcern
+    def ar_sync_static_json(record_or_records, query)
       if respond_to?(ARSync.config.current_user_method)
         current_user = send ARSync.config.current_user_method
       end
-      render json: ARSync.sync_api(model, current_user, *query.as_json)
+      ARSync.serialize(record_or_records, current_user, query.as_json)
     end
   end
 
-  ActionController::Base.include ARSyncApiControllerConcern
+  ActionController::Base.include StaticJsonConcern
 
   module ApiControllerConcern
     extend ActiveSupport::Concern
@@ -49,7 +49,11 @@ module ARSync
         raise "Sync API named `#{api_name}` not configured" unless api
         api_params = req[:params] || {}
         model = instance_exec api_params, &api
-        api_responses[name] = ARSync.sync_api(model, current_user, *req[:query].as_json) if model
+        if model.is_a? ARSync::Collection
+          api_responses[name] = ARSync.sync_collection_api(model, current_user, *req[:query].as_json) if model
+        else
+          api_responses[name] = ARSync.sync_api(model, current_user, *req[:query].as_json) if model
+        end
       end
       render json: api_responses
     end
