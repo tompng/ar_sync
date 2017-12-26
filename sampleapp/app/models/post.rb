@@ -3,6 +3,7 @@ class Post < ApplicationRecord
   has_many :comments, dependent: :destroy
   has_many :reactions, as: :target, dependent: :destroy
 
+  sync_define_collection :latest10, limit: 10, order: :desc
   sync_parent :user, inverse_of: :posts
   sync_self
   sync_has_data :title, :body, :created_at, :updated_at

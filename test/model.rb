@@ -12,6 +12,11 @@ end
 class Post < ActiveRecord::Base
   belongs_to :user
   has_many :comments
+
+  sync_define_collection :all
+  sync_define_collection :first10, limit: 10, order: :asc
+  sync_define_collection :last10, limit: 10, order: :desc
+
   sync_self
   sync_parent :user, inverse_of: :posts
   sync_has_data :id, :title, :body

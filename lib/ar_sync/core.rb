@@ -1,5 +1,8 @@
 module ARSync
   extend ActiveSupport::Concern
+
+  class Collection < Struct.new(:klass, :name); end
+
   module ClassMethods
     def sync_has_data(*names, **option, &data_block)
       _sync_define(:data, names, option, &data_block)
@@ -34,8 +37,24 @@ module ARSync
       ]
     end
 
+    def sync_define_collection(name, limit: nil, order: :asc)
+      _initialize_sync_callbacks
+      _sync_collection_info[name] = { limit: limit, order: order }
+    end
+
+    def sync_collection(name)
+      unless _sync_collection_info.key? name
+        raise "No such collection `#{name}` defined in `#{self}`"
+      end
+      Collection.new self, name
+    end
+
     def _sync_self?
       instance_variable_defined? '@_sync_self'
+    end
+
+    def _sync_collection_info
+      @_sync_collection_info ||= {}
     end
 
     def _sync_parents_info
@@ -85,7 +104,48 @@ module ARSync
     fallbacks.update data
   end
 
+  def _sync_notify_collection(action, path:, data:, only_to_user:)
+    self.class._sync_collection_info.each do |name, order:, limit:|
+      collenction = Collection.new self.class, name
+      ids = self.class.order(id: order).limit(limit).pluck(:id) if limit
+      if path
+        if !limit || ids.include?(id)
+          ARSync.sync_send(
+            to: collenction,
+            action: action,
+            path: [id, *path],
+            data: data,
+            to_user: only_to_user
+          )
+        end
+        next
+      end
+      if action == :destroy
+        if limit && ids.size == limit
+          next if order == :asc && ids.max < id
+          next if order == :desc && id < ids.min
+        end
+        ARSync.sync_send(
+          to: collenction,
+          action: :destroy,
+          data: nil,
+          path: [id],
+          to_user: only_to_user
+        )
+      elsif !limit || ids.include?(id)
+        ARSync.sync_send(
+          to: collenction,
+          action: action,
+          data: data || _sync_data(new_record: action == :create),
+          path: [id],
+          to_user: only_to_user
+        )
+      end
+    end
+  end
+
   def _sync_notify_parent(action, path: nil, data: nil, only_to_user: nil)
+    _sync_notify_collection(action, path: path, data: data, only_to_user: only_to_user)
     self.class._sync_parents_info.each do |parent_name, inverse_name:, only_to:|
       if only_to
         to_user = instance_exec(&only_to)
@@ -98,10 +158,10 @@ module ARSync
       action2 = action
       if type == :many
         data2 = path ? data : _sync_data(new_record: action == :create)
-        path2 = [[inverse_name, id], *path]
+        path2 = [inverse_name, id, *path]
       elsif path
         data2 = data
-        path2 = [[inverse_name], *path]
+        path2 = [inverse_name, *path]
       else
         if type == :data
           action2 = :update
@@ -109,7 +169,7 @@ module ARSync
           path2 = []
         else
           data2 = _sync_data
-          path2 = [[inverse_name]]
+          path2 = [inverse_name]
         end
       end
       ARSync.sync_send to: parent, action: action2, path: path2, data: data2, to_user: to_user || only_to_user
@@ -124,14 +184,33 @@ module ARSync
   self.on_update do end
 
   def self.sync_send(to:, action:, path:, data:, to_user: nil)
-    key = sync_key to, path.map(&:first), to_user
+    key = sync_key to, path.grep(Symbol), to_user
     @sync_send_block&.call key: key, action: action, path: path, data: data
   end
 
   def self.sync_key(model, path, to_user = nil)
-    key = [to_user&.id, model.class.name, model.id, path].join '/'
+    if model.is_a? ARSync::Collection
+      key = [to_user&.id, model.klass.name, model.name, path].join '/'
+    else
+      key = [to_user&.id, model.class.name, model.id, path].join '/'
+    end
     key = Digest::SHA256.hexdigest "#{config.key_secret}#{key}" if config.key_secret
     "#{config.key_prefix}#{key}"
+  end
+
+  def self.sync_collection_api(collection, current_user, *args)
+    paths = _extract_paths args
+    keys = paths.flat_map do |path|
+      [sync_key(collection, path), sync_key(collection, path, current_user)]
+    end
+    info = collection.klass._sync_collection_info[collection.name]
+    records = collection.klass.order(id: info[:order]).limit(info[:limit])
+    {
+      keys: keys,
+      limit: info[:limit],
+      order: info[:order],
+      data: ARPreload::Serializer.serialize(records.to_a, *args, context: current_user, include_id: true)
+    }
   end
 
   def self.sync_api(model, current_user, *args)
@@ -159,5 +238,9 @@ module ARSync
     end
     extract.call [], parsed[:attributes]
     paths
+  end
+
+  def self.serialize(record_or_records, current_user = nil, query)
+    ARPreload::Serializer.serialize record_or_records, *query, context: current_user
   end
 end

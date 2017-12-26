@@ -1,5 +1,6 @@
-# ARSync
-Your ActiveRecord Model will be synchronized with frontend javascript.
+# ARSync - Reactive Programming with Ruby on Rails
+
+Frontend JSON data will be synchronized with ActiveRecord.
 
 - Provides an json api with query(shape of the json)
 - Send a diff of the json with ActionCable and applies to the json
