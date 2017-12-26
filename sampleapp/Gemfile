@@ -19,6 +19,7 @@ gem 'uglifier', '>= 1.3.0'
 
 gem 'slim-rails'
 
+# gem 'ar_sync', github: 'tompng/ar_sync'
 gem 'ar_sync', path: '../'
 
 group :production do
