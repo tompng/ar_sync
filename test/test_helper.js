@@ -56,9 +56,12 @@ function executeTest({ names, queries, keysList, initials, tests }) {
       try {
         const store = new ARSyncStore(query, dup(initial.data), { immutable, limit, order })
         for (const { patches, states } of tests) {
+          const dataWas = store.data
+          const dataWasCloned = dup(dataWas)
           store.batchUpdate(selectPatch(patches, initial.keys))
           const state = states[i]
           console.log(compareObject(store.data, state))
+          if (immutable) console.log(compareObject(dataWas, dataWasCloned))
         }
       } catch (e) {
         console.log(e)
