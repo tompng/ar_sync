@@ -18,23 +18,29 @@ begin
     $patches = []
   end
   query = [name: { as: '名前' }, posts: [:user, :title, as: :articles, my_comments: [:star_count, as: :my_opinions], comments: [:star_count, :user, my_stars: :id, my_star: { as: :my_reaction }]]]
+  post_query = [:user, :title, comments: [:body, as: :cmnts]]
   collection_query = [:user, :title, my_comments: [:star_count, as: :my_opinions], comments: [:star_count, :user, my_stars: :id, my_star: { as: :my_reaction }]]
   jsvar :query, query
+  jsvar :pquery, post_query
   jsvar :cquery, collection_query
   jsvar :initial, ARSync.sync_api(User.first, User.first, *query)
+  jsvar :pinitial, ARSync.sync_api(User.first.posts.first, User.first, *post_query)
   jsvar :cinitial, ARSync.sync_collection_api(Post.sync_collection(:last10), User.first, *collection_query)
   newpost = User.first.posts.create title: 'newposttitle', body: 'newpostbody', user: User.all.sample
+  User.first.posts.first.update title: 'title2'
   newcomment1 = User.first.posts.first.comments.create body: 'newcomment1', user: User.all.sample
   newcomment2 = User.first.posts.last.comments.create body: 'newcomment2', user: User.first
   newpost.update title: 'newposttitle2'
   jspatch :patches1
   jsvar :data1, ARSync.sync_api(User.first, User.first, *query)[:data]
+  jsvar :pdata1, ARSync.sync_api(User.first.posts.first, User.first, *post_query)[:data]
   jsvar :cdata1, ARSync.sync_collection_api(Post.sync_collection(:last10), User.first, *collection_query)[:data]
 
   star1 = newcomment1.stars.create user: User.last
   star2 = newcomment2.stars.create user: User.first
   jspatch :patches2
   jsvar :data2, ARSync.sync_api(User.first, User.first, *query)[:data]
+  jsvar :pdata2, ARSync.sync_api(User.first.posts.first, User.first, *post_query)[:data]
   jsvar :cdata2, ARSync.sync_collection_api(Post.sync_collection(:last10), User.first, *collection_query)[:data]
   star1.destroy
   star2.destroy
@@ -42,6 +48,7 @@ begin
   User.first.posts.create title: 'newposttitle2', body: 'newpostbody2', user: User.all.sample
   jspatch :patches3
   jsvar :data3, ARSync.sync_api(User.first, User.first, *query)[:data]
+  jsvar :pdata3, ARSync.sync_api(User.first.posts.first, User.first, *post_query)[:data]
   jsvar :cdata3, ARSync.sync_collection_api(Post.sync_collection(:last10), User.first, *collection_query)[:data]
 rescue => e
   $error = e
@@ -88,29 +95,34 @@ ensure
       return true
     }
     function dup(obj) { return JSON.parse(JSON.stringify(obj)) }
-    function selectPatch(patches) {
-      return dup(patches).filter(arr => initial.keys.indexOf(arr.key) >= 0)
-    }
-    function selectCPatch(patches) {
-      return dup(patches).filter(arr => cinitial.keys.indexOf(arr.key) >= 0)
+    function selectPatch(patches, keys) {
+      return dup(patches).filter(arr => keys.indexOf(arr.key) >= 0)
     }
     [true, false].forEach(immutable => {
       const store = new ARSyncStore(query, dup(initial.data), { immutable })
-      store.batchUpdate(selectPatch(patches1))
+      store.batchUpdate(selectPatch(patches1, initial.keys))
       console.log(compare(store.data, data1))
-      store.batchUpdate(selectPatch(patches2))
+      store.batchUpdate(selectPatch(patches2, initial.keys))
       console.log(compare(store.data, data2))
-      store.batchUpdate(selectPatch(patches3))
+      store.batchUpdate(selectPatch(patches3, initial.keys))
       console.log(compare(store.data, data3))
+
+      const pstore = new ARSyncStore(pquery, dup(pinitial.data), { immutable })
+      pstore.batchUpdate(selectPatch(patches1, pinitial.keys))
+      console.log(compare(pstore.data, pdata1))
+      pstore.batchUpdate(selectPatch(patches3, pinitial.keys))
+      console.log(compare(pstore.data, pdata2))
+      pstore.batchUpdate(selectPatch(patches3, pinitial.keys))
+      console.log(compare(pstore.data, pdata3))
 
       const limit = cinitial.limit
       const order = cinitial.order
       const cstore = new ARSyncStore(cquery, dup(cinitial.data), { limit, order, immutable })
-      cstore.batchUpdate(selectCPatch(patches1))
+      cstore.batchUpdate(selectPatch(patches1, cinitial.keys))
       console.log(compare(cstore.data, cdata1))
-      cstore.batchUpdate(selectCPatch(patches2))
+      cstore.batchUpdate(selectPatch(patches2, cinitial.keys))
       console.log(compare(cstore.data, cdata2))
-      cstore.batchUpdate(selectCPatch(patches3))
+      cstore.batchUpdate(selectPatch(patches3, cinitial.keys))
       console.log(compare(cstore.data, cdata3))
 
     })
