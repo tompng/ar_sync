@@ -140,13 +140,28 @@ class ARSyncStore {
     }
     const nameOrId = path[path.length - 1]
     let id, column
+    const applyPatch = (data, query, patch) => {
+      for (const key in patch) {
+        const subq = query[key]
+        const value = patch[key]
+        if (subq) {
+          const subcol = subq.column || key
+          if (data[subcol] !== value) {
+            this.data = updator.add(this.data, actualPath, subcol, value)
+          }
+        }
+      }
+    }
     if (typeof(nameOrId) === 'number') {
       id = nameOrId
       const idx = data.findIndex(o => o.id === id)
-    } else {
+    } else if (nameOrId) {
       if (!query[nameOrId]) return
       column = query[nameOrId].column || nameOrId
       query = query[nameOrId].attributes
+    } else {
+      applyPatch(data, query, patch)
+      return
     }
     if (action === 'create') {
       const obj = slicePatch(patch, query)
@@ -163,21 +178,14 @@ class ARSyncStore {
         if (idx >= 0) this.data = updator.remove(this.data, actualPath, idx)
       }
     } else {
-      if (!column) {
+      if (column) {
+        actualPath.push(column)
+      } else {
         const idx = data.findIndex(o => o.id === id)
         if (idx < 0) return
         actualPath.push(idx)
       }
-      for (const key in patch) {
-        const subq = query[key]
-        const value = patch[key]
-        if (subq) {
-          const subcol = subq.column || key
-          if (data[subcol] !== value) {
-            this.data = updator.add(this.data, actualPath, subcol, value)
-          }
-        }
-      }
+      applyPatch(data, query, patch)
     }
   }
 
