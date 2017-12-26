@@ -46,5 +46,9 @@ javascript:
         b
           | {{post.title}}
       | &nbsp;&nbsp;
-      small date: {{post.created_at | date}}
+      small
+        | author:
+        a :href="'/users/'+post.user.id"
+          | {{post.user.name}}
+      small &nbsp;date: {{post.created_at | date}}
       small &nbsp;&nbsp;comments:{{post.comments_count}}
