@@ -102,7 +102,7 @@ module ARSync
           ARSync.sync_send(
             to: [self.class, name],
             action: action,
-            path: [[:collection, id], *path],
+            path: [id, *path],
             data: data,
             to_user: only_to_user
           )
@@ -118,7 +118,7 @@ module ARSync
           to: [self.class, name],
           action: :destroy,
           data: nil,
-          path: [[:collection, id]],
+          path: [id],
           to_user: only_to_user
         )
       elsif !limit || ids.include?(id)
@@ -126,7 +126,7 @@ module ARSync
           to: [self.class, name],
           action: action,
           data: data || _sync_data(new_record: action == :create),
-          path: [[:collection, id]],
+          path: [id],
           to_user: only_to_user
         )
       end
@@ -147,10 +147,10 @@ module ARSync
       action2 = action
       if type == :many
         data2 = path ? data : _sync_data(new_record: action == :create)
-        path2 = [[inverse_name, id], *path]
+        path2 = [inverse_name, id, *path]
       elsif path
         data2 = data
-        path2 = [[inverse_name], *path]
+        path2 = [inverse_name, *path]
       else
         if type == :data
           action2 = :update
@@ -158,7 +158,7 @@ module ARSync
           path2 = []
         else
           data2 = _sync_data
-          path2 = [[inverse_name]]
+          path2 = [inverse_name]
         end
       end
       ARSync.sync_send to: parent, action: action2, path: path2, data: data2, to_user: to_user || only_to_user
@@ -173,7 +173,7 @@ module ARSync
   self.on_update do end
 
   def self.sync_send(to:, action:, path:, data:, to_user: nil)
-    key = sync_key to, path.map(&:first), to_user
+    key = sync_key to, path.grep(Symbol), to_user
     @sync_send_block&.call key: key, action: action, path: path, data: data
   end
 
@@ -191,17 +191,15 @@ module ARSync
   def self.sync_collection_api(klass, name, current_user, *args)
     paths = _extract_paths args
     keys = paths.flat_map do |path|
-      [sync_key([klass, name], [:collection, *path]), sync_key([klass, name], [:collection, *path], current_user)]
+      [sync_key([klass, name], path), sync_key([klass, name], path, current_user)]
     end
     info = klass._sync_collection_info[name]
     records = klass.order(id: info[:order]).limit(info[:limit])
     {
       keys: keys,
-      data: {
-        limit: info[:limit],
-        order: info[:order],
-        collection: ARPreload::Serializer.serialize(records.to_a, *args, context: current_user, include_id: true)
-      }
+      limit: info[:limit],
+      order: info[:order],
+      data: ARPreload::Serializer.serialize(records.to_a, *args, context: current_user, include_id: true)
     }
   end
 

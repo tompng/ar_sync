@@ -76,6 +76,8 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
 class ARSyncStore {
   constructor(query, data, option = {}) {
     this.data = data
+    this.order = option.order
+    this.limit = option.limit
     this.query = ARSyncStore.parseQuery(query).attributes
     this.updatorClass = option.updatorClass || (
       option.immutable ? ImmutableUpdator : NormalUpdator
@@ -87,14 +89,14 @@ class ARSyncStore {
       this._update(patch.action, patch.path, patch.data, updator)
     })
     if (updator.cleanup) updator.cleanup()
-    if (this.data.order) {
-      this.data.collection.sort((a, b) => {
-        return a.id == b.id ? 0 : (a.id < b.id ? -1 : 1) * (this.data.order == 'asc' ? 1 : -1)
+    if (this.order) {
+      this.data.sort((a, b) => {
+        return a.id == b.id ? 0 : (a.id < b.id ? -1 : 1) * (this.order == 'asc' ? 1 : -1)
       })
     }
-    if (this.data.limit) {
-      while (this.data.collection.length > this.data.limit) {
-        this.data.collection.pop()
+    if (this.limit) {
+      while (this.data.length > this.limit) {
+        this.data.pop()
       }
     }
     return updator.changed
@@ -105,67 +107,75 @@ class ARSyncStore {
   _update(action, path, patch, updator) {
     let query = this.query
     let data = this.data
-    const actualPath = []
-    for(let i=0; i<path.length; i++) {
-      const name = path[i][0]
-      const id = path[i][1]
-      if (!query[name]) return
-      const column = query[name].column || name
-      query = query[name].attributes
-      if (!path[i + 1]) {
-        if (action === 'create') {
-          const obj = {}
-          for (const key in patch) {
-            if (key === 'id') {
-              obj.id = patch.id
-            } else {
-              const subq = query[key]
-              if (subq) {
-                obj[subq.column || key] = patch[key]
-              }
-            }
+    function slicePatch(patch, query) {
+      const obj = {}
+      for (const key in patch) {
+        if (key === 'id') {
+          obj.id = patch.id
+        } else {
+          const subq = query[key]
+          if (subq) {
+            obj[subq.column || key] = patch[key]
           }
-          if (id) {
-            const array = data[column]
-            if (array && !array.find(o => o.id === id)) {
-              actualPath.push(column)
-              this.data = updator.add(this.data, actualPath, array.length, obj)
-            }
-          } else {
-            this.data = updator.add(this.data, actualPath, column, obj)
-          }
-          return
-        } else if (action === 'destroy') {
-          if (id) {
-            const array = data[column]
-            const idx = array.findIndex(o => o.id === id)
-            if (idx >= 0) {
-              actualPath.push(column)
-              this.data = updator.remove(this.data, actualPath, idx)
-            }
-          } else {
-            this.data = updator.remove(this.data, actualPath, column)
-          }
-          return
         }
       }
-      actualPath.push(column)
-      data = data[column]
-      if (!data) return
-      if (id) {
-        const idx = data.findIndex(o => o.id === id)
+      return obj
+    }
+    const actualPath = []
+    for(let i=0; i<path.length - 1; i++) {
+      const nameOrId = path[i]
+      if (typeof(nameOrId) === 'number') {
+        const idx = data.findIndex(o => o.id === nameOrId)
+        if (idx < 0) return
         actualPath.push(idx)
         data = data[idx]
+      } else {
+        if (!query[nameOrId]) return
+        const column = query[nameOrId].column || nameOrId
+        query = query[nameOrId].attributes
+        actualPath.push(column)
+        data = data[column]
       }
       if (!data) return
     }
-    for (const key in patch) {
-      const subq = query[key]
-      const value = patch[key]
-      if (subq) {
-        const subcol = subq.column || key
-        if (data[subcol] !== value) {
-          this.data = updator.add(this.data, actualPath, subcol, value)
+    const nameOrId = path[path.length - 1]
+    let id, column
+    if (typeof(nameOrId) === 'number') {
+      id = nameOrId
+      const idx = data.findIndex(o => o.id === id)
+    } else {
+      if (!query[nameOrId]) return
+      column = query[nameOrId].column || nameOrId
+      query = query[nameOrId].attributes
+    }
+    if (action === 'create') {
+      const obj = slicePatch(patch, query)
+      if (column) {
+        this.data = updator.add(this.data, actualPath, column, obj)
+      } else if (!data.find(o => o.id === id)) {
+        this.data = updator.add(this.data, actualPath, data.length, obj)
+      }
+    } else if (action === 'destroy') {
+      if (column) {
+        this.data = updator.remove(this.data, actualPath, column)
+      } else {
+        const idx = data.findIndex(o => o.id === id)
+        if (idx >= 0) this.data = updator.remove(this.data, actualPath, idx)
+      }
+    } else {
+      if (!column) {
+        const idx = data.findIndex(o => o.id === id)
+        if (idx < 0) return
+        actualPath.push(idx)
+      }
+      for (const key in patch) {
+        const subq = query[key]
+        const value = patch[key]
+        if (subq) {
+          const subcol = subq.column || key
+          if (data[subcol] !== value) {
+            this.data = updator.add(this.data, actualPath, subcol, value)
+          }
         }
       }
     }

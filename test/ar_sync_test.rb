@@ -103,7 +103,9 @@ ensure
       store.batchUpdate(selectPatch(patches3))
       console.log(compare(store.data, data3))
 
-      const cstore = new ARSyncStore({collection: cquery}, dup(cinitial.data), { immutable })
+      const limit = cinitial.limit
+      const order = cinitial.order
+      const cstore = new ARSyncStore(cquery, dup(cinitial.data), { limit, order, immutable })
       cstore.batchUpdate(selectCPatch(patches1))
       console.log(compare(cstore.data, cdata1))
       cstore.batchUpdate(selectCPatch(patches2))
