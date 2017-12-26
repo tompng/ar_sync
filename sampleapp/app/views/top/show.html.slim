@@ -6,6 +6,10 @@ javascript:
         'name', 'followed_count', 'following_count',
         { posts: ['title', 'comments_count', 'created_at'] }
       ]
+    },
+    newPosts: {
+      api: 'newposts',
+      query: ['user', 'title', 'created_at', 'comments_count']
     }
   }).load((vueData) => {
     new Vue({ el: '#syncbody', data: vueData })
@@ -27,6 +31,16 @@ javascript:
   hr
   h2 Your posts
   div v-for='post in currentUser.posts'
+    div
+      a :href="'/posts/' + post.id"
+        b
+          | {{post.title}}
+      | &nbsp;&nbsp;
+      small date: {{post.created_at | date}}
+      small &nbsp;&nbsp;comments:{{post.comments_count}}
+
+  h2 Everyone's posts
+  div v-for='post in newPosts'
     div
       a :href="'/posts/' + post.id"
         b

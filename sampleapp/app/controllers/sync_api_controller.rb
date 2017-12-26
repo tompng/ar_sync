@@ -1,6 +1,10 @@
 class SyncApiController < ApplicationController
   include ARSync::ApiControllerConcern
 
+  api :newposts do |_params|
+    Post.sync_collection(:latest10)
+  end
+
   api :profile do |_params|
     current_user
   end

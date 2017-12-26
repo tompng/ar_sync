@@ -15,16 +15,16 @@ class ARSyncData {
   load(callback) {
     this.apiCall().then(syncData => {
       for (const name in syncData) {
-        const { keys, data } = syncData[name]
-        this.initializeStore(name, keys, data)
+        const { keys, data, limit, order } = syncData[name]
+        this.initializeStore(name, keys, data, { limit, order })
       }
     }).then(()=>{
       if (callback) callback(this.vueData)
     })
   }
-  initializeStore(name, keys, data) {
+  initializeStore(name, keys, data, option) {
     const query = this.requests[name].query
-    const store = new ARSyncStore(query, data)
+    const store = new ARSyncStore(query, data, option)
     this.stores[name] = store
     this.vueData[name] = store.data
     this.subscriptions[name] = keys.forEach(key => {
