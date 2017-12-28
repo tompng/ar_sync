@@ -1,7 +1,14 @@
 module ARSync
   extend ActiveSupport::Concern
 
-  class Collection < Struct.new(:klass, :name); end
+  class Collection < Struct.new(:klass, :name)
+    def info
+      @info ||= klass._sync_collection_info[name]
+    end
+    def to_a
+      klass.order(id: info[:order]).limit(info[:limit]).to_a
+    end
+  end
 
   module ClassMethods
     def sync_has_data(*names, **option, &data_block)
@@ -212,13 +219,11 @@ module ARSync
     keys = paths.flat_map do |path|
       [sync_key(collection, path), sync_key(collection, path, current_user)]
     end
-    info = collection.klass._sync_collection_info[collection.name]
-    records = collection.klass.order(id: info[:order]).limit(info[:limit])
     {
       keys: keys,
-      limit: info[:limit],
-      order: info[:order],
-      data: ARPreload::Serializer.serialize(records.to_a, *args, context: current_user, include_id: true, prefix: '_sync_')
+      limit: collection.info[:limit],
+      order: collection.info[:order],
+      data: ARPreload::Serializer.serialize(collection.to_a, *args, context: current_user, include_id: true, prefix: '_sync_')
     }
   end
 

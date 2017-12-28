@@ -25,11 +25,17 @@ module ARSync
   module ApiControllerConcern
     extend ActiveSupport::Concern
     module ClassMethods
-      def api(name, &block)
-        configured_apis[name.to_s] = block
+      def api(name, only: nil, &block)
+        raise 'Option `only` must be :sync or :static' unless only.in?([:sync, :static, nil])
+        configured_static_apis[name.to_s] = block if only != :sync
+        configured_sync_apis[name.to_s] = block if only != :static
       end
 
-      def configured_apis
+      def configured_sync_apis
+        @configured_apis ||= {}
+      end
+
+      def configured_static_apis
         @configured_apis ||= {}
       end
     end
@@ -38,24 +44,44 @@ module ARSync
       protect_from_forgery except: :api_call
     end
 
-    def api_call
+    def _api_call(type, api_list)
       if respond_to?(ARSync.config.current_user_method)
         current_user = send ARSync.config.current_user_method
       end
       api_responses = {}
       params[:requests].each do |name, req|
         api_name = req[:api]
-        api = self.class.configured_apis[api_name.to_s]
-        raise "Sync API named `#{api_name}` not configured" unless api
+        api = api_list[api_name.to_s]
+        raise "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless api
         api_params = req[:params] || {}
         model = instance_exec api_params, &api
-        if model.is_a? ARSync::Collection
-          api_responses[name] = ARSync.sync_collection_api(model, current_user, *req[:query].as_json) if model
-        else
-          api_responses[name] = ARSync.sync_api(model, current_user, *req[:query].as_json) if model
-        end
+        api_responses[name] = yield model, current_user, req[:query].as_json
       end
       render json: api_responses
+    end
+
+    def sync_call
+      _api_call :sync, self.class.configured_sync_apis do |model, current_user, query|
+        case model
+        when ARSync::Collection
+          ARSync.sync_collection_api model, current_user, *query
+        when ActiveRecord::Base
+          ARSync.sync_api model, current_user, *query if model
+        end
+      end
+    end
+
+    def static_call
+      _api_call :static, self.class.configured_static_apis do |model, current_user, query|
+        case model
+        when ARSync::Collection, ActiveRecord::Relation, Array
+          ARSync.serialize model.to_a, current_user, query
+        when ActiveRecord::Base
+          ARSync.serialize model, current_user, query
+        else
+          model
+        end
+      end
     end
   end
 end
