@@ -1,12 +1,16 @@
+var ARSyncStore
+try { ARSyncStore = require('./ar_sync_store') } catch (e) {}
+
 class ARSyncData {
-  constructor(requests, optionalParams) {
+  constructor(requests, option = {}, optionalParams) {
     this.requests = requests
     this.optionalParams = optionalParams
     this.subscriptions = {}
     this.stores = {}
-    this.vueData = {}
+    this.data = {}
     this.bufferedPatches = {}
   }
+  immutable() { return false }
   release() {
     for (const subscription of this.subscriptions) {
       subscription.unsubscribe()
@@ -17,10 +21,10 @@ class ARSyncData {
     this.apiCall().then(syncData => {
       for (const name in syncData) {
         const { keys, data, limit, order } = syncData[name]
-        this.initializeStore(name, keys, data, { limit, order })
+        this.initializeStore(name, keys, data, { limit, order, immutable: this.immutable() })
       }
     }).then(()=>{
-      if (callback) callback(this.vueData)
+      if (callback) callback(this.data)
     })
   }
   changed(callback) {
@@ -38,6 +42,12 @@ class ARSyncData {
       for (const name in buf) {
         changes[name] = this.stores[name].batchUpdate(buf[name])
       }
+      if (this.immutable()) {
+        this.data = {}
+        for (const name in this.stores) {
+          this.data[name] = this.stores[name].data
+        }
+      }
       if (this.changedCallback) this.changedCallback(changes)
     }, 20)
   }
@@ -45,7 +55,7 @@ class ARSyncData {
     const query = this.requests[name].query
     const store = new ARSyncStore(query, data, option)
     this.stores[name] = store
-    this.vueData[name] = store.data
+    this.data[name] = store.data
     let timer
     let patches = []
     const received = patch => {
@@ -69,4 +79,8 @@ class ARSyncData {
   }
 }
 
-try { module.exports = ARSyncData } catch (e) {}
+class ARSyncImmutableData extends ARSyncData {
+  immutable() { return true }
+}
+
+try { module.exports = { ARSyncData, ARSyncImmutableData } } catch (e) {}
