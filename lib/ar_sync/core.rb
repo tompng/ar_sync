@@ -7,7 +7,7 @@ module ARSync
     def sync_has_data(*names, **option, &data_block)
       if data_block
         original_block = data_block
-        data_block = -> (*args) { original_block.call(*args).as_json }
+        data_block = -> (*args) { instance_exec(*args, &original_block).as_json }
       end
       _sync_define(:data, names, option, &data_block)
     end
@@ -24,7 +24,7 @@ module ARSync
       names.each do |name|
         _sync_children_type[name] = type
         block = data_block || ->(*_preloads) { send name }
-        preloadable "#{_sync_}name", option, &block
+        preloadable "_sync_#{name}", option, &block
         # preloadable name, option, &block # define for static api
       end
     end
@@ -214,7 +214,7 @@ module ARSync
       keys: keys,
       limit: info[:limit],
       order: info[:order],
-      data: ARPreload::Serializer.serialize(records.to_a, *args, context: current_user, include_id: true)
+      data: ARPreload::Serializer.serialize(records.to_a, *args, context: current_user, include_id: true, prefix: '_sync_')
     }
   end
 

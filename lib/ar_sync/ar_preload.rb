@@ -39,39 +39,41 @@ module ARSync::ARPreload
   module Serializer
     def self.serialize(model, *args)
       last = args.last
-      if last.is_a?(Hash) && (last.has_key?(:context) || last.has_key?(:include_id))
+      if last.is_a?(Hash) && (last.keys & %i[context include_id prefix]).present?
         last = last.dup
         context = last.delete :context
         include_id = last.delete :include_id
+        prefix = last.delete :prefix
         args = args.dup
         args[-1] = last
       end
       if model.is_a?(ActiveRecord::Base)
         output = {}
-        _serialize [[model, output]], parse_args(args)[:attributes], context, include_id
+        _serialize [[model, output]], parse_args(args)[:attributes], context, include_id, prefix
         output
       else
         sets = model.to_a.map do |record|
           [record, {}]
         end
-        _serialize sets, parse_args(args)[:attributes], context, include_id
+        _serialize sets, parse_args(args)[:attributes], context, include_id, prefix
         sets.map(&:last)
       end
     end
 
-    def self._serialize(mixed_value_outputs, attributes, context, include_id)
+    def self._serialize(mixed_value_outputs, attributes, context, include_id, prefix)
       mixed_value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
         next unless klass.respond_to? :_preloadable_info
         models = value_outputs.map(&:first)
         attributes.each_key do |name|
-          unless klass._preloadable_info.has_key? name
-            raise "No preloadable attribte `#{name}` for #{klass}"
+          prefixed_name = "#{prefix}#{name}"
+          unless klass._preloadable_info.has_key? prefixed_name
+            raise "No preloadable attribte `#{name}`#{" prefix: #{prefix}" if prefix} for #{klass}"
           end
-          includes = klass._preloadable_info[name][:includes]
+          includes = klass._preloadable_info[prefixed_name][:includes]
           preload models, includes if includes.present?
         end
 
-        preloaders = attributes.each_key.map { |name| klass._preloadable_info[name][:preloaders] }.flatten
+        preloaders = attributes.each_key.map { |name| klass._preloadable_info["#{prefix}#{name}"][:preloaders] }.flatten
         preloader_values = preloaders.compact.uniq.map do |preloader|
           if preloader.arity == 1
             [preloader, preloader.call(models)]
@@ -83,8 +85,9 @@ module ARSync::ARPreload
         (include_id ? [[:id, {}], *attributes] : attributes).each do |name, sub_arg|
           sub_calls = []
           column_name = sub_arg[:column_name] || name
+          prefixed_name = "#{prefix}#{name}"
           sub_attributes = sub_arg[:attributes]
-          info = klass._preloadable_info[name]
+          info = klass._preloadable_info[prefixed_name]
           preloadeds = info[:preloaders]&.map(&preloader_values) || []
           data_block = info[:data]
           args = info[:context_required] ? [*preloadeds, context] : preloadeds
@@ -107,7 +110,7 @@ module ARSync::ARPreload
               output[column_name] = child
             end
           end
-          _serialize sub_calls, sub_attributes, context, include_id if sub_attributes
+          _serialize sub_calls, sub_attributes, context, include_id, prefix if sub_attributes
         end
       end
     end
