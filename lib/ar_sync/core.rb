@@ -5,6 +5,10 @@ module ARSync
 
   module ClassMethods
     def sync_has_data(*names, **option, &data_block)
+      if data_block
+        original_block = data_block
+        data_block = -> (*args) { original_block.call(*args).as_json }
+      end
       _sync_define(:data, names, option, &data_block)
     end
 
