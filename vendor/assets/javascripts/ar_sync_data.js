@@ -1,6 +1,3 @@
-var ARSyncStore
-try { ARSyncStore = require('./ar_sync_store') } catch (e) {}
-
 class ARSyncData {
   constructor(requests, option = {}, optionalParams) {
     this.requests = requests
@@ -84,5 +81,3 @@ class ARSyncData {
 class ARSyncImmutableData extends ARSyncData {
   immutable() { return true }
 }
-
-try { module.exports = { ARSyncData, ARSyncImmutableData } } catch (e) {}
