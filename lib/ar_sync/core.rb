@@ -12,6 +12,10 @@ module ARSync
       _sync_define(:data, names, option, &data_block)
     end
 
+    def api_has_field(*args, &data_block)
+      preloadable *args, &data_block
+    end
+
     def sync_has_one(*names, **option, &data_block)
       _sync_define(:one, names, option, &data_block)
     end
