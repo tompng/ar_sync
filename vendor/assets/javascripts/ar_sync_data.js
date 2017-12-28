@@ -26,9 +26,11 @@ class ARSyncData {
     }).then(()=>{
       if (callback) callback(this.data)
     })
+    return this
   }
   changed(callback) {
     this.changedCallback = callback
+    return this
   }
   patchReceived(name, patch) {
     const buffer = this.bufferedPatches
