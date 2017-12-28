@@ -20,7 +20,8 @@ module ARSync
       names.each do |name|
         _sync_children_type[name] = type
         block = data_block || ->(*_preloads) { send name }
-        preloadable name, option, &block
+        preloadable "#{_sync_}name", option, &block
+        # preloadable name, option, &block # define for static api
       end
     end
 
@@ -100,7 +101,7 @@ module ARSync
         end
       end
     end
-    data = ARPreload::Serializer.serialize self, *names, context: to_user
+    data = ARPreload::Serializer.serialize self, *names, context: to_user, prefix: '_sync_'
     fallbacks.update data
   end
 
@@ -220,7 +221,7 @@ module ARSync
     end
     {
       keys: keys,
-      data: ARPreload::Serializer.serialize(model, *args, context: current_user, include_id: true)
+      data: ARPreload::Serializer.serialize(model, *args, context: current_user, include_id: true, prefix: '_sync_')
     }
   end
 
