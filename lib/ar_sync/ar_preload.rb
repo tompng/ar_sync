@@ -80,7 +80,7 @@ module ARSync::ARPreload
           end
         end.to_h
 
-        [[:id, {}], *attributes].each do |name, sub_arg|
+        (include_id ? [[:id, {}], *attributes] : attributes).each do |name, sub_arg|
           sub_calls = []
           column_name = sub_arg[:column_name] || name
           sub_attributes = sub_arg[:attributes]
