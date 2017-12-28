@@ -13,6 +13,7 @@ class Post < ApplicationRecord
   } do |preloaded|
     preloaded[id] || 0
   end
+  api_has_field :user
   sync_has_data(:user, includes: :user) { user.as_json(only: [:id, :name]) }
   include SyncReactionConcern
 end

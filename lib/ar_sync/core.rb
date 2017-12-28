@@ -29,7 +29,7 @@ module ARSync
         _sync_children_type[name] = type
         block = data_block || ->(*_preloads) { send name }
         preloadable "_sync_#{name}", option, &block
-        # preloadable name, option, &block # define for static api
+        preloadable name, option.merge(overwrite: false), &block
       end
     end
 

@@ -6,7 +6,7 @@ module ARSync::ARPreload
       @_preloadable_info ||= {}
     end
 
-    def preloadable(*names, includes: nil, preload: nil, &data_block)
+    def preloadable(*names, includes: nil, preload: nil, overwrite: true, &data_block)
       if preload
         preloaders = Array(preload).map do |preloader|
           next preloader if preloader.is_a? Proc
@@ -18,7 +18,9 @@ module ARSync::ARPreload
       names.each do |name|
         sub_includes = includes || (name if reflect_on_association(name))
         block = data_block || ->() { send name }
-        _preloadable_info[name] = {
+        key = name.to_s
+        next if !overwrite && _preloadable_info.key?(key)
+        _preloadable_info[key] = {
           includes: sub_includes,
           preloaders: preloaders,
           context_required: block.arity == preloaders.size + 1,
@@ -125,8 +127,7 @@ module ARSync::ARPreload
       column_name = nil
       (args.is_a?(Array) ? args : [args]).each do |arg|
         if arg.is_a?(Symbol) || arg.is_a?(String)
-          attributes[arg.to_sym] = {}
-        elsif arg.is_a? Hash
+          attributes[arg.to_sym] = {} elsif arg.is_a? Hash
           arg.each do |key, value|
             sym_key = key.to_sym
             if only_attributes
