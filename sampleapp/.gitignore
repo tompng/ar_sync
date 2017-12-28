@@ -18,6 +18,9 @@
 !/tmp/.keep
 
 /node_modules
+client/node_modules
+app/assets/webpack
+
 /yarn-error.log
 
 .byebug_history
