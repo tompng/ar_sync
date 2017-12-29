@@ -102,10 +102,7 @@ class ARSyncData {
       const connectionName = name + '/' + key
       const disconnected = () => this.subscriptionDisconnected(connectionName)
       const connected = () => this.subscriptionConnected(connectionName)
-      return App.cable.subscriptions.create(
-        { channel: "SyncChannel", key },
-        { received, disconnected, connected }
-      )
+      return ARSyncData.connectionAdapter.connect({ key, received, disconnected, connected })
     })
   }
   apiCall() {
@@ -115,9 +112,10 @@ class ARSyncData {
     }
     const body = JSON.stringify(Object.assign({ requests: this.requests }, this.optionalParams))
     const option = { credentials: 'include', method: 'POST', headers, body }
-    return fetch('/sync_api', option).then(res => res.json())
+    return fetch(ARSyncData.apiEndPoint, option).then(res => res.json())
   }
 }
+ARSyncData.apiEndPoint = '/sync_api'
 
 class ARSyncImmutableData extends ARSyncData {
   immutable() { return true }
