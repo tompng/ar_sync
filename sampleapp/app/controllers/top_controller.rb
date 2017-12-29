@@ -3,5 +3,6 @@ class TopController < ApplicationController
   end
 
   def react
+    render layout: false
   end
 end

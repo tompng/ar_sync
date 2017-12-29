@@ -1,5 +1,6 @@
 import React, { PureComponent } from 'react'
 import { render } from 'react-dom'
+import { ARSyncImmutableData } from 'ar_sync'
 
 class TopPage extends PureComponent {
   render() {
