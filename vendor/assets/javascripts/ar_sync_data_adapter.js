@@ -1,7 +1,7 @@
 (function(){
 let ARSyncData, ActionCable
 try {
-  ARSyncData = require('./ar_sync_data')
+  ARSyncData = require('./ar_sync_data').ARSyncData
   ActionCable = require('actioncable')
 } catch(e) {
   try {
@@ -9,7 +9,6 @@ try {
     ActionCable = window.ActionCable
   } catch(e) {}
 }
-
 ARSyncData.connectionAdapter = {
   channelName: 'SyncChannel',
   cable() {
