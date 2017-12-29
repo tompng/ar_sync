@@ -11,5 +11,6 @@
 // about supported directives.
 //
 //= require rails-ujs
+//= require action_cable
 //= require ar_sync
 //= require_tree .

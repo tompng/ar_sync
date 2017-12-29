@@ -1,3 +1,11 @@
+(function(){
+let ARSyncStore
+try {
+  ARSyncStore = require('./ar_sync_store')
+} catch(e) {
+  ARSyncStore = window.ARSyncStore
+}
+
 class ARSyncData {
   constructor(requests, option = {}, optionalParams) {
     this.requests = requests
@@ -120,3 +128,12 @@ ARSyncData.apiEndPoint = '/sync_api'
 class ARSyncImmutableData extends ARSyncData {
   immutable() { return true }
 }
+
+
+try {
+  module.exports = { ARSyncData, ARSyncImmutableData }
+} catch (e) {
+  window.ARSyncData = ARSyncData
+  window.ARSyncImmutableData = ARSyncImmutableData
+}
+})()

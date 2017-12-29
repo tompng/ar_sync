@@ -1,3 +1,5 @@
+(function(){
+
 class NormalUpdator { // overwrites object. ex: Vue.js
   constructor() {
     this.changed = []
@@ -239,4 +241,9 @@ class ARSyncStore {
   }
 }
 
-try { module.exports = ARSyncStore } catch (e) {}
+try {
+  module.exports = ARSyncStore
+} catch (e) {
+  window.ARSyncStore = ARSyncStore
+}
+})()

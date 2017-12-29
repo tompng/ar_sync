@@ -1,3 +1,15 @@
+(function(){
+let ARSyncData, ActionCable
+try {
+  ARSyncData = require('./ar_sync_data')
+  ActionCable = require('actioncable')
+} catch(e) {
+  try {
+    ARSyncData = window.ARSyncData
+    ActionCable = window.ActionCable
+  } catch(e) {}
+}
+
 ARSyncData.connectionAdapter = {
   channelName: 'SyncChannel',
   cable() {
@@ -10,6 +22,7 @@ ARSyncData.connectionAdapter = {
     )
   }
 }
+})()
 // without actioncable:
 // ARSyncData.connectionAdapter = {
 //   connect({ key, received, disconnected, connected }) {
