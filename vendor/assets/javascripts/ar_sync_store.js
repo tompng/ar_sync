@@ -2,6 +2,12 @@ class NormalUpdator { // overwrites object. ex: Vue.js
   constructor() {
     this.changed = []
   }
+  replaceData(data, newData) {
+    for (const key in newData) {
+      data[key] = newData[key]
+    }
+    return data
+  }
   add(tree, path, column, value) {
     this.changed.push([path, column, true])
     let data = tree
@@ -32,6 +38,9 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
   constructor() {
     this.changed = []
     this.markedObjects = []
+  }
+  replaceData(data, newData) {
+    return newData
   }
   mark(obj) {
     if (obj.__mark__) return obj
@@ -88,6 +97,9 @@ class ARSyncStore {
     this.updatorClass = option.updatorClass || (
       option.immutable ? ImmutableUpdator : NormalUpdator
     )
+  }
+  replaceData(data) {
+    this.data = new this.updatorClass().replaceData(this.data, data)
   }
   batchUpdate(patches) {
     const updator = this.updatorClass && new this.updatorClass()
