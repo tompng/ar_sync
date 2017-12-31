@@ -3,7 +3,15 @@
 # Version of your assets, change this if you want to expire all your assets.
 Rails.application.config.assets.version = '1.0'
 
-Rails.application.config.assets.js_compressor = Uglifier.new harmony: true
+Rails.application.config.assets.js_compressor = Uglifier.new
+Rails.application.config.assets.js_compressor.singleton_class.prepend(
+  Module.new do
+    def compress es6code
+      es5code = Babel::Transpiler.transform(es6code, compact: true)['code']
+      super(es5code).gsub(/\A"use strict";/, '')
+    end
+  end
+)
 
 # Add additional assets to the asset load path.
 # Rails.application.config.assets.paths << Emoji.images_path
