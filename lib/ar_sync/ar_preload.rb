@@ -39,16 +39,7 @@ module ARSync::ARPreload
   end
 
   module Serializer
-    def self.serialize(model, *args)
-      last = args.last
-      if last.is_a?(Hash) && (last.keys & %i[context include_id prefix]).present?
-        last = last.dup
-        context = last.delete :context
-        include_id = last.delete :include_id
-        prefix = last.delete :prefix
-        args = args.dup
-        args[-1] = last
-      end
+    def self.serialize(model, args, context: nil, include_id: false, prefix: nil)
       if model.is_a?(ActiveRecord::Base)
         output = {}
         _serialize [[model, output]], parse_args(args)[:attributes], context, include_id, prefix

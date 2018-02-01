@@ -116,7 +116,7 @@ module ARSync
         end
       end
     end
-    data = ARPreload::Serializer.serialize self, *names, context: to_user, prefix: '_sync_'
+    data = ARPreload::Serializer.serialize self, names, context: to_user, prefix: '_sync_'
     fallbacks.update data
   end
 
@@ -223,7 +223,7 @@ module ARSync
       keys: keys,
       limit: collection.info[:limit],
       order: collection.info[:order],
-      data: ARPreload::Serializer.serialize(collection.to_a, *args, context: current_user, include_id: true, prefix: '_sync_')
+      data: ARPreload::Serializer.serialize(collection.to_a, args, context: current_user, include_id: true, prefix: '_sync_')
     }
   end
 
@@ -234,7 +234,7 @@ module ARSync
     end
     {
       keys: keys,
-      data: ARPreload::Serializer.serialize(model, *args, context: current_user, include_id: true, prefix: '_sync_')
+      data: ARPreload::Serializer.serialize(model, args, context: current_user, include_id: true, prefix: '_sync_')
     }
   end
 
@@ -255,6 +255,6 @@ module ARSync
   end
 
   def self.serialize(record_or_records, current_user = nil, query)
-    ARPreload::Serializer.serialize record_or_records, *query, context: current_user
+    ARPreload::Serializer.serialize record_or_records, query, context: current_user
   end
 end
