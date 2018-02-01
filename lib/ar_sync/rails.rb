@@ -64,9 +64,9 @@ module ARSync
       _api_call :sync, self.class.configured_sync_apis do |model, current_user, query|
         case model
         when ARSync::Collection
-          ARSync.sync_collection_api model, current_user, *query
+          ARSync.sync_collection_api model, current_user, query
         when ActiveRecord::Base
-          ARSync.sync_api model, current_user, *query if model
+          ARSync.sync_api model, current_user, query if model
         end
       end
     end

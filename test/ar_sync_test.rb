@@ -18,9 +18,9 @@ $test_cases = {
 }
 def api(target, query)
   if target.is_a? ActiveRecord::Base
-    ARSync.sync_api target.reload, User.first, *query
+    ARSync.sync_api target.reload, User.first, query
   else
-    ARSync.sync_collection_api target, User.first, *query
+    ARSync.sync_collection_api target, User.first, query
   end
 end
 

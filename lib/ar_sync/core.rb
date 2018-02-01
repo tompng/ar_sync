@@ -214,7 +214,7 @@ module ARSync
     "#{config.key_prefix}#{key}"
   end
 
-  def self.sync_collection_api(collection, current_user, *args)
+  def self.sync_collection_api(collection, current_user, args)
     paths = _extract_paths args
     keys = paths.flat_map do |path|
       [sync_key(collection, path), sync_key(collection, path, current_user)]
@@ -227,7 +227,7 @@ module ARSync
     }
   end
 
-  def self.sync_api(model, current_user, *args)
+  def self.sync_api(model, current_user, args)
     paths = _extract_paths args
     keys = paths.flat_map do |path|
       [sync_key(model, path), sync_key(model, path, current_user)]
