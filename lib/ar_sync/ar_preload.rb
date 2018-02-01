@@ -2,11 +2,11 @@ require 'active_record'
 module ARSync::ARPreload
   extend ActiveSupport::Concern
   module ClassMethods
-    def _preloadable_info
-      @_preloadable_info ||= {}
+    def _preloadable_field_info
+      @_preloadable_field_info ||= {}
     end
 
-    def preloadable(*names, includes: nil, preload: nil, overwrite: true, &data_block)
+    def preloadable_field(*names, includes: nil, preload: nil, overwrite: true, &data_block)
       if preload
         preloaders = Array(preload).map do |preloader|
           next preloader if preloader.is_a? Proc
@@ -19,8 +19,8 @@ module ARSync::ARPreload
         sub_includes = includes || (name if reflect_on_association(name))
         block = data_block || ->() { send name }
         key = name.to_s
-        next if !overwrite && _preloadable_info.key?(key)
-        _preloadable_info[key] = {
+        next if !overwrite && _preloadable_field_info.key?(key)
+        _preloadable_field_info[key] = {
           includes: sub_includes,
           preloaders: preloaders,
           context_required: block.arity == preloaders.size + 1,
@@ -55,18 +55,18 @@ module ARSync::ARPreload
 
     def self._serialize(mixed_value_outputs, attributes, context, include_id, prefix)
       mixed_value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
-        next unless klass.respond_to? :_preloadable_info
+        next unless klass.respond_to? :_preloadable_field_info
         models = value_outputs.map(&:first)
         attributes.each_key do |name|
           prefixed_name = "#{prefix}#{name}"
-          unless klass._preloadable_info.has_key? prefixed_name
-            raise "No preloadable attribte `#{name}`#{" prefix: #{prefix}" if prefix} for #{klass}"
+          unless klass._preloadable_field_info.has_key? prefixed_name
+            raise "No preloadable field `#{name}`#{" prefix: #{prefix}" if prefix} for #{klass}"
           end
-          includes = klass._preloadable_info[prefixed_name][:includes]
+          includes = klass._preloadable_field_info[prefixed_name][:includes]
           preload models, includes if includes.present?
         end
 
-        preloaders = attributes.each_key.map { |name| klass._preloadable_info["#{prefix}#{name}"][:preloaders] }.flatten
+        preloaders = attributes.each_key.map { |name| klass._preloadable_field_info["#{prefix}#{name}"][:preloaders] }.flatten
         preloader_values = preloaders.compact.uniq.map do |preloader|
           if preloader.arity == 1
             [preloader, preloader.call(models)]
@@ -80,7 +80,7 @@ module ARSync::ARPreload
           column_name = sub_arg[:column_name] || name
           prefixed_name = "#{prefix}#{name}"
           sub_attributes = sub_arg[:attributes]
-          info = klass._preloadable_info[prefixed_name]
+          info = klass._preloadable_field_info[prefixed_name]
           preloadeds = info[:preloaders]&.map(&preloader_values) || []
           data_block = info[:data]
           args = info[:context_required] ? [*preloadeds, context] : preloadeds

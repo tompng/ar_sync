@@ -1,11 +1,11 @@
 require_relative 'model'
 class User
-  preloadable :id, :name, :posts
+  preloadable_field :id, :name, :posts
 end
 
 class Post
-  preloadable :id, :title, :body, :user, :comments
-  preloadable :comment_count, preload: lambda { |posts|
+  preloadable_field :id, :title, :body, :user, :comments
+  preloadable_field :comment_count, preload: lambda { |posts|
     Comment.where(post_id: posts.map(&:id)).group(:post_id).count
   } do |preload|
     preload[id] || 0
@@ -13,9 +13,9 @@ class Post
 end
 
 class Comment
-  preloadable :id, :body, :user, :stars
+  preloadable_field :id, :body, :user, :stars
 
-  preloadable :stars_count, preload: lambda { |comments|
+  preloadable_field :stars_count, preload: lambda { |comments|
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   } do |preloaded|
     preloaded[id] || 0
@@ -25,15 +25,15 @@ class Comment
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   end
 
-  preloadable :stars_count_x5, preload: :star_count_loader do |preloaded|
+  preloadable_field :stars_count_x5, preload: :star_count_loader do |preloaded|
     (preloaded[id] || 0) * 5
   end
 
-  preloadable :stars_count_x10, preload: :star_count_loader do |preloaded|
+  preloadable_field :stars_count_x10, preload: :star_count_loader do |preloaded|
     (preloaded[id] || 0) * 10
   end
 
-  preloadable :current_user_stars, preload: -> (comments, context) {
+  preloadable_field :current_user_stars, preload: -> (comments, context) {
     Star.where(comment_id: comments.map(&:id), user_id: context[:current_user].id).group_by(&:comment_id)
   } do |preloadeds, _context|
     preloadeds[id] || []
@@ -41,7 +41,7 @@ class Comment
 end
 
 class Star
-  preloadable :id, :user
+  preloadable_field :id, :user
 end
 
 ARSync::ARPreload::Serializer.serialize User.first, :id, posts: { comments: :stars_count }, context: { current_user: User.first }

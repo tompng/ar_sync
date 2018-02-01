@@ -20,7 +20,7 @@ module ARSync
     end
 
     def api_has_field(*args, &data_block)
-      preloadable *args, &data_block
+      preloadable_field *args, &data_block
     end
 
     def sync_has_one(*names, **option, &data_block)
@@ -35,8 +35,8 @@ module ARSync
       names.each do |name|
         _sync_children_type[name] = type
         block = data_block || ->(*_preloads) { send name }
-        preloadable "_sync_#{name}", option, &block
-        preloadable name, option.merge(overwrite: false), &block
+        preloadable_field "_sync_#{name}", option, &block
+        preloadable_field name, option.merge(overwrite: false), &block
       end
     end
 
