@@ -55,18 +55,20 @@ module ARSync::ARPreload
     def self.serialize(model, args, context: nil, include_id: false, prefix: nil)
       if model.is_a?(ActiveRecord::Base)
         output = {}
-        _serialize [[model, output]], parse_args(args)[:attributes], context, include_id, prefix
+        _serialize [[model, output]], parse_args(args), context, include_id, prefix
         output
       else
         sets = model.to_a.map do |record|
           [record, {}]
         end
-        _serialize sets, parse_args(args)[:attributes], context, include_id, prefix
+        _serialize sets, parse_args(args), context, include_id, prefix
         sets.map(&:last)
       end
     end
 
-    def self._serialize(mixed_value_outputs, attributes, context, include_id, prefix)
+    def self._serialize(mixed_value_outputs, args, context, include_id, prefix)
+      attributes = args[:attributes]
+      params = args[:params]
       mixed_value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
         next unless klass.respond_to? :_preloadable_field_info
         models = value_outputs.map(&:first)
@@ -83,7 +85,7 @@ module ARSync::ARPreload
         preloader_values = preloaders.compact.uniq.map do |preloader|
           arg_hash = {}
           arg_hash[:context] = context if Util.block_has_keyword_arg?(preloader, :context)
-          arg_hash[:params] = {} if Util.block_has_keyword_arg?(preloader, :params)
+          arg_hash[:params] = params if Util.block_has_keyword_arg?(preloader, :params)
           [preloader, preloader.call(models, **arg_hash)]
         end.to_h
 
@@ -91,13 +93,12 @@ module ARSync::ARPreload
           sub_calls = []
           column_name = sub_arg[:column_name] || name
           prefixed_name = "#{prefix}#{name}"
-          sub_attributes = sub_arg[:attributes]
           info = klass._preloadable_field_info[prefixed_name]
           args = info[:preloaders]&.map(&preloader_values) || []
           data_block = info[:data]
           arg_hash = {}
           arg_hash[:context] = context if info[:accepts][:context]
-          arg_hash[:params] = {} if info[:accepts][:params]
+          arg_hash[:params] = params if info[:accepts][:params]
           args << arg_hash unless arg_hash.empty?
           value_outputs.each do |value, output|
             child = value.instance_exec(*args, &data_block)
@@ -118,7 +119,7 @@ module ARSync::ARPreload
               output[column_name] = child
             end
           end
-          _serialize sub_calls, sub_attributes, context, include_id, prefix if sub_attributes
+          _serialize sub_calls, sub_arg, context, include_id, prefix if sub_arg[:attributes]
         end
       end
     end
@@ -130,10 +131,12 @@ module ARSync::ARPreload
 
     def self.parse_args(args, only_attributes: false)
       attributes = {}
+      params = nil
       column_name = nil
       (args.is_a?(Array) ? args : [args]).each do |arg|
         if arg.is_a?(Symbol) || arg.is_a?(String)
-          attributes[arg.to_sym] = {} elsif arg.is_a? Hash
+          attributes[arg.to_sym] = {}
+        elsif arg.is_a? Hash
           arg.each do |key, value|
             sym_key = key.to_sym
             if only_attributes
@@ -144,6 +147,8 @@ module ARSync::ARPreload
               column_name = value
             elsif sym_key == :attributes
               attributes.update parse_args(value, only_attributes: true)
+            elsif sym_key == :params
+              params = value
             else
               attributes[sym_key] = parse_args(value)
             end
@@ -153,7 +158,7 @@ module ARSync::ARPreload
         end
       end
       return attributes if only_attributes
-      { attributes: attributes, column_name: column_name }
+      { attributes: attributes, column_name: column_name, params: params }
     end
   end
 end
