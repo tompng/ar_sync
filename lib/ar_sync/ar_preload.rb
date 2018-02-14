@@ -86,7 +86,11 @@ module ARSync::ARPreload
           arg_hash = {}
           arg_hash[:context] = context if Util.block_has_keyword_arg?(preloader, :context)
           arg_hash[:params] = params if Util.block_has_keyword_arg?(preloader, :params)
-          [preloader, preloader.call(models, **arg_hash)]
+          if arg_hash.empty?
+            [preloader, preloader.call(models)]
+          else
+            [preloader, preloader.call(models, arg_hash)]
+          end
         end.to_h
 
         (include_id ? [[:id, {}], *attributes] : attributes).each do |name, sub_arg|
