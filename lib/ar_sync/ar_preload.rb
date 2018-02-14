@@ -35,7 +35,7 @@ module ARSync::ARPreload
           preloaders: preloaders,
           accepts: {
             context: Util.block_has_keyword_arg?(block, :context),
-            param: Util.block_has_keyword_arg?(block, :param)
+            params: Util.block_has_keyword_arg?(block, :params)
           },
           data: block
         }
@@ -68,7 +68,6 @@ module ARSync::ARPreload
 
     def self._serialize(mixed_value_outputs, args, context, include_id, prefix)
       attributes = args[:attributes]
-      params = args[:params]
       mixed_value_outputs.group_by { |v, o| v.class }.each do |klass, value_outputs|
         next unless klass.respond_to? :_preloadable_field_info
         models = value_outputs.map(&:first)
@@ -81,24 +80,30 @@ module ARSync::ARPreload
           preload models, includes if includes.present?
         end
 
-        preloaders = attributes.each_key.map { |name| klass._preloadable_field_info["#{prefix}#{name}"][:preloaders] }.flatten
-        preloader_values = preloaders.compact.uniq.map do |preloader|
+        preloader_params = attributes.flat_map do |name, sub_args|
+          klass._preloadable_field_info["#{prefix}#{name}"][:preloaders].map do |p|
+            [p, sub_args[:params]]
+          end
+        end
+        preloader_values = preloader_params.compact.uniq.map do |key|
+          preloader, params = key
           arg_hash = {}
           arg_hash[:context] = context if Util.block_has_keyword_arg?(preloader, :context)
           arg_hash[:params] = params if Util.block_has_keyword_arg?(preloader, :params)
           if arg_hash.empty?
-            [preloader, preloader.call(models)]
+            [key, preloader.call(models)]
           else
-            [preloader, preloader.call(models, arg_hash)]
+            [key, preloader.call(models, arg_hash)]
           end
         end.to_h
 
         (include_id ? [[:id, {}], *attributes] : attributes).each do |name, sub_arg|
+          params = sub_arg[:params]
           sub_calls = []
           column_name = sub_arg[:column_name] || name
           prefixed_name = "#{prefix}#{name}"
           info = klass._preloadable_field_info[prefixed_name]
-          args = info[:preloaders]&.map(&preloader_values) || []
+          args = info[:preloaders].map { |p| preloader_values[[p, params]] } || []
           data_block = info[:data]
           arg_hash = {}
           arg_hash[:context] = context if info[:accepts][:context]
