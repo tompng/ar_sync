@@ -1,6 +1,16 @@
 require 'active_record'
 module ARSync::ARPreload
   extend ActiveSupport::Concern
+
+  module Util
+    def self.block_has_keyword_arg?(block, keyword, allow_keyrest: true)
+      block.parameters.any? do |type, name|
+        next true if allow_keyrest && type == :keyrest
+        (type == :key || type == :keyreq) && name == keyword
+      end
+    end
+  end
+
   module ClassMethods
     def _preloadable_field_info
       @_preloadable_field_info ||= {}
@@ -23,7 +33,10 @@ module ARSync::ARPreload
         _preloadable_field_info[key] = {
           includes: sub_includes,
           preloaders: preloaders,
-          context_required: block.arity == preloaders.size + 1,
+          accepts: {
+            context: Util.block_has_keyword_arg?(block, :context),
+            param: Util.block_has_keyword_arg?(block, :param)
+          },
           data: block
         }
       end
@@ -68,11 +81,10 @@ module ARSync::ARPreload
 
         preloaders = attributes.each_key.map { |name| klass._preloadable_field_info["#{prefix}#{name}"][:preloaders] }.flatten
         preloader_values = preloaders.compact.uniq.map do |preloader|
-          if preloader.arity == 1
-            [preloader, preloader.call(models)]
-          else
-            [preloader, preloader.call(models, context)]
-          end
+          arg_hash = {}
+          arg_hash[:context] = context if Util.block_has_keyword_arg?(preloader, :context)
+          arg_hash[:params] = {} if Util.block_has_keyword_arg?(preloader, :params)
+          [preloader, preloader.call(models, **arg_hash)]
         end.to_h
 
         (include_id ? [[:id, {}], *attributes] : attributes).each do |name, sub_arg|
@@ -81,9 +93,12 @@ module ARSync::ARPreload
           prefixed_name = "#{prefix}#{name}"
           sub_attributes = sub_arg[:attributes]
           info = klass._preloadable_field_info[prefixed_name]
-          preloadeds = info[:preloaders]&.map(&preloader_values) || []
+          args = info[:preloaders]&.map(&preloader_values) || []
           data_block = info[:data]
-          args = info[:context_required] ? [*preloadeds, context] : preloadeds
+          arg_hash = {}
+          arg_hash[:context] = context if info[:accepts][:context]
+          arg_hash[:params] = {} if info[:accepts][:params]
+          args << arg_hash unless arg_hash.empty?
           value_outputs.each do |value, output|
             child = value.instance_exec(*args, &data_block)
             is_array_of_model = child.is_a?(Array) && child.grep(ActiveRecord::Base).size == child.size
