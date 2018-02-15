@@ -11,14 +11,13 @@ class Post
     preload[id] || 0
   end
 
-  preloadable_field :last_n_comments_with_preload, preload: lambda { |posts, params:|
+  preloadable_field :last_n_comments_with_preload, preload: lambda { |posts, _context, params|
     Comment.where(post: posts).group_by(&:post_id).transform_values { |cs| cs.take(params) }
-  } do |preloaded, params:|
+  } do |preloaded, _context, params|
     preloaded[id] || []
   end
 
-  preloadable_field :last_n_comments do |params:|
-    p params
+  preloadable_field :last_n_comments do |_context, params|
     comments.limit(params)
   end
 end
@@ -44,7 +43,7 @@ class Comment
     (preloaded[id] || 0) * 10
   end
 
-  preloadable_field :current_user_stars, preload: -> (comments, context:) {
+  preloadable_field :current_user_stars, preload: -> (comments, context) {
     Star.where(comment_id: comments.map(&:id), user_id: context[:current_user].id).group_by(&:comment_id)
   } do |preloadeds, _context|
     preloadeds[id] || []
@@ -55,10 +54,10 @@ class Star
   preloadable_field :id, :user
 end
 
-# ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { comments: [:stars_count, current_user_stars: :id] }], context: { current_user: User.first }
+ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { comments: [:stars_count, current_user_stars: :id] }], context: { current_user: User.first }
 ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { last_n_comments: [:id, params: 3] }]
 ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { last_n_comments_with_preload: [:id, params: 3] }]
-# ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { title: { as: 'タイトル' }, user: { as: '作者', attributes: [:id, :name]} }]
+ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { title: { as: 'タイトル' }, user: { as: '作者', attributes: [:id, :name]} }]
 
 # User Load (0.2ms)  SELECT  "users".* FROM "users" ORDER BY "users"."id" ASC LIMIT ?  [["LIMIT", 1]]
 # Post Load (0.3ms)  SELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1

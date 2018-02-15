@@ -3,10 +3,13 @@ module ARSync::ARPreload
   extend ActiveSupport::Concern
 
   module Util
-    def self.block_has_keyword_arg?(block, keyword, allow_keyrest: true)
-      block.parameters.any? do |type, name|
-        next true if allow_keyrest && type == :keyrest
-        (type == :key || type == :keyreq) && name == keyword
+    def self.arity_safe_call_with_context_params(block, args, context, params)
+      if block.arity < 0 || block.arity == args.size + 2
+        block.call(*args, context, params)
+      elsif block.arity == args.size + 1
+        block.call(*args, context)
+      else
+        block.call(*args)
       end
     end
   end
@@ -27,16 +30,12 @@ module ARSync::ARPreload
       preloaders ||= []
       names.each do |name|
         sub_includes = includes || (name if reflect_on_association(name))
-        block = data_block || ->() { send name }
+        block = data_block || ->(_context, _params) { send name }
         key = name.to_s
         next if !overwrite && _preloadable_field_info.key?(key)
         _preloadable_field_info[key] = {
           includes: sub_includes,
           preloaders: preloaders,
-          accepts: {
-            context: Util.block_has_keyword_arg?(block, :context),
-            params: Util.block_has_keyword_arg?(block, :params)
-          },
           data: block
         }
       end
@@ -85,16 +84,8 @@ module ARSync::ARPreload
             [p, sub_args[:params]]
           end
         end
-        preloader_values = preloader_params.compact.uniq.map do |key|
-          preloader, params = key
-          arg_hash = {}
-          arg_hash[:context] = context if Util.block_has_keyword_arg?(preloader, :context)
-          arg_hash[:params] = params if Util.block_has_keyword_arg?(preloader, :params)
-          if arg_hash.empty?
-            [key, preloader.call(models)]
-          else
-            [key, preloader.call(models, arg_hash)]
-          end
+        preloader_values = preloader_params.compact.uniq.map do |preloader, params|
+          [[preloader, params], Util.arity_safe_call_with_context_params(preloader, [models], context, params)]
         end.to_h
 
         (include_id ? [[:id, {}], *attributes] : attributes).each do |name, sub_arg|
@@ -105,12 +96,8 @@ module ARSync::ARPreload
           info = klass._preloadable_field_info[prefixed_name]
           args = info[:preloaders].map { |p| preloader_values[[p, params]] } || []
           data_block = info[:data]
-          arg_hash = {}
-          arg_hash[:context] = context if info[:accepts][:context]
-          arg_hash[:params] = params if info[:accepts][:params]
-          args << arg_hash unless arg_hash.empty?
           value_outputs.each do |value, output|
-            child = value.instance_exec(*args, &data_block)
+            child = value.instance_exec(*args, context, params, &data_block)
             is_array_of_model = child.is_a?(Array) && child.grep(ActiveRecord::Base).size == child.size
             if child.is_a?(ActiveRecord::Relation) || is_array_of_model
               array = []
