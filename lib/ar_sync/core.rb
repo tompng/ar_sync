@@ -20,7 +20,7 @@ module ARSync
     end
 
     def api_has_field(*args, &data_block)
-      preloadable_field *args, &data_block
+      preloadable_field(*args, &data_block)
     end
 
     def sync_has_one(*names, **option, &data_block)

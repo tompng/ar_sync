@@ -10,6 +10,16 @@ class Post
   } do |preload|
     preload[id] || 0
   end
+
+  preloadable_field :last_n_comments_with_preload, preload: lambda { |posts, _context, params|
+    Comment.where(post: posts).group_by(&:post_id).transform_values { |cs| cs.take(params) }
+  } do |preloaded, _context, params|
+    preloaded[id] || []
+  end
+
+  preloadable_field :last_n_comments do |_context, params|
+    comments.limit(params)
+  end
 end
 
 class Comment
@@ -44,8 +54,11 @@ class Star
   preloadable_field :id, :user
 end
 
-ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { comments: :stars_count }], context: { current_user: User.first }
+ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { comments: [:stars_count, current_user_stars: :id] }], context: { current_user: User.first }
+ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { last_n_comments: [:id, params: 3] }]
+ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { last_n_comments_with_preload: [:id, params: 3] }]
 ARSync::ARPreload::Serializer.serialize User.first, [:id, posts: { title: { as: 'タイトル' }, user: { as: '作者', attributes: [:id, :name]} }]
+
 # User Load (0.2ms)  SELECT  "users".* FROM "users" ORDER BY "users"."id" ASC LIMIT ?  [["LIMIT", 1]]
 # Post Load (0.3ms)  SELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1
 # Comment Load (2.9ms)  SELECT "comments".* FROM "comments" WHERE "comments"."post_id" IN (1, 7, 8, 10, 15)
