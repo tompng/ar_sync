@@ -2,18 +2,6 @@ require 'active_record'
 module ARSync::ARPreload
   extend ActiveSupport::Concern
 
-  module Util
-    def self.arity_safe_call_with_context_params(block, args, context, params)
-      if block.arity < 0 || block.arity == args.size + 2
-        block.call(*args, context, params)
-      elsif block.arity == args.size + 1
-        block.call(*args, context)
-      else
-        block.call(*args)
-      end
-    end
-  end
-
   module ClassMethods
     def _preloadable_field_info
       @_preloadable_field_info ||= {}
@@ -84,8 +72,13 @@ module ARSync::ARPreload
             [p, sub_args[:params]]
           end
         end
-        preloader_values = preloader_params.compact.uniq.map do |preloader, params|
-          [[preloader, params], Util.arity_safe_call_with_context_params(preloader, [models], context, params)]
+        preloader_values = preloader_params.compact.uniq.map do |key|
+          preloader, params = key
+          if preloader.arity < 0
+            [key, preloader.call(models, context, params)]
+          else
+            [key, preloader.call(*[models, context, params].take(preloader.arity))]
+          end
         end.to_h
 
         (include_id ? [[:id, {}], *attributes] : attributes).each do |name, sub_arg|
