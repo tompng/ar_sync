@@ -1,3 +1,5 @@
+require 'ar_serializer'
+
 module ARSync
   extend ActiveSupport::Concern
 
@@ -11,16 +13,15 @@ module ARSync
   end
 
   module ClassMethods
-    def sync_has_data(*names, **option, &data_block)
-      if data_block
-        original_block = data_block
-        data_block = -> (*args) { instance_exec(*args, &original_block).as_json }
+    def sync_has_data(*names, **option, &original_data_block)
+      if original_data_block
+        data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
       end
       _sync_define(:data, names, option, &data_block)
     end
 
     def api_has_field(*args, &data_block)
-      preloadable_field(*args, &data_block)
+      serializer_field(*args, &data_block)
     end
 
     def sync_has_one(*names, **option, &data_block)
@@ -34,9 +35,8 @@ module ARSync
     def _sync_define(type, names, option, &data_block)
       names.each do |name|
         _sync_children_type[name] = type
-        block = data_block || ->(*_preloads) { send name }
-        preloadable_field "_sync_#{name}", option, &block
-        preloadable_field name, option.merge(overwrite: false), &block
+        serializer_field name, **option, namespace: :sync, &data_block
+        serializer_field name, **option, &data_block
       end
     end
 
@@ -93,10 +93,6 @@ module ARSync
     end
   end
 
-  included do
-    include ARPreload
-  end
-
   def _sync_notify(action)
     if self.class._sync_self?
       ARSync.sync_send to: self, action: action, path: [], data: _sync_data
@@ -116,7 +112,7 @@ module ARSync
         end
       end
     end
-    data = ARPreload::Serializer.serialize self, names, context: to_user, prefix: '_sync_'
+    data = ArSerializer.serialize self, names, context: to_user, use: :sync
     fallbacks.update data
   end
 
@@ -223,7 +219,7 @@ module ARSync
       keys: keys,
       limit: collection.info[:limit],
       order: collection.info[:order],
-      data: ARPreload::Serializer.serialize(collection.to_a, args, context: current_user, include_id: true, prefix: '_sync_')
+      data: ArSerializer.serialize(collection.to_a, args, context: current_user, include_id: true, use: :sync)
     }
   end
 
@@ -234,12 +230,12 @@ module ARSync
     end
     {
       keys: keys,
-      data: ARPreload::Serializer.serialize(model, args, context: current_user, include_id: true, prefix: '_sync_')
+      data: ArSerializer.serialize(model, args, context: current_user, include_id: true, use: :sync)
     }
   end
 
   def self._extract_paths(args)
-    parsed = ARPreload::Serializer.parse_args args
+    parsed = ArSerializer::Serializer.parse_args args
     paths = []
     extract = lambda do |path, attributes|
       paths << path
@@ -255,6 +251,6 @@ module ARSync
   end
 
   def self.serialize(record_or_records, current_user = nil, query)
-    ARPreload::Serializer.serialize record_or_records, query, context: current_user
+    ArSerializer.serialize record_or_records, query, context: current_user
   end
 end
