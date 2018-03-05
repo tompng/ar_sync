@@ -17,27 +17,36 @@ module ARSync
       if original_data_block
         data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
       end
-      _sync_define(:data, names, option, &data_block)
+      names.each do |name|
+        _sync_define(:data, name, option, &data_block)
+      end
     end
 
     def api_has_field(*args, &data_block)
       serializer_field(*args, &data_block)
     end
 
-    def sync_has_one(*names, **option, &data_block)
-      _sync_define(:one, names, option, &data_block)
+    def sync_has_one(name, **option, &data_block)
+      _sync_define(:one, name, option, &data_block)
     end
 
-    def sync_has_many(*names, **option, &data_block)
-      _sync_define(:many, names, option, &data_block)
-    end
-
-    def _sync_define(type, names, option, &data_block)
-      names.each do |name|
-        _sync_children_type[name] = type
-        serializer_field name, **option, namespace: :sync, &data_block
-        serializer_field name, **option, &data_block
+    def sync_has_many(name, order: :asc, limit: nil, preload: nil, **option, &data_block)
+      if data_block.nil? && preload.nil?
+        preload = lambda do |records, _context, params|
+          option = { order: order, limit: (params && params[:limit]) || limit }
+          ArSerializer::Field.preload_association self, records, name, option
+        end
+        data_block = lambda do |preloaded, _context, _params|
+          preloaded ? preloaded[id] || [] : send(name)
+        end
       end
+      _sync_define(:many, name, preload: preload, **option, &data_block)
+    end
+
+    def _sync_define(type, name, option, &data_block)
+      _sync_children_type[name] = type
+      serializer_field name, **option, namespace: :sync, &data_block
+      serializer_field name, **option, &data_block
     end
 
     def sync_self
