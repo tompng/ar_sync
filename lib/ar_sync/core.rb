@@ -1,3 +1,5 @@
+require 'ar_serializer'
+
 module ARSync
   extend ActiveSupport::Concern
 
@@ -11,33 +13,46 @@ module ARSync
   end
 
   module ClassMethods
-    def sync_has_data(*names, **option, &data_block)
-      if data_block
-        original_block = data_block
-        data_block = -> (*args) { instance_exec(*args, &original_block).as_json }
+    def sync_has_data(*names, **option, &original_data_block)
+      if original_data_block
+        data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
       end
-      _sync_define(:data, names, option, &data_block)
+      names.each do |name|
+        _sync_define(:data, name, option, &data_block)
+      end
     end
 
     def api_has_field(*args, &data_block)
-      preloadable_field(*args, &data_block)
+      serializer_field(*args, &data_block)
     end
 
-    def sync_has_one(*names, **option, &data_block)
-      _sync_define(:one, names, option, &data_block)
+    def sync_has_one(name, **option, &data_block)
+      _sync_define(:one, name, option, &data_block)
     end
 
-    def sync_has_many(*names, **option, &data_block)
-      _sync_define(:many, names, option, &data_block)
-    end
-
-    def _sync_define(type, names, option, &data_block)
-      names.each do |name|
-        _sync_children_type[name] = type
-        block = data_block || ->(*_preloads) { send name }
-        preloadable_field "_sync_#{name}", option, &block
-        preloadable_field name, option.merge(overwrite: false), &block
+    def sync_has_many(name, order: :asc, limit: nil, notify_when: nil, preload: nil, **option, &data_block)
+      if data_block.nil? && preload.nil?
+        preload = lambda do |records, _context, params|
+          option = { order: order, limit: (params && params[:limit]) || limit }
+          ArSerializer::Field.preload_association self, records, name, option
+        end
+        data_block = lambda do |preloaded, _context, _params|
+          preloaded ? preloaded[id] || [] : send(name)
+        end
+        if limit && notify_when.nil?
+          order_key, order_mode = ArSerializer::Field.parse_order order
+          notify_when = lambda do |parent, child|
+            parent.send(name).order(order_key => order_mode).limit(limit).where(id: child.id).exists?
+          end
+        end
       end
+      _sync_define :many, name, notify_when: notify_when, preload: preload, **option, &data_block
+    end
+
+    def _sync_define(type, name, notify_when: nil, **option, &data_block)
+      _sync_children_info[name] = { type: type, notify_when: notify_when }
+      serializer_field name, **option, namespace: :sync, &data_block
+      serializer_field name, **option, &data_block
     end
 
     def sync_self
@@ -77,8 +92,8 @@ module ARSync
       @_sync_parents_info ||= []
     end
 
-    def _sync_children_type
-      @_sync_children_type ||= {}
+    def _sync_children_info
+      @_sync_children_info ||= {}
     end
 
     def _initialize_sync_callbacks
@@ -93,10 +108,6 @@ module ARSync
     end
   end
 
-  included do
-    include ARPreload
-  end
-
   def _sync_notify(action)
     if self.class._sync_self?
       ARSync.sync_send to: self, action: action, path: [], data: _sync_data
@@ -108,7 +119,8 @@ module ARSync
     fallbacks = {}
     unless names
       names = []
-      self.class._sync_children_type.each do |name, type|
+      self.class._sync_children_info.each do |name, info|
+        type = info[:type]
         names << name if type == :data
         if new_record
           fallbacks[name] = [] if type == :many
@@ -116,7 +128,7 @@ module ARSync
         end
       end
     end
-    data = ARPreload::Serializer.serialize self, names, context: to_user, prefix: '_sync_'
+    data = ArSerializer.serialize self, names, context: to_user, use: :sync
     fallbacks.update data
   end
 
@@ -170,7 +182,10 @@ module ARSync
       end
       parent = send parent_name
       next unless parent
-      type = parent.class._sync_children_type[inverse_name]
+      association_info = parent.class._sync_children_info[inverse_name]
+      type = association_info[:type]
+      notify_test = association_info[:notify_when]
+      next if notify_test && !notify_test.call(parent, self)
       action2 = action
       if type == :many
         data2 = path ? data : _sync_data(new_record: action == :create)
@@ -223,7 +238,7 @@ module ARSync
       keys: keys,
       limit: collection.info[:limit],
       order: collection.info[:order],
-      data: ARPreload::Serializer.serialize(collection.to_a, args, context: current_user, include_id: true, prefix: '_sync_')
+      data: ArSerializer.serialize(collection.to_a, args, context: current_user, include_id: true, use: :sync)
     }
   end
 
@@ -234,12 +249,12 @@ module ARSync
     end
     {
       keys: keys,
-      data: ARPreload::Serializer.serialize(model, args, context: current_user, include_id: true, prefix: '_sync_')
+      data: ArSerializer.serialize(model, args, context: current_user, include_id: true, use: :sync)
     }
   end
 
   def self._extract_paths(args)
-    parsed = ARPreload::Serializer.parse_args args
+    parsed = ArSerializer::Serializer.parse_args args
     paths = []
     extract = lambda do |path, attributes|
       paths << path
@@ -255,6 +270,6 @@ module ARSync
   end
 
   def self.serialize(record_or_records, current_user = nil, query)
-    ARPreload::Serializer.serialize record_or_records, query, context: current_user
+    ArSerializer.serialize record_or_records, query, context: current_user
   end
 end

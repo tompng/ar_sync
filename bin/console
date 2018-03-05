@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+
+require 'bundler/setup'
+require 'ar_sync'
+require 'pry'
+require_relative '../test/model'
+ARSync.on_update do |key:, action:, path:, data:|
+  msg = { key: key, action: action, path: path, data: data }.inspect
+  puts "\e[1m#{msg}\e[m"
+end
+
+Pry.start

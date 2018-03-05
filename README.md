@@ -10,6 +10,8 @@ Frontend JSON data will be synchronized with ActiveRecord.
 1. Add this line to your application's Gemfile:
 ```ruby
 gem 'ar_sync', github: 'tompng/ar_sync'
+gem 'ar_serializer', github: 'tompng/ar_serializer'
+# gem 'top_n_loader', github: 'tompng/top_n_loader' (optional)
 ```
 
 2. Run generator

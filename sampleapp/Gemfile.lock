@@ -1,3 +1,17 @@
+GIT
+  remote: https://github.com/tompng/ar_serializer.git
+  revision: d7ad6ca3744efd5d7f1b33b3eef8a88de8fce267
+  specs:
+    ar_serializer (0.1.0)
+      activerecord
+
+GIT
+  remote: https://github.com/tompng/top_n_loader.git
+  revision: 15224ab4cfbb8ac318773cfdf603789462dbb792
+  specs:
+    top_n_loader (0.1.0)
+      activerecord
+
 PATH
   remote: ..
   specs:
@@ -187,6 +201,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  ar_serializer!
   ar_sync!
   babel-transpiler
   byebug
@@ -203,6 +218,7 @@ DEPENDENCIES
   spring
   spring-watcher-listen (~> 2.0.0)
   sqlite3
+  top_n_loader!
   uglifier (>= 1.3.0)
   web-console (>= 3.3.0)
 
