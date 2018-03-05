@@ -40,9 +40,8 @@ module ARSync
           preloaded ? preloaded[id] || [] : send(name)
         end
         if limit && notify_when.nil?
-          order_key, order_mode = ArSerializer::Field.parse_order order
           notify_when = lambda do |parent, child|
-            parent.send(name).order(order_key => order_mode, id: order_mode).limit(limit).ids.include? child.id
+            parent.send(name).order(id: order).limit(limit).ids.include? child.id
           end
         end
       end
