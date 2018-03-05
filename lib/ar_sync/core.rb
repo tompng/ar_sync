@@ -30,7 +30,7 @@ module ARSync
       _sync_define(:one, name, option, &data_block)
     end
 
-    def sync_has_many(name, order: :asc, limit: nil, preload: nil, **option, &data_block)
+    def sync_has_many(name, order: :asc, limit: nil, notify_when: nil, preload: nil, **option, &data_block)
       if data_block.nil? && preload.nil?
         preload = lambda do |records, _context, params|
           option = { order: order, limit: (params && params[:limit]) || limit }
@@ -39,12 +39,18 @@ module ARSync
         data_block = lambda do |preloaded, _context, _params|
           preloaded ? preloaded[id] || [] : send(name)
         end
+        if limit && notify_when.nil?
+          order_key, order_mode = ArSerializer::Field.parse_order order
+          notify_when = lambda do |parent, child|
+            parent.send(name).order(order_key => order_mode).limit(limit).where(id: child.id).exists?
+          end
+        end
       end
-      _sync_define(:many, name, preload: preload, **option, &data_block)
+      _sync_define :many, name, notify_when: notify_when, preload: preload, **option, &data_block
     end
 
-    def _sync_define(type, name, option, &data_block)
-      _sync_children_type[name] = type
+    def _sync_define(type, name, notify_when: nil, **option, &data_block)
+      _sync_children_info[name] = { type: type, notify_when: notify_when }
       serializer_field name, **option, namespace: :sync, &data_block
       serializer_field name, **option, &data_block
     end
@@ -86,8 +92,8 @@ module ARSync
       @_sync_parents_info ||= []
     end
 
-    def _sync_children_type
-      @_sync_children_type ||= {}
+    def _sync_children_info
+      @_sync_children_info ||= {}
     end
 
     def _initialize_sync_callbacks
@@ -113,7 +119,8 @@ module ARSync
     fallbacks = {}
     unless names
       names = []
-      self.class._sync_children_type.each do |name, type|
+      self.class._sync_children_info.each do |name, info|
+        type = info[:type]
         names << name if type == :data
         if new_record
           fallbacks[name] = [] if type == :many
@@ -175,7 +182,10 @@ module ARSync
       end
       parent = send parent_name
       next unless parent
-      type = parent.class._sync_children_type[inverse_name]
+      association_info = parent.class._sync_children_info[inverse_name]
+      type = association_info[:type]
+      notify_test = association_info[:notify_when]
+      next if notify_test && !notify_test.call(parent, self)
       action2 = action
       if type == :many
         data2 = path ? data : _sync_data(new_record: action == :create)
