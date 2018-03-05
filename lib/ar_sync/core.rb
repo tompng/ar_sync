@@ -42,7 +42,7 @@ module ARSync
         if limit && notify_when.nil?
           order_key, order_mode = ArSerializer::Field.parse_order order
           notify_when = lambda do |parent, child|
-            parent.send(name).order(order_key => order_mode).limit(limit).where(id: child.id).exists?
+            parent.send(name).order(order_key => order_mode, id: order_mode).limit(limit).ids.include? child.id
           end
         end
       end
