@@ -13,6 +13,24 @@ module ARSync
     end
   end
 
+  class CollectionInfo
+    attr_reader :klass, :name, :limit, :order
+    def initialize(klass, name, limit: nil, order: nil)
+      @klass = klass
+      @name = name
+      @limit = limit
+      @order = order
+      self.class._sync_children_info[:records] = HasManyField.new name, limit: limit, order: order
+      define_singleton_method name do
+        all = klass.all
+        all = all.order id: order if order
+        all = all.limit limit if limit
+        all
+      end
+    end
+    def _sync_notify_parent*; end
+  end
+
   module ClassMethods
     def sync_has_data(*names, **option, &original_data_block)
       if original_data_block
@@ -66,7 +84,11 @@ module ARSync
 
     def sync_define_collection(name, limit: nil, order: :asc)
       _initialize_sync_callbacks
-      _sync_collection_info[name] = { limit: limit, order: order }
+      collectionclass = Class.new(CollectionInfo)
+      def collectionclass._sync_children_info;@foo||={};end
+      collection = collectionclass.new self, name, limit: limit, order: order
+      _sync_collection_info[name] = { limit: limit, order: order } # collection
+      sync_parent collection, inverse_of: :records
     end
 
     def sync_collection(name)
@@ -173,7 +195,7 @@ module ARSync
         next unless to_user
         next if only_to_user && only_to_user != to_user
       end
-      parent = send parent_name
+      parent = parent_name.is_a?(Symbol) ? send(parent_name) : parent_name
       next unless parent
       association_field = parent.class._sync_children_info[inverse_name]
       next if association_field.skip_propagation? parent, self
@@ -193,12 +215,19 @@ module ARSync
 
   def self.sync_send(to:, action:, path:, data:, to_user: nil)
     key = sync_key to, path.grep(Symbol), to_user
+    if to.is_a?(ARSync::Collection) || to.is_a?(ARSync::CollectionInfo)
+      $><< (to.is_a?(ARSync::Collection) ? "\e[32m" : "\e[34m")
+      p [key, action, path, data].inspect
+      $><< "\e[m\n"
+    end
     @sync_send_block&.call key: key, action: action, path: path, data: data
   end
 
   def self.sync_key(model, path, to_user = nil)
     if model.is_a? ARSync::Collection
       key = [to_user&.id, model.klass.name, model.name, path].join '/'
+    elsif model.is_a? ARSync::CollectionInfo
+      key = [to_user&.id, model.klass.name, path].join '/'
     else
       key = [to_user&.id, model.class.name, model.id, path].join '/'
     end
