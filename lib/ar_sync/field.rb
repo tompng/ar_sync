@@ -63,7 +63,7 @@ class ARSync::HasManyField < ARSync::Field
     return !propagate_when.call(child) if propagate_when
     ids = parent.send(name).order(id: order).limit(limit).ids
     if child.destroyed?
-      ids.size == limit && (order == :asc ? ids.max < id : id < ids.min)
+      ids.size == limit && (order == :asc ? ids.max < child.id : child.id < ids.min)
     else
       !ids.include? child.id
     end
