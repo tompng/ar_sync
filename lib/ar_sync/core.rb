@@ -1,4 +1,5 @@
 require 'ar_serializer'
+require_relative 'field'
 
 module ARSync
   extend ActiveSupport::Concern
@@ -18,7 +19,7 @@ module ARSync
         data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
       end
       names.each do |name|
-        _sync_define(:data, name, option, &data_block)
+        _sync_define(DataField.new(name), option, &data_block)
       end
     end
 
@@ -27,10 +28,10 @@ module ARSync
     end
 
     def sync_has_one(name, **option, &data_block)
-      _sync_define(:one, name, option, &data_block)
+      _sync_define(HasOneField.new(name), option, &data_block)
     end
 
-    def sync_has_many(name, order: :asc, limit: nil, notify_when: nil, preload: nil, **option, &data_block)
+    def sync_has_many(name, order: :asc, propagate_when: nil, limit: nil, preload: nil, **option, &data_block)
       if data_block.nil? && preload.nil?
         preload = lambda do |records, _context, params|
           option = { order: order, limit: (params && params[:limit]) || limit }
@@ -39,19 +40,15 @@ module ARSync
         data_block = lambda do |preloaded, _context, _params|
           preloaded ? preloaded[id] || [] : send(name)
         end
-        if limit && notify_when.nil?
-          notify_when = lambda do |parent, child|
-            parent.send(name).order(id: order).limit(limit).ids.include? child.id
-          end
-        end
       end
-      _sync_define :many, name, notify_when: notify_when, preload: preload, **option, &data_block
+      field = HasManyField.new name, order: order, limit: limit, propagate_when: propagate_when
+      _sync_define field, preload: preload, **option, &data_block
     end
 
-    def _sync_define(type, name, notify_when: nil, **option, &data_block)
-      _sync_children_info[name] = { type: type, notify_when: notify_when }
-      serializer_field name, **option, namespace: :sync, &data_block
-      serializer_field name, **option, &data_block
+    def _sync_define(info, **option, &data_block)
+      _sync_children_info[info.name] = info
+      serializer_field info.name, **option, namespace: :sync, &data_block
+      serializer_field info.name, **option, &data_block
     end
 
     def sync_self
@@ -114,20 +111,17 @@ module ARSync
     _sync_notify_parent action
   end
 
-  def _sync_data(names = nil, to_user: nil, new_record: false)
+  def _sync_data(new_record: false)
     fallbacks = {}
-    unless names
-      names = []
-      self.class._sync_children_info.each do |name, info|
-        type = info[:type]
-        names << name if type == :data
-        if new_record
-          fallbacks[name] = [] if type == :many
-          fallbacks[name] = nil if type == :one
-        end
+    names = []
+    self.class._sync_children_info.each do |name, info|
+      names << name if info.type == :data
+      if new_record
+        fallbacks[name] = [] if info.type == :many
+        fallbacks[name] = nil if info.type == :one
       end
     end
-    data = ArSerializer.serialize self, names, context: to_user, use: :sync
+    data = ArSerializer.serialize self, names, use: :sync
     fallbacks.update data
   end
 
@@ -181,27 +175,11 @@ module ARSync
       end
       parent = send parent_name
       next unless parent
-      association_info = parent.class._sync_children_info[inverse_name]
-      type = association_info[:type]
-      notify_test = association_info[:notify_when]
-      next if notify_test && !notify_test.call(parent, self)
-      action2 = action
-      if type == :many
-        data2 = path ? data : _sync_data(new_record: action == :create)
-        path2 = [inverse_name, id, *path]
-      elsif path
-        data2 = data
-        path2 = [inverse_name, *path]
-      else
-        if type == :data
-          action2 = :update
-          data2 = parent._sync_data([inverse_name], to_user: to_user)
-          path2 = []
-        else
-          data2 = _sync_data
-          path2 = [inverse_name]
-        end
-      end
+      association_field = parent.class._sync_children_info[inverse_name]
+      next if association_field.skip_propagation? parent, self
+      data2 = path ? data : association_field.data(parent, self, to_user: to_user, action: action)
+      action2 = association_field.action_convert action
+      path2 = [*association_field.path(self), *path]
       ARSync.sync_send to: parent, action: action2, path: path2, data: data2, to_user: to_user || only_to_user
       parent._sync_notify_parent action2, path: path2, data: data2, only_to_user: to_user || only_to_user
     end
