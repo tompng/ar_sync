@@ -79,3 +79,9 @@ class ARSync::HasManyField < ARSync::Field
     [name, child.id]
   end
 end
+
+class ARSync::CollectionField < ARSync::HasManyField
+  def path(child)
+    [child.id]
+  end
+end

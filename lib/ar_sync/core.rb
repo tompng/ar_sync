@@ -4,12 +4,40 @@ require_relative 'field'
 module ARSync
   extend ActiveSupport::Concern
 
-  class Collection < Struct.new(:klass, :name)
-    def info
-      @info ||= klass._sync_collection_info[name]
+  class Collection
+    attr_reader :klass, :name, :limit, :order
+    def initialize(klass, name, limit: nil, order: nil)
+      @klass = klass
+      @name = name
+      @limit = limit
+      @order = order
+      @field = CollectionField.new name, limit: limit, order: order
+      self.class._sync_children_info[[klass, name]] = @field
+      self.class.defined_collections[[klass, name]] = self
+      define_singleton_method name do
+        to_a
+      end
     end
+
+    def _sync_notify_parent*; end
+
     def to_a
-      klass.order(id: info[:order]).limit(info[:limit]).to_a
+      all = klass.all
+      all = all.order id: order if order
+      all = all.limit limit if limit
+      all
+    end
+
+    def self.defined_collections
+      @defined_collections ||= {}
+    end
+
+    def self._sync_children_info
+      @sync_children_info ||= {}
+    end
+
+    def self.find(klass, name)
+      defined_collections[[klass, name]]
     end
   end
 
@@ -66,22 +94,16 @@ module ARSync
 
     def sync_define_collection(name, limit: nil, order: :asc)
       _initialize_sync_callbacks
-      _sync_collection_info[name] = { limit: limit, order: order }
+      collection = Collection.new self, name, limit: limit, order: order
+      sync_parent collection, inverse_of: [self, name]
     end
 
     def sync_collection(name)
-      unless _sync_collection_info.key? name
-        raise "No such collection `#{name}` defined in `#{self}`"
-      end
-      Collection.new self, name
+      Collection.find self, name
     end
 
     def _sync_self?
       instance_variable_defined? '@_sync_self'
-    end
-
-    def _sync_collection_info
-      @_sync_collection_info ||= {}
     end
 
     def _sync_parents_info
@@ -125,55 +147,14 @@ module ARSync
     fallbacks.update data
   end
 
-  def _sync_notify_collection(action, path:, data:, only_to_user:)
-    self.class._sync_collection_info.each do |name, order:, limit:|
-      collenction = Collection.new self.class, name
-      ids = self.class.order(id: order).limit(limit).pluck(:id) if limit
-      if path
-        if !limit || ids.include?(id)
-          ARSync.sync_send(
-            to: collenction,
-            action: action,
-            path: [id, *path],
-            data: data,
-            to_user: only_to_user
-          )
-        end
-        next
-      end
-      if action == :destroy
-        if limit && ids.size == limit
-          next if order == :asc && ids.max < id
-          next if order == :desc && id < ids.min
-        end
-        ARSync.sync_send(
-          to: collenction,
-          action: :destroy,
-          data: nil,
-          path: [id],
-          to_user: only_to_user
-        )
-      elsif !limit || ids.include?(id)
-        ARSync.sync_send(
-          to: collenction,
-          action: action,
-          data: data || _sync_data(new_record: action == :create),
-          path: [id],
-          to_user: only_to_user
-        )
-      end
-    end
-  end
-
   def _sync_notify_parent(action, path: nil, data: nil, only_to_user: nil)
-    _sync_notify_collection(action, path: path, data: data, only_to_user: only_to_user)
     self.class._sync_parents_info.each do |parent_name, inverse_name:, only_to:|
       if only_to
         to_user = instance_exec(&only_to)
         next unless to_user
         next if only_to_user && only_to_user != to_user
       end
-      parent = send parent_name
+      parent = parent_name.is_a?(Symbol) ? send(parent_name) : parent_name
       next unless parent
       association_field = parent.class._sync_children_info[inverse_name]
       next if association_field.skip_propagation? parent, self
@@ -198,7 +179,7 @@ module ARSync
 
   def self.sync_key(model, path, to_user = nil)
     if model.is_a? ARSync::Collection
-      key = [to_user&.id, model.klass.name, model.name, path].join '/'
+      key = [to_user&.id, model.klass.name, path].join '/'
     else
       key = [to_user&.id, model.class.name, model.id, path].join '/'
     end
@@ -213,8 +194,8 @@ module ARSync
     end
     {
       keys: keys,
-      limit: collection.info[:limit],
-      order: collection.info[:order],
+      limit: collection.limit,
+      order: collection.order,
       data: ArSerializer.serialize(collection.to_a, args, context: current_user, include_id: true, use: :sync)
     }
   end
