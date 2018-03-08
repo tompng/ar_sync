@@ -12,7 +12,7 @@ class ARSync::Field
     action
   end
 
-  def order_params; end
+  def order_param; end
 end
 
 class ARSync::DataField < ARSync::Field
@@ -75,7 +75,7 @@ class ARSync::HasManyField < ARSync::Field
     child._sync_data new_record: action == :create
   end
 
-  def order_params
+  def order_param
     { limit: limit, order: order } if order
   end
 

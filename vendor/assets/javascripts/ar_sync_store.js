@@ -198,7 +198,7 @@ class ARSyncStore {
       if (column) {
         this.data = updator.add(this.data, actualPath, column, obj)
       } else if (!data.find(o => o.id === id)) {
-        this.data = updator.add(this.data, actualPath, data.length, obj, patch.order_params)
+        this.data = updator.add(this.data, actualPath, data.length, obj, patch.ordering)
       }
     } else if (action === 'destroy') {
       if (column) {

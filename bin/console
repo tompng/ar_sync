@@ -4,8 +4,8 @@ require 'bundler/setup'
 require 'ar_sync'
 require 'pry'
 require_relative '../test/model'
-ARSync.on_update do |key:, action:, path:, data:, order_params:|
-  msg = { key: key, action: action, path: path, data: data, order_params: order_params }.inspect
+ARSync.on_update do |key:, action:, path:, data:, ordering:|
+  msg = { key: key, action: action, path: path, data: data, ordering: ordering }.inspect
   puts "\e[1m#{msg}\e[m"
 end
 
