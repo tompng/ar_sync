@@ -179,7 +179,7 @@ module ARSync
 
   def self.sync_key(model, path, to_user = nil)
     if model.is_a? ARSync::Collection
-      key = [to_user&.id, model.klass.name, path].join '/'
+      key = [to_user&.id, model.klass.name, model.name, path].join '/'
     else
       key = [to_user&.id, model.class.name, model.id, path].join '/'
     end
