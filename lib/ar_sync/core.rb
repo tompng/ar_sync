@@ -198,8 +198,6 @@ module ARSync
     end
     {
       keys: keys,
-      limit: collection.limit,
-      order: collection.order,
       data: ArSerializer.serialize(collection.to_a, args, context: current_user, include_id: true, use: :sync)
     }
   end

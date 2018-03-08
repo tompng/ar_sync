@@ -10,12 +10,19 @@ class NormalUpdator { // overwrites object. ex: Vue.js
     }
     return data
   }
-  add(tree, path, column, value) {
+  add(tree, path, column, value, orderParam) {
     this.changed.push([path, column, true])
     let data = tree
     path.forEach(key => { data = data[key] })
-    if (data.constructor === Array && data.length === column) {
-      data.push(value)
+    if (data.constructor === Array && !data[column]) {
+      const limitReached = orderParam && orderParam.limit && data.length === orderParam.limit
+      if (orderParam && orderParam.order == 'desc') {
+        data.unshift(value)
+        if (limitReached) data.pop()
+      } else {
+        data.push(value)
+        if (limitReached) data.shift()
+      }
     } else {
       data[column] = value
     }
@@ -63,10 +70,25 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
     })
     return data
   }
-  add(tree, path, column, value) {
+  assign(el, column, value, orderParam) {
+    if (el.constructor === Array && !el[column]) {
+      const limitReached = orderParam && orderParam.limit && el.length === orderParam.limit
+      if (orderParam && orderParam.order == 'desc') {
+        el.unshift(value)
+        if (limitReached) el.pop()
+      } else {
+        el.push(value)
+        if (limitReached) el.shift()
+      }
+    } else {
+      el[column] = value
+    }
+  }
+  add(tree, path, column, value, orderParam) {
     this.changed.push([path, column, true])
     const root = this.mark(tree)
-    this.trace(root, path)[column] = value
+    const el = this.trace(root, path)
+    this.assign(el, column, value, orderParam)
     return root
   }
   remove(tree, path, column) {
@@ -93,8 +115,6 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
 class ARSyncStore {
   constructor(query, data, option = {}) {
     this.data = data
-    this.order = option.order
-    this.limit = option.limit
     this.query = ARSyncStore.parseQuery(query).attributes
     this.updatorClass = option.updatorClass || (
       option.immutable ? ImmutableUpdator : NormalUpdator
@@ -105,39 +125,27 @@ class ARSyncStore {
   }
   batchUpdate(patches) {
     const updator = this.updatorClass && new this.updatorClass()
-    patches.forEach(patch => {
-      this._update(patch.action, patch.path, patch.data, updator)
-    })
-    if ((this.order || this.limit) && updator.isMutatable(this.data)) {
-      if (this.order) {
-        this.data.sort((a, b) => {
-          return a.id == b.id ? 0 : (a.id < b.id ? -1 : 1) * (this.order == 'asc' ? 1 : -1)
-        })
-      }
-      if (this.limit) {
-        while (this.data.length > this.limit) {
-          this.data.pop()
-        }
-      }
-    }
+    patches.forEach(patch => this._update(patch, updator))
     if (updator.cleanup) updator.cleanup()
     return updator.changed
   }
   update(patch) {
     return this.batchUpdate([patch])
   }
-  _update(action, path, patch, updator) {
+  _update(patch, updator) {
+    const { action, path } = patch
+    const patchData = patch.data
     let query = this.query
     let data = this.data
-    function slicePatch(patch, query) {
+    function slicePatch(patchData, query) {
       const obj = {}
-      for (const key in patch) {
+      for (const key in patchData) {
         if (key === 'id') {
-          obj.id = patch.id
+          obj.id = patchData.id
         } else {
           const subq = query[key]
           if (subq) {
-            obj[subq.column || key] = patch[key]
+            obj[subq.column || key] = patchData[key]
           }
         }
       }
@@ -162,10 +170,10 @@ class ARSyncStore {
     }
     const nameOrId = path[path.length - 1]
     let id, column
-    const applyPatch = (data, query, patch) => {
-      for (const key in patch) {
+    const applyPatch = (data, query, patchData) => {
+      for (const key in patchData) {
         const subq = query[key]
-        const value = patch[key]
+        const value = patchData[key]
         if (subq) {
           const subcol = subq.column || key
           if (data[subcol] !== value) {
@@ -182,15 +190,15 @@ class ARSyncStore {
       column = query[nameOrId].column || nameOrId
       query = query[nameOrId].attributes
     } else {
-      applyPatch(data, query, patch)
+      applyPatch(data, query, patchData)
       return
     }
     if (action === 'create') {
-      const obj = slicePatch(patch, query)
+      const obj = slicePatch(patchData, query)
       if (column) {
         this.data = updator.add(this.data, actualPath, column, obj)
       } else if (!data.find(o => o.id === id)) {
-        this.data = updator.add(this.data, actualPath, data.length, obj)
+        this.data = updator.add(this.data, actualPath, data.length, obj, patch.order_params)
       }
     } else if (action === 'destroy') {
       if (column) {
@@ -207,7 +215,7 @@ class ARSyncStore {
         if (idx < 0) return
         actualPath.push(idx)
       }
-      applyPatch(data, query, patch)
+      applyPatch(data, query, patchData)
     }
   }
 
