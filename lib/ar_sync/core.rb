@@ -161,7 +161,11 @@ module ARSync
       data2 = path ? data : association_field.data(parent, self, to_user: to_user, action: action)
       action2 = association_field.action_convert action
       path2 = [*association_field.path(self), *path]
-      ARSync.sync_send to: parent, action: action2, path: path2, data: data2, to_user: to_user || only_to_user
+      ARSync.sync_send(
+        to: parent, action: action2, path: path2, data: data2,
+        to_user: to_user || only_to_user,
+        order_params: association_field.order_params
+      )
       parent._sync_notify_parent action2, path: path2, data: data2, only_to_user: to_user || only_to_user
     end
   end
@@ -172,9 +176,9 @@ module ARSync
 
   self.on_update do end
 
-  def self.sync_send(to:, action:, path:, data:, to_user: nil)
+  def self.sync_send(to:, action:, path:, data:, to_user: nil, order_params: nil)
     key = sync_key to, path.grep(Symbol), to_user
-    @sync_send_block&.call key: key, action: action, path: path, data: data
+    @sync_send_block&.call key: key, action: action, path: path, data: data, order_params: order_params
   end
 
   def self.sync_key(model, path, to_user = nil)

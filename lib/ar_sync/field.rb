@@ -11,6 +11,8 @@ class ARSync::Field
   def action_convert(action)
     action
   end
+
+  def order_params; end
 end
 
 class ARSync::DataField < ARSync::Field
@@ -70,9 +72,11 @@ class ARSync::HasManyField < ARSync::Field
   end
 
   def data(_parent, child, action:, **)
-    data = child._sync_data new_record: action == :create
-    data[:order_params] = { limit: limit, order: order } if order
-    data
+    child._sync_data new_record: action == :create
+  end
+
+  def order_params
+    { limit: limit, order: order } if order
   end
 
   def path(child)
