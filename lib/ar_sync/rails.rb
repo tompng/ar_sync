@@ -4,8 +4,8 @@ module ARSync
     end
   end
 
-  self.on_update do |key:, action:, path:, data:, ordering:|
-    ActionCable.server.broadcast key, action: action, path: path, data: data, ordering: ordering
+  self.on_update do |key, patch|
+    ActionCable.server.broadcast key, patch
   end
 
   self.config.key_prefix = 'ar_sync_'

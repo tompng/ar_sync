@@ -178,7 +178,7 @@ module ARSync
 
   def self.sync_send(to:, action:, path:, data:, to_user: nil, ordering: nil)
     key = sync_key to, path.grep(Symbol), to_user
-    @sync_send_block&.call key: key, action: action, path: path, data: data, ordering: ordering
+    @sync_send_block&.call key, action: action, path: path, data: data, ordering: ordering
   end
 
   def self.sync_key(model, path, to_user = nil)
