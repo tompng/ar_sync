@@ -1,0 +1,87 @@
+require_relative 'field'
+require_relative 'collection'
+
+module ArSync::ClassMethods
+  def sync_has_data(*names, **option, &original_data_block)
+    if original_data_block
+      data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
+    end
+    names.each do |name|
+      _sync_define(ArSync::DataField.new(name), option, &data_block)
+    end
+  end
+
+  def api_has_field(*args, &data_block)
+    serializer_field(*args, &data_block)
+  end
+
+  def sync_has_one(name, **option, &data_block)
+    _sync_define(ArSync::HasOneField.new(name), option, &data_block)
+  end
+
+  def sync_has_many(name, order: :asc, propagate_when: nil, limit: nil, preload: nil, **option, &data_block)
+    if data_block.nil? && preload.nil?
+      preload = lambda do |records, _context, params|
+        option = { order: order, limit: (params && params[:limit]) || limit }
+        ArSerializer::Field.preload_association self, records, name, option
+      end
+      data_block = lambda do |preloaded, _context, _params|
+        preloaded ? preloaded[id] || [] : send(name)
+      end
+    end
+    field = ArSync::HasManyField.new name, order: order, limit: limit, propagate_when: propagate_when
+    _sync_define field, preload: preload, **option, &data_block
+  end
+
+  def _sync_define(info, **option, &data_block)
+    _sync_children_info[info.name] = info
+    serializer_field info.name, **option, namespace: :sync, &data_block
+    serializer_field info.name, **option, &data_block
+  end
+
+  def sync_self
+    _initialize_sync_callbacks
+    @_sync_self = true
+  end
+
+  def sync_parent(parent, inverse_of:, only_to: nil)
+    _initialize_sync_callbacks
+    _sync_parents_info << [
+      parent,
+      { inverse_name: inverse_of, only_to: only_to }
+    ]
+  end
+
+  def sync_define_collection(name, limit: nil, order: :asc)
+    _initialize_sync_callbacks
+    collection = ArSync::Collection.new self, name, limit: limit, order: order
+    sync_parent collection, inverse_of: [self, name]
+  end
+
+  def sync_collection(name)
+    ArSync::Collection.find self, name
+  end
+
+  def _sync_self?
+    instance_variable_defined? '@_sync_self'
+  end
+
+  def _sync_parents_info
+    @_sync_parents_info ||= []
+  end
+
+  def _sync_children_info
+    @_sync_children_info ||= {}
+  end
+
+  def _initialize_sync_callbacks
+    return if instance_variable_defined? '@_sync_callbacks_initialized'
+    sync_has_data :id
+    @_sync_callbacks_initialized = true
+    %i[create update destroy].each do |action|
+      after_commit on: action do
+        self.class.default_scoped.scoping { _sync_notify action }
+      end
+    end
+  end
+end
