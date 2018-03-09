@@ -1,5 +1,4 @@
 require 'ar_serializer'
-require_relative 'field'
 require_relative 'collection'
 require_relative 'class_methods'
 require_relative 'instance_methods'

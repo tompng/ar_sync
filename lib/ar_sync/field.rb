@@ -4,7 +4,7 @@ class ArSync::Field
     @name = name
   end
 
-  def skip_propagation?(_parent, _child)
+  def skip_propagation?(_parent, _child, _path)
     false
   end
 
@@ -30,6 +30,10 @@ class ArSync::DataField < ArSync::Field
 
   def action_convert(_action)
     :update
+  end
+
+  def skip_propagation?(_parent, _child, path)
+    !path.nil?
   end
 end
 
@@ -60,7 +64,7 @@ class ArSync::HasManyField < ArSync::Field
     @propagate_when = propagate_when
   end
 
-  def skip_propagation?(parent, child)
+  def skip_propagation?(parent, child, _path)
     return false unless limit
     return !propagate_when.call(child) if propagate_when
     ids = parent.send(name).order(id: order).limit(limit).ids

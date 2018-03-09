@@ -30,7 +30,7 @@ module ArSync::InstanceMethods
       parent = parent_name.is_a?(Symbol) ? send(parent_name) : parent_name
       next unless parent
       association_field = parent.class._sync_children_info[inverse_name]
-      next if association_field.skip_propagation? parent, self
+      next if association_field.skip_propagation? parent, self, path
       data2 = path ? data : association_field.data(parent, self, to_user: to_user, action: action)
       action2 = association_field.action_convert action
       path2 = [*association_field.path(self), *path]
