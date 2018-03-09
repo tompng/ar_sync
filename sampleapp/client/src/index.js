@@ -1,6 +1,6 @@
 import React, { PureComponent } from 'react'
 import { render } from 'react-dom'
-import { ARSyncImmutableData } from 'ar_sync'
+import { ArSyncImmutableData } from 'ar_sync'
 
 class PostItem extends PureComponent {
   render() {
@@ -20,7 +20,7 @@ class TopPage extends PureComponent {
   constructor(props, context) {
     super(props, context)
     this.state = null
-    const syncData = new ARSyncImmutableData({
+    const syncData = new ArSyncImmutableData({
       currentUser: {
         api: 'profile',
         query: [

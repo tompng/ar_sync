@@ -1,5 +1,5 @@
 class SyncApiController < ApplicationController
-  include ARSync::ApiControllerConcern
+  include ArSync::ApiControllerConcern
 
   api :newposts do |_params|
     Post.sync_collection(:latest10)

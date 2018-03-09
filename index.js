@@ -1,8 +1,8 @@
-const { ARSyncData, ARSyncImmutableData } = require('./vendor/assets/javascripts/ar_sync_data')
+const { ArSyncData, ArSyncImmutableData } = require('./vendor/assets/javascripts/ar_sync_data')
 require('./vendor/assets/javascripts/ar_sync_data_adapter')
 module.exports = {
-  ARSyncStore: require('./vendor/assets/javascripts/ar_sync_store'),
-  ARSyncData,
-  ARSyncImmutableData,
+  ArSyncStore: require('./vendor/assets/javascripts/ar_sync_store'),
+  ArSyncData,
+  ArSyncImmutableData,
   staticApiFetch: require('./vendor/assets/javascripts/ar_static_api_fetch')
 }

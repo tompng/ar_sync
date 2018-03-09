@@ -1,4 +1,4 @@
-class ARSync::Field
+class ArSync::Field
   attr_reader :name
   def initialize(name)
     @name = name
@@ -15,7 +15,7 @@ class ARSync::Field
   def order_param; end
 end
 
-class ARSync::DataField < ARSync::Field
+class ArSync::DataField < ArSync::Field
   def type
     :data
   end
@@ -33,7 +33,7 @@ class ARSync::DataField < ARSync::Field
   end
 end
 
-class ARSync::HasOneField < ARSync::Field
+class ArSync::HasOneField < ArSync::Field
   def type
     :one
   end
@@ -47,7 +47,7 @@ class ARSync::HasOneField < ARSync::Field
   end
 end
 
-class ARSync::HasManyField < ARSync::Field
+class ArSync::HasManyField < ArSync::Field
   attr_reader :limit, :order, :propagate_when
   def type
     :many
@@ -84,7 +84,7 @@ class ARSync::HasManyField < ARSync::Field
   end
 end
 
-class ARSync::CollectionField < ARSync::HasManyField
+class ArSync::CollectionField < ArSync::HasManyField
   def path(child)
     [child.id]
   end

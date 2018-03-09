@@ -1,5 +1,5 @@
 require 'ostruct'
-module ARSync
+module ArSync
   config_keys = %i[
     key_secret
     key_prefix

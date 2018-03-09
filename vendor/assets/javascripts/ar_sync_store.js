@@ -106,10 +106,10 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
   }
 }
 
-class ARSyncStore {
+class ArSyncStore {
   constructor(query, data, option = {}) {
     this.data = data
-    this.query = ARSyncStore.parseQuery(query).attributes
+    this.query = ArSyncStore.parseQuery(query).attributes
     this.updatorClass = option.updatorClass || (
       option.immutable ? ImmutableUpdator : NormalUpdator
     )
@@ -244,8 +244,8 @@ class ARSyncStore {
 }
 
 try {
-  module.exports = ARSyncStore
+  module.exports = ArSyncStore
 } catch (e) {
-  window.ARSyncStore = ARSyncStore
+  window.ArSyncStore = ArSyncStore
 }
 })()

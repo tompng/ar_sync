@@ -1,7 +1,7 @@
 require 'ar_serializer'
 require_relative 'field'
 
-module ARSync
+module ArSync
   extend ActiveSupport::Concern
 
   class Collection
@@ -128,7 +128,7 @@ module ARSync
 
   def _sync_notify(action)
     if self.class._sync_self?
-      ARSync.sync_send to: self, action: action, path: [], data: _sync_data
+      ArSync.sync_send to: self, action: action, path: [], data: _sync_data
     end
     _sync_notify_parent action
   end
@@ -161,7 +161,7 @@ module ARSync
       data2 = path ? data : association_field.data(parent, self, to_user: to_user, action: action)
       action2 = association_field.action_convert action
       path2 = [*association_field.path(self), *path]
-      ARSync.sync_send(
+      ArSync.sync_send(
         to: parent, action: action2, path: path2, data: data2,
         to_user: to_user || only_to_user,
         ordering: association_field.order_param
@@ -182,7 +182,7 @@ module ARSync
   end
 
   def self.sync_key(model, path, to_user = nil)
-    if model.is_a? ARSync::Collection
+    if model.is_a? ArSync::Collection
       key = [to_user&.id, model.klass.name, model.name, path].join '/'
     else
       key = [to_user&.id, model.class.name, model.id, path].join '/'

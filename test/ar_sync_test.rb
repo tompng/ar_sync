@@ -3,7 +3,7 @@ ENV['DATABASE_NAME'] = database_name
 File.unlink database_name if File.exist? database_name
 require_relative 'seed'
 $patches = []
-ARSync.on_update do |key, patch|
+ArSync.on_update do |key, patch|
   $patches << { key: key, **patch }
 end
 
@@ -18,9 +18,9 @@ $test_cases = {
 }
 def api(target, query)
   if target.is_a? ActiveRecord::Base
-    ARSync.sync_api target.reload, User.first, query
+    ArSync.sync_api target.reload, User.first, query
   else
-    ARSync.sync_collection_api target, User.first, query
+    ArSync.sync_collection_api target, User.first, query
   end
 end
 

@@ -1,4 +1,4 @@
-module ARSync
+module ArSync
   module Rails
     class Engine < ::Rails::Engine
     end
@@ -13,10 +13,10 @@ module ARSync
 
   module StaticJsonConcern
     def ar_sync_static_json(record_or_records, query)
-      if respond_to?(ARSync.config.current_user_method)
-        current_user = send ARSync.config.current_user_method
+      if respond_to?(ArSync.config.current_user_method)
+        current_user = send ArSync.config.current_user_method
       end
-      ARSync.serialize(record_or_records, current_user, query.as_json)
+      ArSync.serialize(record_or_records, current_user, query.as_json)
     end
   end
 
@@ -45,8 +45,8 @@ module ARSync
     end
 
     def _api_call(type, api_list)
-      if respond_to?(ARSync.config.current_user_method)
-        current_user = send ARSync.config.current_user_method
+      if respond_to?(ArSync.config.current_user_method)
+        current_user = send ArSync.config.current_user_method
       end
       api_responses = {}
       params[:requests].each do |name, req|
@@ -63,10 +63,10 @@ module ARSync
     def sync_call
       _api_call :sync, self.class.configured_sync_apis do |model, current_user, query|
         case model
-        when ARSync::Collection
-          ARSync.sync_collection_api model, current_user, query
+        when ArSync::Collection
+          ArSync.sync_collection_api model, current_user, query
         when ActiveRecord::Base
-          ARSync.sync_api model, current_user, query if model
+          ArSync.sync_api model, current_user, query if model
         end
       end
     end
@@ -74,10 +74,10 @@ module ARSync
     def static_call
       _api_call :static, self.class.configured_static_apis do |model, current_user, query|
         case model
-        when ARSync::Collection, ActiveRecord::Relation, Array
-          ARSync.serialize model.to_a, current_user, query
+        when ArSync::Collection, ActiveRecord::Relation, Array
+          ArSync.serialize model.to_a, current_user, query
         when ActiveRecord::Base
-          ARSync.serialize model, current_user, query
+          ArSync.serialize model, current_user, query
         else
           model
         end

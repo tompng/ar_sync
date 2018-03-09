@@ -4,7 +4,7 @@ require 'bundler/setup'
 require 'ar_sync'
 require 'pry'
 require_relative '../test/model'
-ARSync.on_update do |key, patch|
+ArSync.on_update do |key, patch|
   msg = [key, patch].inspect
   puts "\e[1m#{msg}\e[m"
 end

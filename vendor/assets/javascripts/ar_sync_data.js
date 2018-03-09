@@ -1,12 +1,12 @@
 (function(){
-let ARSyncStore
+let ArSyncStore
 try {
-  ARSyncStore = require('./ar_sync_store')
+  ArSyncStore = require('./ar_sync_store')
 } catch(e) {
-  ARSyncStore = window.ARSyncStore
+  ArSyncStore = window.ArSyncStore
 }
 
-class ARSyncData {
+class ArSyncData {
   constructor(requests, option = {}, optionalParams) {
     this.requests = requests
     this.optionalParams = optionalParams
@@ -100,7 +100,7 @@ class ARSyncData {
       prevStore.replaceData(data)
       return
     }
-    const store = new ARSyncStore(query, data, option)
+    const store = new ArSyncStore(query, data, option)
     this.stores[name] = store
     this.data[name] = store.data
     let timer
@@ -110,7 +110,7 @@ class ARSyncData {
       const connectionName = name + '/' + key
       const disconnected = () => this.subscriptionDisconnected(connectionName)
       const connected = () => this.subscriptionConnected(connectionName)
-      return ARSyncData.connectionAdapter.connect({ key, received, disconnected, connected })
+      return ArSyncData.connectionAdapter.connect({ key, received, disconnected, connected })
     })
   }
   apiCall() {
@@ -120,20 +120,20 @@ class ARSyncData {
     }
     const body = JSON.stringify(Object.assign({ requests: this.requests }, this.optionalParams))
     const option = { credentials: 'include', method: 'POST', headers, body }
-    return fetch(ARSyncData.apiEndPoint, option).then(res => res.json())
+    return fetch(ArSyncData.apiEndPoint, option).then(res => res.json())
   }
 }
-ARSyncData.apiEndPoint = '/sync_api'
+ArSyncData.apiEndPoint = '/sync_api'
 
-class ARSyncImmutableData extends ARSyncData {
+class ArSyncImmutableData extends ArSyncData {
   immutable() { return true }
 }
 
 
 try {
-  module.exports = { ARSyncData, ARSyncImmutableData }
+  module.exports = { ArSyncData, ArSyncImmutableData }
 } catch (e) {
-  window.ARSyncData = ARSyncData
-  window.ARSyncImmutableData = ARSyncImmutableData
+  window.ArSyncData = ArSyncData
+  window.ArSyncImmutableData = ArSyncImmutableData
 }
 })()

@@ -3,7 +3,7 @@ module ArSync
     def create_api_controller
       create_file 'app/controllers/sync_api_controller.rb', <<~CODE
         class SyncApiController < ApplicationController
-          include ARSync::ApiControllerConcern
+          include ArSync::ApiControllerConcern
 
           # api :my_data do |_params|
           #   current_user

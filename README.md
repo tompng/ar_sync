@@ -1,4 +1,4 @@
-# ARSync - Reactive Programming with Ruby on Rails
+# ArSync - Reactive Programming with Ruby on Rails
 
 Frontend JSON data will be synchronized with ActiveRecord.
 
@@ -44,7 +44,7 @@ end
 ```ruby
 # app/controllers/sync_api_controller.rb
 class SyncApiController < ApplicationController
-  include ARSync::ApiControllerConcern
+  include ArSync::ApiControllerConcern
   api :my_simple_user_api do |params|
     User.where(condition).find params[:id]
   end
@@ -55,7 +55,7 @@ end
 ```html
 <!-- if you're using vue -->
 <script>
-  new ARSyncData({
+  new ArSyncData({
     user: {
       api: 'my_simple_user_api',
       params: { id: location.hash.match(/\d+/)[0] },

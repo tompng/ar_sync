@@ -1,4 +1,4 @@
-const { ARSyncStore } = require('../index.js')
+const { ArSyncStore } = require('../index.js')
 function dup(obj) { return JSON.parse(JSON.stringify(obj)) }
 function selectPatch(patches, keys) {
   return dup(patches).filter(arr => keys.indexOf(arr.key) >= 0)
@@ -54,7 +54,7 @@ function executeTest({ names, queries, keysList, initials, tests }) {
     for (const immutable of [true, false]) {
       console.log(`Test: ${names[i]}${immutable ? ' immutable' : ''}`)
       try {
-        const store = new ARSyncStore(query, dup(initial.data), { immutable, limit, order })
+        const store = new ArSyncStore(query, dup(initial.data), { immutable, limit, order })
         for (const { patches, states } of tests) {
           const dataWas = store.data
           const dataWasCloned = dup(dataWas)
