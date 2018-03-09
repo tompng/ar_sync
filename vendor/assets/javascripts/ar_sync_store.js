@@ -39,9 +39,6 @@ class NormalUpdator { // overwrites object. ex: Vue.js
     }
     return tree
   }
-  isMutatable(array) {
-    return true
-  }
 }
 class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
   constructor() {
@@ -101,9 +98,6 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
       data[column] = null
     }
     return root
-  }
-  isMutatable(array) {
-    return array.__mark__
   }
   cleanup() {
     this.markedObjects.forEach(marked => {
