@@ -18,18 +18,10 @@ class User < ApplicationRecord
     preloaded.include? id
   end
   sync_has_data :is_followed, preload: lambda { |users, current_user|
-    Follow.where(from: users, to: current_user).pluck(&:from_id)
+    Set.new Follow.where(from: users, to: current_user).pluck(&:from_id)
   } do |preloaded|
     preloaded.include? id
   end
-  sync_has_data :following_count, preload: lambda { |users|
-    Follow.where(from: users).group(:from_id).count
-  } do |preloaded|
-    preloaded[id] || 0
-  end
-  sync_has_data :followed_count, preload: lambda { |users|
-    Follow.where(to: users).group(:to_id).count
-  } do |preloaded|
-    preloaded[id] || 0
-  end
+  sync_has_data :following_count, count_of: :followings
+  sync_has_data :followed_count, count_of: :followeds
 end
