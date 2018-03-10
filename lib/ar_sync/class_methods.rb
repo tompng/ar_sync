@@ -19,18 +19,18 @@ module ArSync::ClassMethods
     _sync_define(ArSync::HasOneField.new(name), option, &data_block)
   end
 
-  def sync_has_many(name, order: :asc, propagate_when: nil, limit: nil, preload: nil, **option, &data_block)
+  def sync_has_many(name, order: :asc, propagate_when: nil, limit: nil, preload: nil, association: nil, **option, &data_block)
     if data_block.nil? && preload.nil?
       preload = lambda do |records, _context, params|
-        option = { order: order, limit: (params && params[:limit]) || limit }
-        ArSerializer::Field.preload_association self, records, name, option
+        params = { order: order, limit: (params && params[:limit]) || limit }
+        ArSerializer::Field.preload_association self, records, association || name, params
       end
       data_block = lambda do |preloaded, _context, _params|
         preloaded ? preloaded[id] || [] : send(name)
       end
     end
-    field = ArSync::HasManyField.new name, order: order, limit: limit, propagate_when: propagate_when
-    _sync_define field, preload: preload, **option, &data_block
+    field = ArSync::HasManyField.new name, association: association, order: order, limit: limit, propagate_when: propagate_when
+    _sync_define field, preload: preload, association: association, **option, &data_block
   end
 
   def _sync_define(info, **option, &data_block)

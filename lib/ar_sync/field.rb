@@ -52,22 +52,23 @@ class ArSync::HasOneField < ArSync::Field
 end
 
 class ArSync::HasManyField < ArSync::Field
-  attr_reader :limit, :order, :propagate_when
+  attr_reader :limit, :order, :association, :propagate_when
   def type
     :many
   end
 
-  def initialize(name, limit: nil, order: nil, propagate_when: nil)
+  def initialize(name, association: nil, limit: nil, order: nil, propagate_when: nil)
     super name
     @limit = limit
     @order = order
+    @association = association || name
     @propagate_when = propagate_when
   end
 
   def skip_propagation?(parent, child, _path)
     return false unless limit
     return !propagate_when.call(child) if propagate_when
-    ids = parent.send(name).order(id: order).limit(limit).ids
+    ids = parent.send(association).order(id: order).limit(limit).ids
     if child.destroyed?
       ids.size == limit && (order == :asc ? ids.max < child.id : child.id < ids.min)
     else
