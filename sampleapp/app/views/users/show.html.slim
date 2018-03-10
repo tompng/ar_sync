@@ -9,7 +9,12 @@ javascript:
       params: { id: location.pathname.match(/\d+/)[0] },
       query: [
         'name', 'is_following', 'is_followed',
-        { posts: ['title', 'comments_count', 'created_at'] }
+        {
+          posts: [
+            'title', 'comments_count', 'created_at',
+            { comments_last5: ['user', 'body'] }
+          ]
+        }
       ]
     }
   }).load((vueData) => {
@@ -38,3 +43,8 @@ javascript:
       | &nbsp;&nbsp;
       small date: {{post.created_at | date}}
       small &nbsp;&nbsp;comments:{{post.comments_count}}
+      div recent 5 comments:
+      div v-for='comment in post.comments_last5' style='padding-left:40px'
+        b
+          | {{comment.user.name}}
+        | : {{comment.body}}
