@@ -20,7 +20,7 @@ module ArSync::InstanceMethods
     fallbacks.update data
   end
 
-  def _sync_notify_parent(action, path: nil, data: nil, only_to_user: nil)
+  def _sync_notify_parent(action, path: nil, data: nil, order_param: nil, only_to_user: nil)
     self.class._sync_parents_info.each do |parent_name, inverse_name:, only_to:|
       if only_to
         to_user = instance_exec(&only_to)
@@ -32,14 +32,15 @@ module ArSync::InstanceMethods
       association_field = parent.class._sync_children_info[inverse_name]
       next if association_field.skip_propagation? parent, self, path
       data2 = path ? data : association_field.data(parent, self, to_user: to_user, action: action)
+      order_param2 = path ? order_param : association_field.order_param
       action2 = association_field.action_convert action
       path2 = [*association_field.path(self), *path]
       ArSync.sync_send(
         to: parent, action: action2, path: path2, data: data2,
         to_user: to_user || only_to_user,
-        ordering: association_field.order_param
+        ordering: order_param2
       )
-      parent._sync_notify_parent action2, path: path2, data: data2, only_to_user: to_user || only_to_user
+      parent._sync_notify_parent action2, path: path2, data: data2, order_param: order_param2, only_to_user: to_user || only_to_user
     end
   end
 end
