@@ -12,7 +12,7 @@ javascript:
         {
           posts: [
             'title', 'comments_count', 'created_at',
-            { comments_last5: ['user', 'body'] }
+            { comments_last5: ['user', 'body', { as: 'recent_comments', params: { limit: 30 }}] }
           ]
         }
       ]
@@ -43,8 +43,8 @@ javascript:
       | &nbsp;&nbsp;
       small date: {{post.created_at | date}}
       small &nbsp;&nbsp;comments:{{post.comments_count}}
-      div recent 5 comments:
-      div v-for='comment in post.comments_last5' style='padding-left:40px'
+      div recent 3 comments:
+      div v-for='comment in post.recent_comments' style='padding-left:40px'
         b
           | {{comment.user.name}}
         | : {{comment.body}}

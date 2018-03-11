@@ -109,7 +109,7 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
 class ArSyncStore {
   constructor(query, data, option = {}) {
     this.data = data
-    this.query = ArSyncStore.parseQuery(query).attributes
+    this.query = ArSyncStore.parseQuery(query)
     this.updatorClass = option.updatorClass || (
       option.immutable ? ImmutableUpdator : NormalUpdator
     )
@@ -137,7 +137,7 @@ class ArSyncStore {
         if (key === 'id') {
           obj.id = patchData.id
         } else {
-          const subq = query[key]
+          const subq = query.attributes[key]
           if (subq) {
             obj[subq.column || key] = patchData[key]
           }
@@ -154,9 +154,10 @@ class ArSyncStore {
         actualPath.push(idx)
         data = data[idx]
       } else {
-        if (!query[nameOrId]) return
-        const column = query[nameOrId].column || nameOrId
-        query = query[nameOrId].attributes
+        const { attributes } = query
+        if (!attributes[nameOrId]) return
+        const column = attributes[nameOrId].column || nameOrId
+        query = attributes[nameOrId]
         actualPath.push(column)
         data = data[column]
       }
@@ -166,7 +167,7 @@ class ArSyncStore {
     let id, column
     const applyPatch = (data, query, patchData) => {
       for (const key in patchData) {
-        const subq = query[key]
+        const subq = query.attributes[key]
         const value = patchData[key]
         if (subq) {
           const subcol = subq.column || key
@@ -180,9 +181,10 @@ class ArSyncStore {
       id = nameOrId
       const idx = data.findIndex(o => o.id === id)
     } else if (nameOrId) {
-      if (!query[nameOrId]) return
-      column = query[nameOrId].column || nameOrId
-      query = query[nameOrId].attributes
+      const { attributes } = query
+      if (!attributes[nameOrId]) return
+      column = attributes[nameOrId].column || nameOrId
+      query = attributes[nameOrId]
     } else {
       applyPatch(data, query, patchData)
       return
@@ -192,7 +194,11 @@ class ArSyncStore {
       if (column) {
         this.data = updator.add(this.data, actualPath, column, obj)
       } else if (!data.find(o => o.id === id)) {
-        this.data = updator.add(this.data, actualPath, data.length, obj, patch.ordering)
+        const ordering = { ...patch.ordering }
+        const limitOverride = query.params && query.params.limit
+        if (!ordering.order) ordering.order = query.params && query.params.order
+        if (!ordering.limit || limitOverride && limitOverride < ordering.limit) ordering.limit = limitOverride
+        this.data = updator.add(this.data, actualPath, data.length, obj, ordering)
       }
     } else if (action === 'destroy') {
       if (column) {
@@ -216,6 +222,7 @@ class ArSyncStore {
   static parseQuery(query, attrsonly){
     const attributes = {}
     let column = null
+    let params = null
     if (query.constructor !== Array) query = [query]
     for (const arg of query) {
       if (typeof(arg) === 'string') {
@@ -232,6 +239,8 @@ class ArSyncStore {
             for (const k in child) attributes[k] = child[k]
           } else if (key === 'as') {
             column = value
+          } else if (key === 'params') {
+            params = value
           } else {
             attributes[key] = this.parseQuery(value)
           }
@@ -239,7 +248,7 @@ class ArSyncStore {
       }
     }
     if (attrsonly) return attributes
-    return { attributes, column }
+    return { attributes, column, params }
   }
 }
 
