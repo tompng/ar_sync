@@ -22,8 +22,8 @@ module ArSync::ClassMethods
   def sync_has_many(name, order: :asc, propagate_when: nil, limit: nil, preload: nil, association: nil, **option, &data_block)
     if data_block.nil? && preload.nil?
       preload = lambda do |records, _context, params|
-        params = { order: order, limit: (params && params[:limit]) || limit }
-        ArSerializer::Field.preload_association self, records, association || name, params
+        order_option = { order: order, limit: (params && params[:limit]) || limit }
+        ArSerializer::Field.preload_association self, records, association || name, order_option
       end
       data_block = lambda do |preloaded, _context, _params|
         preloaded ? preloaded[id] || [] : send(name)
