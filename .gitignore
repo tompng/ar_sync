@@ -8,3 +8,4 @@
 /tmp/
 /test/*.sqlite3
 /test/generated_*
+.ruby-version
