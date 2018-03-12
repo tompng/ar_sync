@@ -32,6 +32,10 @@ class ArSync::Collection
     @sync_children_info ||= {}
   end
 
+  def self._sync_child_info key
+    _sync_children_info[key]
+  end
+
   def self.find(klass, name)
     defined_collections[[klass, name]]
   end

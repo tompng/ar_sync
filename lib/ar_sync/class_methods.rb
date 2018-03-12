@@ -77,6 +77,22 @@ module ArSync::ClassMethods
     @_sync_children_info ||= {}
   end
 
+  def _sync_child_info(name)
+    info = _sync_children_info[name]
+    return info if info
+    superclass._sync_child_info name if superclass < ActiveRecord::Base
+  end
+
+  def _each_sync_parent(&block)
+    _sync_parents_info.each(&block)
+    superclass._each_sync_parent(&block) if superclass < ActiveRecord::Base
+  end
+
+  def _each_sync_child(&block)
+    _sync_children_info.each(&block)
+    superclass._each_sync_child(&block) if superclass < ActiveRecord::Base
+  end
+
   def _initialize_sync_callbacks
     return if instance_variable_defined? '@_sync_callbacks_initialized'
     sync_has_data :id
