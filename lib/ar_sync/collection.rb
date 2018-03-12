@@ -15,7 +15,7 @@ class ArSync::Collection
     end
   end
 
-  def _sync_notify_parent*; end
+  def _sync_notify_parent(*); end
 
   def to_a
     all = klass.all
@@ -32,7 +32,7 @@ class ArSync::Collection
     @sync_children_info ||= {}
   end
 
-  def self._sync_child_info key
+  def self._sync_child_info(key)
     _sync_children_info[key]
   end
 
