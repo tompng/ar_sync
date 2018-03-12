@@ -21,14 +21,17 @@ module ArSync::InstanceMethods
   end
 
   def _sync_notify_parent(action, path: nil, data: nil, order_param: nil, only_to_user: nil)
-    self.class._sync_parents_info.each do |parent_name, inverse_name:, only_to:|
+    self.class._sync_parents_info.each do |parent, inverse_name:, only_to:|
       if only_to
         to_user = instance_exec(&only_to)
         next unless to_user
         next if only_to_user && only_to_user != to_user
       end
-      parent = parent_name.is_a?(Symbol) ? send(parent_name) : parent_name
+      parent = send(parent) if parent.is_a? Symbol
+      parent = instance_exec(&parent) if parent.is_a? Proc
       next unless parent
+      inverse_name = instance_exec(&inverse_name) if inverse_name.is_a? Proc
+      next unless inverse_name
       association_field = parent.class._sync_children_info[inverse_name]
       next if association_field.skip_propagation? parent, self, path
       data2 = path ? data : association_field.data(parent, self, to_user: to_user, action: action)
