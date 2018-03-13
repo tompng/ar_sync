@@ -7,7 +7,7 @@ try {
 }
 
 class ArSyncData {
-  constructor(requests, option = {}, optionalParams) {
+  constructor(requests, optionalParams) {
     this.requests = requests
     this.optionalParams = optionalParams
     this.subscriptions = {}
