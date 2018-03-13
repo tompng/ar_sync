@@ -66,7 +66,7 @@ module ArSync
         when ArSync::Collection
           ArSync.sync_collection_api model, current_user, query
         when ActiveRecord::Base
-          ArSync.sync_api model, current_user, query if model
+          ArSync.sync_api model, current_user, query
         end
       end
     end
