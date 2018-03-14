@@ -4,7 +4,6 @@ require 'ar_sync'
 
 class User < ActiveRecord::Base
   has_many :posts
-  sync_self
   sync_has_data :id, :name
   sync_has_many :posts
 end
@@ -17,7 +16,6 @@ class Post < ActiveRecord::Base
   sync_define_collection :first10, limit: 10, order: :asc
   sync_define_collection :last10, limit: 10, order: :desc
 
-  sync_self
   sync_parent :user, inverse_of: :posts
   sync_has_data :id, :title, :body
   sync_has_data :user, includes: :user do
@@ -35,7 +33,6 @@ class Comment < ActiveRecord::Base
   belongs_to :user
   belongs_to :post
   has_many :stars
-  sync_self
   sync_parent :post, inverse_of: :comments
   sync_parent :post, inverse_of: :my_comments, only_to: ->{ user }
   sync_has_data :id, :body

@@ -26,7 +26,6 @@ rails g ar_sync:install
 class User < ApplicationRecord
   has_many :posts
   ...
-  sync_self
   sync_data :name
   sync_has_many :posts
 end
@@ -34,7 +33,6 @@ end
 class Post < ApplicationRecord
   belongs_to :user
   ...
-  sync_self
   sync_data :title, :body, :created_at, :updated_at
   sync_parent :user, inverse_of: :posts
 end

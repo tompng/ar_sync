@@ -3,11 +3,12 @@ require_relative 'collection'
 
 module ArSync::ClassMethods
   def sync_has_data(*names, **option, &original_data_block)
+    @_sync_self = true
     if original_data_block
       data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
     end
     names.each do |name|
-      _sync_define(ArSync::DataField.new(name), option, &data_block)
+      _sync_define ArSync::DataField.new(name), option, &data_block
     end
   end
 
@@ -16,7 +17,7 @@ module ArSync::ClassMethods
   end
 
   def sync_has_one(name, **option, &data_block)
-    _sync_define(ArSync::HasOneField.new(name), option, &data_block)
+    _sync_define ArSync::HasOneField.new(name), option, &data_block
   end
 
   def sync_has_many(name, order: :asc, propagate_when: nil, limit: nil, preload: nil, association: nil, **option, &data_block)
@@ -37,14 +38,10 @@ module ArSync::ClassMethods
   end
 
   def _sync_define(info, **option, &data_block)
+    _initialize_sync_callbacks
     _sync_children_info[info.name] = info
     serializer_field info.name, **option, namespace: :sync, &data_block
     serializer_field info.name, **option, &data_block
-  end
-
-  def sync_self
-    _initialize_sync_callbacks
-    @_sync_self = true
   end
 
   def sync_parent(parent, inverse_of:, only_to: nil)
@@ -95,8 +92,8 @@ module ArSync::ClassMethods
 
   def _initialize_sync_callbacks
     return if instance_variable_defined? '@_sync_callbacks_initialized'
-    sync_has_data :id
     @_sync_callbacks_initialized = true
+    _sync_define ArSync::DataField.new(:id)
     %i[create update destroy].each do |action|
       after_commit on: action do
         self.class.default_scoped.scoping { _sync_notify action }
