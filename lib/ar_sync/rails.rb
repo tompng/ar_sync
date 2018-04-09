@@ -41,7 +41,7 @@ module ArSync
     end
 
     included do
-      protect_from_forgery except: :api_call
+      protect_from_forgery except: [:sync_call, :static_call]
     end
 
     def _api_call(type, api_list)
