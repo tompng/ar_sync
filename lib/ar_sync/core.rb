@@ -13,19 +13,19 @@ module ArSync
 
   self.on_update do end
 
-  def self.sync_send(to:, action:, path:, data:, to_user: nil, ordering: nil)
-    key = sync_key to, path.grep(Symbol), to_user
-    @sync_send_block&.call key, action: action, path: path, data: data, ordering: ordering
+  def self.sync_send(to:, action:, path:, id: nil, to_user: nil)
+    key = sync_key to, to_user
+    @sync_send_block&.call "#{key}#{path}", action: action, id: id
   end
 
-  def self.sync_key(model, path, to_user = nil)
+  def self.sync_key(model, to_user = nil)
     if model.is_a? ArSync::Collection
-      key = [to_user&.id, model.klass.name, model.name, path].join '/'
+      key = [to_user&.id, model.klass.name, model.name].join '/'
     else
-      key = [to_user&.id, model.class.name, model.id, path].join '/'
+      key = [to_user&.id, model.class.name, model.id].join '/'
     end
     key = Digest::SHA256.hexdigest "#{config.key_secret}#{key}" if config.key_secret
-    "#{config.key_prefix}#{key}"
+    "#{config.key_prefix}#{key}:"
   end
 
   def self.sync_collection_api(collection, current_user, args)

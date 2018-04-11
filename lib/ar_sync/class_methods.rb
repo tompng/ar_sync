@@ -20,7 +20,7 @@ module ArSync::ClassMethods
     _sync_define ArSync::HasOneField.new(name), option, &data_block
   end
 
-  def sync_has_many(name, order: :asc, propagate_when: nil, limit: nil, preload: nil, association: nil, **option, &data_block)
+  def sync_has_many(name, order: :asc, limit: nil, preload: nil, association: nil, **option, &data_block)
     if data_block.nil? && preload.nil?
       preload = lambda do |records, _context, params|
         ArSerializer::Field.preload_association(
@@ -33,7 +33,7 @@ module ArSync::ClassMethods
         preloaded ? preloaded[id] || [] : send(name)
       end
     end
-    field = ArSync::HasManyField.new name, association: association, order: order, limit: limit, propagate_when: propagate_when
+    field = ArSync::HasManyField.new name, association: association, order: order, limit: limit
     _sync_define field, preload: preload, association: association, **option, &data_block
   end
 
@@ -92,11 +92,31 @@ module ArSync::ClassMethods
 
   def _initialize_sync_callbacks
     return if instance_variable_defined? '@_sync_callbacks_initialized'
+    mod = Module.new do
+      def write_attribute(attr_name, value)
+        self.class.default_scoped.scoping do
+          @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+        end
+        super attr_name, value
+      end
+    end
+    prepend mod
+    attr_reader :_sync_parents_info_before_mutation
     @_sync_callbacks_initialized = true
     _sync_define ArSync::DataField.new(:id)
+
+    sync_has_data :sync_keys do |current_user|
+      [ArSync.sync_key(self, nil), ArSync.sync_key(self, current_user)]
+    end
+
+
+    before_save on: :create do
+      @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+    end
     %i[create update destroy].each do |action|
       after_commit on: action do
         self.class.default_scoped.scoping { _sync_notify action }
+        @_sync_parents_info_before_mutation = nil
       end
     end
   end
