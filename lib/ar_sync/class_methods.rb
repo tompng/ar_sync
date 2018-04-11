@@ -109,10 +109,14 @@ module ArSync::ClassMethods
       [ArSync.sync_key(self, nil), ArSync.sync_key(self, current_user)]
     end
 
+    before_destroy do
+      @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+    end
 
     before_save on: :create do
       @_sync_parents_info_before_mutation ||= _sync_current_parents_info
     end
+
     %i[create update destroy].each do |action|
       after_commit on: action do
         self.class.default_scoped.scoping { _sync_notify action }

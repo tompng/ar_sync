@@ -30,7 +30,7 @@ module ArSync::InstanceMethods
     end
     parents_was.zip(parents).each do |(parent_was, info_was), (parent, info)|
       if parent_was == parent && info_was == info
-        parent_was&._sync_notify_child_changed self, *info
+        parent&._sync_notify_child_changed self, *info
       else
         parent_was&._sync_notify_child_removed self, *info_was
         parent&._sync_notify_child_added self, *info
@@ -39,24 +39,34 @@ module ArSync::InstanceMethods
   end
 
   def _sync_notify_child_removed(child, name, to_user)
-    ArSync.sync_send(
-      to: self, action: :remove, path: name, id: child.id, to_user: to_user
-    )
+    case self.class._sync_child_info name
+    when ArSync::DataField
+      ArSync.sync_send to: self, action: :update, to_user: to_user
+    when ArSync::HasOneField
+      ArSync.sync_send to: self, action: :remove, path: name, to_user: to_user
+    when ArSync::HasManyField
+      ArSync.sync_send to: self, action: :remove, path: name, id: child.id, to_user: to_user
+    end
   end
 
   def _sync_notify_child_added(child, name, to_user)
-    ArSync.sync_send(
-      to: self, action: :add, path: name, id: child.id, to_user: to_user
-    )
+    case self.class._sync_child_info name
+    when ArSync::DataField
+      ArSync.sync_send to: self, action: :update, to_user: to_user
+    when ArSync::HasOneField
+      ArSync.sync_send to: self, action: :add, path: name, to_user: to_user
+    when ArSync::HasManyField
+      ArSync.sync_send to: self, action: :add, path: name, id: child.id, to_user: to_user
+    end
   end
 
-  def _sync_notify_child_changed(child, name, to_user)
-    ArSync.sync_send(
-      to: self, action: :change, path: name, id: child.id, to_user: to_user
-    )
+  def _sync_notify_child_changed(_child, name, to_user)
+    if self.class._sync_child_info(name).is_a? ArSync::DataField
+      ArSync.sync_send(to: self, action: :update, to_user: to_user)
+    end
   end
 
   def _sync_notify_self
-    ArSync.sync_send(to: self, action: :update, path: nil)
+    ArSync.sync_send(to: self, action: :update)
   end
 end
