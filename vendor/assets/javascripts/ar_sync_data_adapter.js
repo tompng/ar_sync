@@ -20,6 +20,9 @@ ArSyncData.connectionAdapter = {
       { channel: this.channelName, key }, { received, disconnected, connected }
     )
   }
+  disconnect(key) {
+    /* unimplemented */
+  }
 }
 })()
 // without actioncable:

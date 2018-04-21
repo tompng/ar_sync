@@ -106,13 +106,138 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
   }
 }
 
+const SyncBatchLoader = {
+  fetch(api, id, query, callback) {
+    if (this.processing) {
+      this.batch.push({ api, id, query, callback })
+      return
+    }
+    this.processing = true
+    setTimeout(() => this.process(), 16)
+  },
+  process() {
+    const grouped = {}
+    callbacks = {}
+    for (const b of this.batch) {
+      const key = b.api + '/' + JSON.stringify(b.query)
+      (callbacks[key] = callbacks[key] || []).push(b.callback)
+      const g = grouped[key] = grouped[key] || { api: b.api, query: b.query, ids: new Set, callbacks: {} }
+      (g.callbacks[b.id] = g.callbacks[b.id] || []).push(b.callback)
+      g.ids.push(b.id)
+    }
+    const requests = []
+    const requestBases = []
+    for (const el of grouped) {
+      requests.push([el.api, { query: el.query, params: { ids: [...el.ids] }]})
+      requestBases.push(el)
+    }
+    fetchSyncAPI(requests).then(data => {
+      for (let i = 0; i < data.length; i++) {
+        const b = requestBases[i]
+        for (const d of data[i]) {
+          for (const c of b.callbacks[d.id]) c(d)
+        }
+      }
+      this.processing = false
+    })
+  }
+}
+
+SyncModel.loadFromApi = function(api, params, query, callback) {
+  const request = {}
+  request[api] = { query, params }
+  fetchSyncAPI(request).then(data => {
+    callback(new SyncModel(data, query))
+  })
+}
+SyncModel.load = function(api, idOrParams, query, callback) {
+  if (typeof idOrParams == 'object') {
+    const params = idOrParams
+    SyncModel.loadFromApi(api, params, query, callback)
+  } else {
+    const id = idOrParams
+    SyncBatchLoader.fetch(api, id, query, data => callback(new SyncModel(data, query)))
+  }
+}
+class SyncModel {
+  constructor(query, data) {
+    this.query = query
+    this.data = {}
+    this.paths = []
+    for (const key in data) {
+      const subData = data[key]
+      if (key == 'sync_keys') continue
+      if (subData && subData.sync_keys) {
+        this.paths.push(key)
+        this.data[key] = new SyncModel(subData, query[key])
+      } else if(subData instanceof Array) {
+        this.paths.push(key)
+        this.data[key] = subData.map(el => {
+          return (el && el.sync_keys) ? new SyncModel(el, query[key]) : el
+        })
+      } else {
+        this.data[key] = subData
+      }
+    }
+    this.subscribe()
+  }
+  onnotify(notifyData) {
+    const { action, path, class_name, id } = notifyData
+    if (action == 'remove') {
+      if (this.data[path] instanceof Array) {
+        const array = this.data[path]
+        const idx = array.findIndex(a => a.id == id)
+        if (idx >= 0) array.splice(idx, 1)
+      } else {
+        this.data[path] = null
+      }
+    }
+    if (path) {
+      const query = this.query[path]
+      SyncBatchLoader.fetch(class_name, id, query, (data) => {
+        if (this.data[path] instanceof Array) {
+          this.data[path].push(new SyncModel(data, query))
+        } else {
+          this.data[path] = new SyncModel(data, query)
+        }
+      })
+    } else {
+      SyncBatchLoader.fetch(class_name, id, query, (data) => {
+        this.update(data)
+      })
+    }
+  }
+  subscribe() {
+    this.listeners = []
+    const callback = data => this.onnotify(data)
+    for (const key of this.sync_keys) {
+      this.listeners.push(ArSyncSubscriber.subscribe(key, callback))
+      for (const path of this.paths) {
+        this.listeners.push(ArSyncSubscriber.subscribe(key + '/' + path, callback))
+      }
+    }
+  }
+  unsubscribe() {
+    for (const l of this.listeners) l.release()
+    this.listeners = []
+  }
+}
+
 class ArSyncStore {
-  constructor(query, data, option = {}) {
-    this.data = data
+  constructor(api, query, option = {}) {
+    this.request = {}
+    this.request[api] = query
     this.query = ArSyncStore.parseQuery(query)
     this.updatorClass = option.updatorClass || (
       option.immutable ? ImmutableUpdator : NormalUpdator
     )
+  }
+  load(data) {
+    const request = {}
+    request[this.api] = this.query
+    fetchSyncAPI(this.request).then(data => {
+      this.replaceData(data)
+    })
   }
   replaceData(data) {
     this.data = new this.updatorClass().replaceData(this.data, data)

@@ -1,9 +1,63 @@
 (function(){
-let ArSyncStore
+let ArSyncStore, fetchSyncAPI
 try {
   ArSyncStore = require('./ar_sync_store')
+  { fetchSyncAPI } = require('./ar_sync_fetch')
 } catch(e) {
-  ArSyncStore = window.ArSyncStore
+  { ArSyncStore, fetchSyncAPI } = window
+}
+
+class ArSyncSubscriberListener {
+  constructor(subscriber, id, func) {
+    this.subscriber = subscriber
+    this.id = id
+    this.func = func
+  }
+  release() {
+    this.subscriber.unlisten(this.id)
+  }
+}
+class ArSyncSubscriber {
+  constructor(key) {
+    this.key
+    const disconnected = () => this.subscriptionDisconnected(key)
+    const connected = () => this.subscriptionConnected(key)
+    const received = data => this.received(data)
+    this.listeners = {}
+    this.listenerSerial = 0
+    this.listenerCount = 0
+    ArSyncData.connectionAdapter.connect({ key, received, disconnected, connected })
+  }
+  listen(func) {
+    const id = this.listenerSerial++
+    this.listenerCount++
+    return this.listeners[id] = new ArSyncSubscriberListener(this, id, func)
+  }
+  unlisten(id) {
+    if (!this.listeners[id]) return
+    this.listenerCount--
+    delete this.listeners[id]
+    if (this.listenerCount === 0) {
+      ArSyncSubscriber.notifyEmpty(this.key)
+    }
+  }
+  received(data) {
+    for (l of this.listeners) l.func(data)
+  }
+  release() {
+    ArSyncData.connectionAdapter.disconnect(key)
+  }
+}
+ArSyncSubscriber.subscribe(key, func) {
+  const s = ArSyncSubscriber.subscribers[key]
+  if (!s) ArSyncSubscriber.subscribers[key] = s = new ArSyncSubscriber(key)
+  return s.listen(func)
+}
+ArSyncSubscriber.notifyEmpty(key) {
+  const s = ArSyncSubscriber.subscribers[key]
+  if (!s) return
+  s.release()
+  delete ArSyncSubscriber.subscribers[key]
 }
 
 class ArSyncData {
@@ -51,6 +105,11 @@ class ArSyncData {
       this.bufferTimer = null
       const buf = this.bufferedPatches
       this.bufferedPatches = {}
+      for (const patch of buf) {
+        changes[name] = this.stores[name].batchUpdate(buf[name])
+      }
+
+
       const changes = {}
       for (const name in buf) {
         changes[name] = this.stores[name].batchUpdate(buf[name])
@@ -114,21 +173,13 @@ class ArSyncData {
     })
   }
   apiCall() {
-    const headers = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    }
-    const body = JSON.stringify(Object.assign({ requests: this.requests }, this.optionalParams))
-    const option = { credentials: 'include', method: 'POST', headers, body }
-    return fetch(ArSyncData.apiEndPoint, option).then(res => res.json())
+    return fetchSyncAPI(this.requests, this.optionalParams)
   }
 }
-ArSyncData.apiEndPoint = '/sync_api'
 
 class ArSyncImmutableData extends ArSyncData {
   immutable() { return true }
 }
-
 
 try {
   module.exports = { ArSyncData, ArSyncImmutableData }
