@@ -13,9 +13,9 @@ module ArSync
 
   self.on_update do end
 
-  def self.sync_send(to:, action:, path: nil, id: nil, to_user: nil)
+  def self.sync_send(to:, action:, model:, path: nil, to_user: nil)
     key = sync_key to, to_user
-    @sync_send_block&.call "#{key}#{path}", action: action, id: id
+    @sync_send_block&.call "#{key}#{path}", action: action, class_name: model.base_class.name, id: model.id
   end
 
   def self.sync_key(model, to_user = nil)

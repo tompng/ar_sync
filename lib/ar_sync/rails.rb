@@ -27,8 +27,9 @@ module ArSync
     module ClassMethods
       def api(name, only: nil, &block)
         raise 'Option `only` must be :sync or :static' unless only.in?([:sync, :static, nil])
-        configured_static_apis[name.to_s] = block if only != :sync
-        configured_sync_apis[name.to_s] = block if only != :static
+        name = name.is_a?(Class) ? name.name : name.to_s
+        configured_static_apis[name] = block if only != :sync
+        configured_sync_apis[name] = block if only != :static
       end
 
       def configured_sync_apis

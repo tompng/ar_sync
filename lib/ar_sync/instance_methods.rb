@@ -41,32 +41,32 @@ module ArSync::InstanceMethods
   def _sync_notify_child_removed(child, name, to_user)
     case self.class._sync_child_info name
     when ArSync::DataField
-      ArSync.sync_send to: self, action: :update, to_user: to_user
+      ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
     when ArSync::HasOneField
-      ArSync.sync_send to: self, action: :remove, path: name, to_user: to_user
+      ArSync.sync_send to: self, action: :remove, model: child, path: name, to_user: to_user
     when ArSync::HasManyField
-      ArSync.sync_send to: self, action: :remove, path: name, id: child.id, to_user: to_user
+      ArSync.sync_send to: self, action: :remove, model: child, path: name, to_user: to_user
     end
   end
 
   def _sync_notify_child_added(child, name, to_user)
     case self.class._sync_child_info name
     when ArSync::DataField
-      ArSync.sync_send to: self, action: :update, to_user: to_user
+      ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
     when ArSync::HasOneField
-      ArSync.sync_send to: self, action: :add, path: name, to_user: to_user
+      ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
     when ArSync::HasManyField
-      ArSync.sync_send to: self, action: :add, path: name, id: child.id, to_user: to_user
+      ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
     end
   end
 
   def _sync_notify_child_changed(_child, name, to_user)
     if self.class._sync_child_info(name).is_a? ArSync::DataField
-      ArSync.sync_send(to: self, action: :update, to_user: to_user)
+      ArSync.sync_send(to: self, action: :update, model: self, to_user: to_user)
     end
   end
 
   def _sync_notify_self
-    ArSync.sync_send(to: self, action: :update)
+    ArSync.sync_send(to: self, action: :update, model: self)
   end
 end
