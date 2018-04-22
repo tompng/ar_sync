@@ -12,10 +12,6 @@ module ArSync::ClassMethods
     end
   end
 
-  def api_has_field(*args, &data_block)
-    serializer_field(*args, &data_block)
-  end
-
   def sync_has_one(name, **option, &data_block)
     _sync_define ArSync::HasOneField.new(name), option, &data_block
   end

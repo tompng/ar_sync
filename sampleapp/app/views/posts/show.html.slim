@@ -8,10 +8,14 @@ javascript:
       api: 'Post',
       id: location.pathname.match(/\d+/)[0],
       query: [
-        'sync_keys', 'title', 'body', 'reaction_summary', 'user', 'created_at',
+        'sync_keys', 'title', 'body', 'reaction_summary', 'created_at',
         {
+          user: ['sync_keys', 'id', 'name'],
           my_reaction: ['sync_keys', 'kind'],
-          comments: ['sync_keys', 'body', 'reaction_summary', 'user', { my_reaction: ['sync_keys', 'kind'] }]
+          comments: [
+            'sync_keys', 'body', 'reaction_summary',
+            { my_reaction: ['sync_keys', 'kind'], user: ['sync_keys', 'id', 'name'] }
+          ]
         }
       ]
     }
