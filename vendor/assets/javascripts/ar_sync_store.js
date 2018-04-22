@@ -107,10 +107,11 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
 }
 
 const SyncBatchLoader = {
+  processing: false,
+  batch: [],
   fetch(api, id, query) {
-    let callback
     return new Promise((resolve, _reject) => {
-      this.batch.push({ api, id, query, resolve })
+      this.batch.push({ api, id, query, callback: resolve })
       if (!this.processing) {
         this.processing = true
         setTimeout(() => this.process(), 16)
@@ -122,15 +123,15 @@ const SyncBatchLoader = {
     callbacks = {}
     for (const b of this.batch) {
       const key = b.api + '/' + JSON.stringify(b.query)
-      (callbacks[key] = callbacks[key] || []).push(b.callback)
+      ;(callbacks[key] = callbacks[key] || []).push(b.callback)
       const g = grouped[key] = grouped[key] || { api: b.api, query: b.query, ids: new Set, callbacks: {} }
-      (g.callbacks[b.id] = g.callbacks[b.id] || []).push(b.callback)
-      g.ids.push(b.id)
+      ;(g.callbacks[b.id] = g.callbacks[b.id] || []).push(b.callback)
+      g.ids.add(b.id)
     }
     const requests = []
     const requestBases = []
-    for (const el of grouped) {
-      requests.push([{ api: el.api, query: el.query, params: { ids: [...el.ids] }}])
+    for (const el of Object.values(grouped)) {
+      requests.push({ api: el.api, query: el.query, params: [...el.ids]})
       requestBases.push(el)
     }
     fetchSyncAPI(requests).then(data => {
@@ -182,7 +183,7 @@ class ArSyncModel {
     }
     if (path) {
       const query = this.query[path]
-      SyncBatchLoader.fetch(class_name, id, query, (data) => {
+      SyncBatchLoader.fetch(class_name, id, query).then((data) => {
         if (this.data[path] instanceof Array) {
           this.data[path].push(new ArSyncModel(query, data))
         } else {
@@ -190,9 +191,25 @@ class ArSyncModel {
         }
       })
     } else {
-      SyncBatchLoader.fetch(class_name, id, query, (data) => {
+      SyncBatchLoader.fetch(class_name, id, this.reloadQuery()).then((data) => {
         this.update(data)
       })
+    }
+  }
+  reloadQuery() {
+    if (this.reloadQueryCache) return this.reloadQueryCache
+    const reloadQuery = this.reloadQueryCache = { attributes: [] }
+    for (const key in this.query.attributes) {
+      if (key == 'sync_keys') continue
+      const val = this.query.attributes[key]
+      if (!val || !val.attributes || !val.attributes.sync_keys) reloadQuery.attributes.push(key)
+    }
+    console.error('rq', reloadQuery)
+    return reloadQuery
+  }
+  update(data) {
+    for (const key in data) {
+      this.data[key] = data[key]
     }
   }
   subscribe() {
@@ -239,7 +256,7 @@ class ArSyncModel {
       }
     }
     if (attrsonly) return attributes
-    return { attributes, column, params }
+    return { attributes, as: column, params }
   }
   static load({ api, id, params, query }) {
     const parsedQuery = ArSyncModel.parseQuery(query)

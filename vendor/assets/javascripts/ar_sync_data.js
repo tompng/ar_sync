@@ -43,7 +43,9 @@ class ArSyncSubscriber {
     }
   }
   received(data) {
-    for (l of this.listeners) l.func(data)
+    for (const l of Object.values(this.listeners)) {
+      l.func(data)
+    }
   }
   release() {
     ArSyncData.connectionAdapter.disconnect(key)
