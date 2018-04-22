@@ -122,7 +122,7 @@ const SyncBatchLoader = {
     const grouped = {}
     callbacks = {}
     for (const b of this.batch) {
-      const key = b.api + '/' + JSON.stringify(b.query)
+      const key = b.api + ':' + JSON.stringify(b.query)
       ;(callbacks[key] = callbacks[key] || []).push(b.callback)
       const g = grouped[key] = grouped[key] || { api: b.api, query: b.query, ids: new Set, callbacks: {} }
       ;(g.callbacks[b.id] = g.callbacks[b.id] || []).push(b.callback)
@@ -170,19 +170,22 @@ class ArSyncModel {
     }
     this.subscribe()
   }
-  onnotify(notifyData) {
-    const { action, path, class_name, id } = notifyData
+  onnotify(path, notifyData) {
+    const { action, class_name, id } = notifyData
     if (action == 'remove') {
       if (this.data[path] instanceof Array) {
         const array = this.data[path]
-        const idx = array.findIndex(a => a.id == id)
-        if (idx >= 0) array.splice(idx, 1)
+        const idx = array.findIndex(a => a.data.id == id)
+        if (idx >= 0) {
+          array[idx].release()
+          array.splice(idx, 1)
+        }
       } else {
         this.data[path] = null
       }
-    }
-    if (path) {
-      const query = this.query[path]
+    } else if (action == 'add') {
+      console.error(notifyData, path)
+      const query = this.query.attributes[path]
       SyncBatchLoader.fetch(class_name, id, query).then((data) => {
         if (this.data[path] instanceof Array) {
           this.data[path].push(new ArSyncModel(query, data))
@@ -212,13 +215,27 @@ class ArSyncModel {
       this.data[key] = data[key]
     }
   }
+  release() {
+    this.unsubscribe()
+    const releaseElements = (elements) => {
+      for (const el of elements) {
+        if (el.constructor == ArSyncModel) {
+          el.release()
+        } else if (el.constructor == Array) {
+          releaseElements(el)
+        }
+      }
+    }
+    releaseElements(Object.values(this.data))
+    this.data = null
+  }
   subscribe() {
     this.listeners = []
     const callback = data => this.onnotify(data)
     for (const key of this.sync_keys) {
-      this.listeners.push(ArSyncSubscriber.subscribe(key, callback))
+      this.listeners.push(ArSyncSubscriber.subscribe(key, data => this.onnotify('', data)))
       for (const path of this.paths) {
-        this.listeners.push(ArSyncSubscriber.subscribe(key + '/' + path, callback))
+        this.listeners.push(ArSyncSubscriber.subscribe(key + path, data => this.onnotify(path, data)))
       }
     }
   }

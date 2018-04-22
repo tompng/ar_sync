@@ -7,7 +7,8 @@ module ArSync::InstanceMethods
   def _sync_current_parents_info
     [].tap do |parents|
       self.class._each_sync_parent do |parent, inverse_name:, only_to:|
-        parent = parent.is_a?(Symbol) ? send(parent) : instance_exec(&parent)
+        parent = send parent if parent.is_a? Symbol
+        parent = instance_exec(&parent) if parent.is_a? Proc
         if only_to
           to_user = instance_exec(&only_to)
           parent = nil unless to_user

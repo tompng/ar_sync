@@ -15,8 +15,6 @@ class ArSync::Collection
     end
   end
 
-  def _sync_notify_parent(*); end
-
   def to_a
     all = klass.all
     all = all.order id: order if order
@@ -26,6 +24,16 @@ class ArSync::Collection
 
   def self.defined_collections
     @defined_collections ||= {}
+  end
+
+  def _sync_notify_child_changed(_child, _name, _to_user); end
+
+  def _sync_notify_child_added(child, name, to_user)
+    ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
+  end
+
+  def _sync_notify_child_removed(child, name, to_user)
+    ArSync.sync_send to: self, action: :remove, model: child, path: name, to_user: to_user
   end
 
   def self._sync_children_info
