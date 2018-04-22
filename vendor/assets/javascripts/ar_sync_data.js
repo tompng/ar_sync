@@ -21,8 +21,8 @@ class ArSyncSubscriberListener {
 class ArSyncSubscriber {
   constructor(key) {
     this.key
-    const disconnected = () => this.subscriptionDisconnected(key)
-    const connected = () => this.subscriptionConnected(key)
+    const disconnected = () => console.error('disconnected: ' + key)
+    const connected = () => console.error('connected: ' + key)
     const received = data => this.received(data)
     this.listeners = {}
     this.listenerSerial = 0
@@ -49,6 +49,7 @@ class ArSyncSubscriber {
     ArSyncData.connectionAdapter.disconnect(key)
   }
 }
+ArSyncSubscriber.subscribers = {}
 ArSyncSubscriber.subscribe = function(key, func) {
   let s = ArSyncSubscriber.subscribers[key]
   if (!s) s = ArSyncSubscriber.subscribers[key] = new ArSyncSubscriber(key)
@@ -183,8 +184,9 @@ class ArSyncImmutableData extends ArSyncData {
 }
 
 try {
-  module.exports = { ArSyncData, ArSyncImmutableData }
+  module.exports = { ArSyncSubscriber, ArSyncData, ArSyncImmutableData }
 } catch (e) {
+  window.ArSyncSubscriber = ArSyncSubscriber
   window.ArSyncData = ArSyncData
   window.ArSyncImmutableData = ArSyncImmutableData
 }

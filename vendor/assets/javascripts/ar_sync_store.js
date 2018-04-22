@@ -130,7 +130,7 @@ const SyncBatchLoader = {
     const requests = []
     const requestBases = []
     for (const el of grouped) {
-      requests.push([el.api, { query: el.query, params: { ids: [...el.ids] }}])
+      requests.push([{ api: el.api, query: el.query, params: { ids: [...el.ids] }}])
       requestBases.push(el)
     }
     fetchSyncAPI(requests).then(data => {
@@ -147,19 +147,21 @@ const SyncBatchLoader = {
 
 class ArSyncModel {
   constructor(query, data) {
+    console.error(data)
     this.query = query
     this.data = {}
     this.paths = []
+    this.sync_keys = data.sync_keys
     for (const key in data) {
       const subData = data[key]
       if (key == 'sync_keys') continue
       if (subData && subData.sync_keys) {
         this.paths.push(key)
-        this.data[key] = new ArSyncModel(subData, query[key])
+        this.data[key] = new ArSyncModel(query.attributes[key], subData)
       } else if(subData instanceof Array) {
         this.paths.push(key)
         this.data[key] = subData.map(el => {
-          return (el && el.sync_keys) ? new ArSyncModel(el, query[key]) : el
+          return (el && el.sync_keys) ? new ArSyncModel(query.attributes[key], el) : el
         })
       } else {
         this.data[key] = subData
@@ -182,9 +184,9 @@ class ArSyncModel {
       const query = this.query[path]
       SyncBatchLoader.fetch(class_name, id, query, (data) => {
         if (this.data[path] instanceof Array) {
-          this.data[path].push(new ArSyncModel(data, query))
+          this.data[path].push(new ArSyncModel(query, data))
         } else {
-          this.data[path] = new ArSyncModel(data, query)
+          this.data[path] = new ArSyncModel(query, data)
         }
       })
     } else {
@@ -207,23 +209,48 @@ class ArSyncModel {
     for (const l of this.listeners) l.release()
     this.listeners = []
   }
-}
-ArSyncModel.loadFromApi = function(api, params, query) {
-  const request = {}
-  request[api] = { query, params }
-  return fetchSyncAPI(request).then(data => new ArSyncModel(data, query))
-}
-ArSyncModel.load = function(api, idOrParams, query) {
-  if (typeof idOrParams == 'object') {
-    const request = {}
-    request[api] = { query, params: idOrParams }
-    return fetchSyncAPI(request).then(data => new ArSyncModel(data, query))
-  } else {
-    const id = idOrParams
-    return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(data, query))
+  static parseQuery(query, attrsonly){
+    const attributes = {}
+    let column = null
+    let params = null
+    if (!query) query = []
+    if (query.constructor !== Array) query = [query]
+    for (const arg of query) {
+      if (typeof(arg) === 'string') {
+        attributes[arg] = {}
+      } else if (typeof(arg) === 'object') {
+        for (const key in arg){
+          const value = arg[key]
+          if (attrsonly) {
+            attributes[key] = this.parseQuery(value)
+            continue
+          }
+          if (key === 'attributes') {
+            const child = this.parseQuery(value, true)
+            for (const k in child) attributes[k] = child[k]
+          } else if (key === 'as') {
+            column = value
+          } else if (key === 'params') {
+            params = value
+          } else {
+            attributes[key] = this.parseQuery(value)
+          }
+        }
+      }
+    }
+    if (attrsonly) return attributes
+    return { attributes, column, params }
+  }
+  static load({ api, id, params, query }) {
+    const parsedQuery = ArSyncModel.parseQuery(query)
+    if (typeof params) {
+      const requests = [{ api, query, params }]
+      return fetchSyncAPI(requests).then(data => new ArSyncModel(parsedQuery, data[0]))
+    } else {
+      return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(parsedQuery, data))
+    }
   }
 }
-
 
 
 try {

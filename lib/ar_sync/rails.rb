@@ -56,12 +56,7 @@ module ArSync
 
     def api_call
       _api_call do |model, current_user, query|
-        case model
-        when ArSync::Collection
-          ArSync.sync_collection_api model, current_user, query
-        when ActiveRecord::Base
-          ArSync.sync_api model, current_user, query
-        end
+        ArSerializer.serialize model, query, context: current_user, include_id: true, use: :sync
       end
     end
   end

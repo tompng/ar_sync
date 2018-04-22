@@ -1,19 +1,20 @@
 javascript:
-  new ArSyncData({
-    currentUser: {
-      api: 'profile',
-      query: [
-        'name', 'followed_count', 'following_count',
-        { posts: ['title', 'comments_count', 'created_at'] }
-      ]
-    },
+  ArSyncModel.load({
+    api: 'profile',
+    query: [
+      'sync_keys',
+      'name', 'followed_count', 'following_count',
+      { posts: ['sync_keys', 'title', 'comments_count', 'created_at'] }
+    ]
+  }).then(model => window.model = model)
+  /*ArSyncModel.load({ api: 'newposts'})
     newPosts: {
       api: 'newposts',
       query: ['user', 'title', 'created_at', 'comments_count']
     }
   }).load((vueData) => {
     new Vue({ el: '#syncbody', data: vueData })
-  })
+  })*/
 
 #syncbody [v-cloak]
   h1 Top Page: welcome {{currentUser.name}}!

@@ -1,4 +1,5 @@
 function fetchSyncAPI(requests, optionalParams) {
+  console.error(requests)
   const headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
