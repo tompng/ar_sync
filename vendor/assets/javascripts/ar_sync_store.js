@@ -107,13 +107,15 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
 }
 
 const SyncBatchLoader = {
-  fetch(api, id, query, callback) {
-    if (this.processing) {
-      this.batch.push({ api, id, query, callback })
-      return
-    }
-    this.processing = true
-    setTimeout(() => this.process(), 16)
+  fetch(api, id, query) {
+    let callback
+    return new Promise((resolve, _reject) => {
+      this.batch.push({ api, id, query, resolve })
+      if (!this.processing) {
+        this.processing = true
+        setTimeout(() => this.process(), 16)
+      }
+    })
   },
   process() {
     const grouped = {}
@@ -143,20 +145,19 @@ const SyncBatchLoader = {
   }
 }
 
-SyncModel.loadFromApi = function(api, params, query, callback) {
+SyncModel.loadFromApi = function(api, params, query) {
   const request = {}
   request[api] = { query, params }
-  fetchSyncAPI(request).then(data => {
-    callback(new SyncModel(data, query))
-  })
+  return fetchSyncAPI(request).then(data => new SyncModel(data, query))
 }
-SyncModel.load = function(api, idOrParams, query, callback) {
+SyncModel.load = function(api, idOrParams, query) {
   if (typeof idOrParams == 'object') {
-    const params = idOrParams
-    SyncModel.loadFromApi(api, params, query, callback)
+    const request = {}
+    request[api] = { query, params: idOrParams }
+    return fetchSyncAPI(request).then(data => new SyncModel(data, query))
   } else {
     const id = idOrParams
-    SyncBatchLoader.fetch(api, id, query, data => callback(new SyncModel(data, query)))
+    return SyncBatchLoader.fetch(api, id, query).then(data => new SyncModel(data, query))
   }
 }
 class SyncModel {
@@ -220,160 +221,6 @@ class SyncModel {
   unsubscribe() {
     for (const l of this.listeners) l.release()
     this.listeners = []
-  }
-}
-
-class ArSyncStore {
-  constructor(api, query, option = {}) {
-    this.request = {}
-    this.request[api] = query
-    this.query = ArSyncStore.parseQuery(query)
-    this.updatorClass = option.updatorClass || (
-      option.immutable ? ImmutableUpdator : NormalUpdator
-    )
-  }
-  load(data) {
-    const request = {}
-    request[this.api] = this.query
-    fetchSyncAPI(this.request).then(data => {
-      this.replaceData(data)
-    })
-  }
-  replaceData(data) {
-    this.data = new this.updatorClass().replaceData(this.data, data)
-  }
-  batchUpdate(patches) {
-    const updator = this.updatorClass && new this.updatorClass()
-    patches.forEach(patch => this._update(patch, updator))
-    if (updator.cleanup) updator.cleanup()
-    return updator.changed
-  }
-  update(patch) {
-    return this.batchUpdate([patch])
-  }
-  _update(patch, updator) {
-    const { action, path } = patch
-    const patchData = patch.data
-    let query = this.query
-    let data = this.data
-    function slicePatch(patchData, query) {
-      const obj = {}
-      for (const key in patchData) {
-        if (key === 'id') {
-          obj.id = patchData.id
-        } else {
-          const subq = query.attributes[key]
-          if (subq) {
-            obj[subq.column || key] = patchData[key]
-          }
-        }
-      }
-      return obj
-    }
-    const actualPath = []
-    for(let i=0; i<path.length - 1; i++) {
-      const nameOrId = path[i]
-      if (typeof(nameOrId) === 'number') {
-        const idx = data.findIndex(o => o.id === nameOrId)
-        if (idx < 0) return
-        actualPath.push(idx)
-        data = data[idx]
-      } else {
-        const { attributes } = query
-        if (!attributes[nameOrId]) return
-        const column = attributes[nameOrId].column || nameOrId
-        query = attributes[nameOrId]
-        actualPath.push(column)
-        data = data[column]
-      }
-      if (!data) return
-    }
-    const nameOrId = path[path.length - 1]
-    let id, column
-    const applyPatch = (data, query, patchData) => {
-      for (const key in patchData) {
-        const subq = query.attributes[key]
-        const value = patchData[key]
-        if (subq) {
-          const subcol = subq.column || key
-          if (data[subcol] !== value) {
-            this.data = updator.add(this.data, actualPath, subcol, value)
-          }
-        }
-      }
-    }
-    if (typeof(nameOrId) === 'number') {
-      id = nameOrId
-      const idx = data.findIndex(o => o.id === id)
-    } else if (nameOrId) {
-      const { attributes } = query
-      if (!attributes[nameOrId]) return
-      column = attributes[nameOrId].column || nameOrId
-      query = attributes[nameOrId]
-    } else {
-      applyPatch(data, query, patchData)
-      return
-    }
-    if (action === 'create') {
-      const obj = slicePatch(patchData, query)
-      if (column) {
-        this.data = updator.add(this.data, actualPath, column, obj)
-      } else if (!data.find(o => o.id === id)) {
-        const ordering = { ...patch.ordering }
-        const limitOverride = query.params && query.params.limit
-        if (!ordering.order) ordering.order = query.params && query.params.order
-        if (!ordering.limit || limitOverride && limitOverride < ordering.limit) ordering.limit = limitOverride
-        this.data = updator.add(this.data, actualPath, data.length, obj, ordering)
-      }
-    } else if (action === 'destroy') {
-      if (column) {
-        this.data = updator.remove(this.data, actualPath, column)
-      } else {
-        const idx = data.findIndex(o => o.id === id)
-        if (idx >= 0) this.data = updator.remove(this.data, actualPath, idx)
-      }
-    } else {
-      if (column) {
-        actualPath.push(column)
-      } else {
-        const idx = data.findIndex(o => o.id === id)
-        if (idx < 0) return
-        actualPath.push(idx)
-      }
-      applyPatch(data, query, patchData)
-    }
-  }
-
-  static parseQuery(query, attrsonly){
-    const attributes = {}
-    let column = null
-    let params = null
-    if (query.constructor !== Array) query = [query]
-    for (const arg of query) {
-      if (typeof(arg) === 'string') {
-        attributes[arg] = {}
-      } else if (typeof(arg) === 'object') {
-        for (const key in arg){
-          const value = arg[key]
-          if (attrsonly) {
-            attributes[key] = this.parseQuery(value)
-            continue
-          }
-          if (key === 'attributes') {
-            const child = this.parseQuery(value, true)
-            for (const k in child) attributes[k] = child[k]
-          } else if (key === 'as') {
-            column = value
-          } else if (key === 'params') {
-            params = value
-          } else {
-            attributes[key] = this.parseQuery(value)
-          }
-        }
-      }
-    }
-    if (attrsonly) return attributes
-    return { attributes, column, params }
   }
 }
 
