@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/tompng/ar_serializer.git
-  revision: 9da51254610d8929a0459362f86a05dc114876ad
+  revision: 2dcfcc30098674ba382ae46c6efa798524576e99
   specs:
     ar_serializer (0.1.0)
       activerecord
@@ -85,7 +85,7 @@ GEM
     ffi (1.9.23)
     globalid (0.4.1)
       activesupport (>= 4.2.0)
-    i18n (1.0.0)
+    i18n (1.0.1)
       concurrent-ruby (~> 1.0)
     listen (3.1.5)
       rb-fsevent (~> 0.9, >= 0.9.4)

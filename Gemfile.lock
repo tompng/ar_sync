@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/tompng/ar_serializer
-  revision: 6a752d95d473ab120eea409f35c35c2e36e020af
+  revision: 2dcfcc30098674ba382ae46c6efa798524576e99
   specs:
     ar_serializer (0.1.0)
       activerecord
@@ -14,21 +14,21 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    activemodel (5.1.5)
-      activesupport (= 5.1.5)
-    activerecord (5.1.5)
-      activemodel (= 5.1.5)
-      activesupport (= 5.1.5)
-      arel (~> 8.0)
-    activesupport (5.1.5)
+    activemodel (5.2.0)
+      activesupport (= 5.2.0)
+    activerecord (5.2.0)
+      activemodel (= 5.2.0)
+      activesupport (= 5.2.0)
+      arel (>= 9.0)
+    activesupport (5.2.0)
       concurrent-ruby (~> 1.0, >= 1.0.2)
-      i18n (~> 0.7)
+      i18n (>= 0.7, < 2)
       minitest (~> 5.1)
       tzinfo (~> 1.1)
-    arel (8.0.0)
+    arel (9.0.0)
     coderay (1.1.2)
     concurrent-ruby (1.0.5)
-    i18n (0.9.5)
+    i18n (1.0.1)
       concurrent-ruby (~> 1.0)
     method_source (0.9.0)
     minitest (5.11.3)
