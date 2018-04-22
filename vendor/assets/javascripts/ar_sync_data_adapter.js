@@ -1,15 +1,15 @@
 (function(){
-let ArSyncData, ActionCable
+let ArSyncSubscriber, ActionCable
 try {
-  ArSyncData = require('./ar_sync_data').ArSyncData
+  ArSyncSubscriber = require('./ar_sync_data').ArSyncSubscriber
   ActionCable = require('actioncable')
 } catch(e) {
   try {
-    ArSyncData = window.ArSyncData
+    ArSyncSubscriber = window.ArSyncSubscriber
     ActionCable = window.ActionCable
   } catch(e) {}
 }
-ArSyncData.connectionAdapter = {
+ArSyncSubscriber.connectionAdapter = {
   channelName: 'SyncChannel',
   cable() {
     if (!this._cable) this._cable = ActionCable.createConsumer()
@@ -26,7 +26,7 @@ ArSyncData.connectionAdapter = {
 }
 })()
 // without actioncable:
-// ArSyncData.connectionAdapter = {
+// ArSyncSubscriber.connectionAdapter = {
 //   connect({ key, received, disconnected, connected }) {
 //     c = new MyConnection(key)
 //     c.onData(received).onDisconnect(disconnected)

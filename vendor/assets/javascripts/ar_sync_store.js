@@ -318,7 +318,6 @@ class ArSyncModel {
   }
 }
 
-
 try {
   module.exports = ArSyncModel
 } catch (e) {
