@@ -1,22 +1,22 @@
 javascript:
-  new ArSyncData({
-    currentUser: {
+  ArSyncModel.load([
+    {
       api: 'profile',
-      query: ['id', 'name']
+      query: ['sync_keys', 'id', 'name']
     },
-    post: {
-      api: 'post',
-      params: { id: location.pathname.match(/\d+/)[0] },
+    {
+      api: 'Post',
+      id: location.pathname.match(/\d+/)[0],
       query: [
-        'title', 'body', 'reaction_summary', 'user', 'created_at',
+        'sync_keys', 'title', 'body', 'reaction_summary', 'user', 'created_at',
         {
-          my_reaction: 'kind',
-          comments: ['body', 'reaction_summary', 'user', { my_reaction: 'kind' }]
+          my_reaction: ['sync_keys', 'kind'],
+          comments: ['sync_keys', 'body', 'reaction_summary', 'user', { my_reaction: ['sync_keys', 'kind'] }]
         }
       ]
     }
-  }).load((vueData) => {
-    new Vue({ el: '#syncbody', data: vueData })
+  ]).then(([userModel, postModel]) => {
+    new Vue({ el: '#syncbody', data: { currentUser: userModel.data, post: postModel.data }})
   })
 
 

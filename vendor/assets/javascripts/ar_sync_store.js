@@ -168,7 +168,7 @@ class ArSyncModel {
           const models = subData.map(el => new ArSyncModel(subQuery, el))
           this.children[key] = models
           this.data[key] = models.map(m => m.data)
-        } else {
+        } else if(subData) {
           this.paths.push(key)
           const model = new ArSyncModel(subQuery, subData)
           this.children[key] = model
@@ -246,6 +246,10 @@ class ArSyncModel {
   subscribe() {
     this.listeners = []
     const callback = data => this.onnotify(data)
+    if (!this.sync_keys) {
+      console.error('warning: no sync_keys')
+      return
+    }
     for (const key of this.sync_keys) {
       this.listeners.push(ArSyncSubscriber.subscribe(key, data => this.onnotify('', data)))
       for (const path of this.paths) {
@@ -291,11 +295,11 @@ class ArSyncModel {
   }
   static _load({ api, id, params, query }) {
     const parsedQuery = ArSyncModel.parseQuery(query)
-    if (typeof params) {
+    if (id) {
+      return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(parsedQuery, data))
+    } else {
       const requests = [{ api, query, params }]
       return fetchSyncAPI(requests).then(data => new ArSyncModel(parsedQuery, data[0]))
-    } else {
-      return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(parsedQuery, data))
     }
   }
   static load(apiParams) {

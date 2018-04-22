@@ -1,26 +1,25 @@
 javascript:
-  new ArSyncData({
-    currentUser: {
+  ArSyncModel.load([
+    {
       api: 'profile',
-      query: ['id', 'name']
+      query: ['sync_keys', 'id', 'name']
     },
-    user: {
-      api: 'user',
-      params: { id: location.pathname.match(/\d+/)[0] },
+    {
+      api: 'User',
+      id: location.pathname.match(/\d+/)[0],
       query: [
-        'name', 'is_following', 'is_followed',
+        'sync_keys', 'name', 'is_following', 'is_followed',
         {
           posts: [
-            'title', 'comments_count', 'created_at',
-            { comments_last5: ['user', 'body', { as: 'recent_comments', params: { limit: 3 }}] }
+            'sync_keys', 'title', 'comments_count', 'created_at',
+            { comments_last5: ['sync_keys', 'user', 'body', { as: 'recent_comments', params: { limit: 3 }}] }
           ]
         }
       ]
     }
-  }).load((vueData) => {
-    new Vue({ el: '#syncbody', data: vueData })
+  ]).then(([currentUserModel, userModel]) => {
+    new Vue({ el: '#syncbody', data: { currentUser: currentUserModel.data, user: userModel.data }})
   })
-
 #syncbody [v-cloak]
   h1
     | {{user.name}}

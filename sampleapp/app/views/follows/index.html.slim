@@ -1,17 +1,15 @@
 javascript:
-  new ArSyncData({
-    currentUser: {
-      api: 'profile',
-      query: [
-        'name',
-        {
-          followeds: { from: { as: 'user' } },
-          followings: { to: { as: 'user' } }
-        }
-      ]
-    }
-  }).load((vueData) => {
-    new Vue({ el: '#syncbody', data: vueData })
+  ArSyncModel.load({
+    api: 'profile',
+    query: [
+      'sync_keys', 'name',
+      {
+        followeds: ['sync_keys', { from: { as: 'user' } }],
+        followings: ['sync_keys', { to: { as: 'user' } }]
+      }
+    ]
+  }).then((userModel) => {
+    new Vue({ el: '#syncbody', data: { currentUser: userModel.data }})
   })
 
 #syncbody [v-cloak]

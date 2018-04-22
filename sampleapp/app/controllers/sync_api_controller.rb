@@ -1,6 +1,14 @@
 class SyncApiController < ApplicationController
   include ArSync::ApiControllerConcern
 
+  api Follow do |ids|
+    Follow.where id: ids
+  end
+
+  api Reaction do |ids|
+    Reaction.where id: ids
+  end
+
   api User do |ids|
     User.where id: ids
   end
