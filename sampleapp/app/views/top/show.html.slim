@@ -1,29 +1,25 @@
 javascript:
-  ArSyncModel.load({
-    api: 'profile',
-    query: [
-      'sync_keys',
-      'name', 'followed_count', 'following_count',
-      { posts: ['sync_keys', 'title', 'comments_count', 'created_at'] }
-    ]
-  }).then(model => {
-    window.model = model
-    if (!window.vueData) {
-      window.vueData = { currentUser: {}, newPosts: [] }
-      new Vue({ el: '#syncbody', data: vueData })
+  ArSyncModel.load([
+    {
+      api: 'profile',
+      query: [
+        'sync_keys',
+        'name', 'followed_count', 'following_count',
+        { posts: ['sync_keys', 'title', 'comments_count', 'created_at'] }
+      ]
+    },
+    {
+      api: 'newposts',
+      query: ['sync_keys', 'user', 'title', 'created_at', 'comments_count']
     }
-    vueData.currentUser = model.data
-  })
-  ArSyncModel.load({
-    api: 'newposts',
-    query: ['sync_keys', 'user', 'title', 'created_at', 'comments_count']
-  }).then(model => {
-    window.cmodel = model
-    if (!window.vueData) {
-      window.vueData = { currentUser: {}, newPosts: [] }
-      new Vue({ el: '#syncbody', data: vueData })
-    }
-    window.vueData.newPosts = model.data.collection
+  ]).then(([currentUserModel, newPostsModel]) => {
+    new Vue({
+      el: '#syncbody',
+      data: {
+        currentUser: currentUserModel.data,
+        newPosts: newPostsModel.collection
+      }
+    })
   })
 
 #syncbody [v-cloak]

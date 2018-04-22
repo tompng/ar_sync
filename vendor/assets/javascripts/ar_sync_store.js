@@ -289,7 +289,7 @@ class ArSyncModel {
     if (attrsonly) return attributes
     return { attributes, as: column, params }
   }
-  static load({ api, id, params, query }) {
+  static _load({ api, id, params, query }) {
     const parsedQuery = ArSyncModel.parseQuery(query)
     if (typeof params) {
       const requests = [{ api, query, params }]
@@ -297,6 +297,20 @@ class ArSyncModel {
     } else {
       return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(parsedQuery, data))
     }
+  }
+  static load(apiParams) {
+    if (!(apiParams instanceof Array)) return this._load(apiParams)
+    return new Promise((resolve, _reject) => {
+      const resultModels = []
+      let countdown = apiParams.length
+      apiParams.forEach((param, i) => {
+        this._load(param).then(model => {
+          resultModels[i] = model
+          countdown --
+          if (countdown == 0) resolve(resultModels)
+        })
+      })
+    })
   }
 }
 
