@@ -6,14 +6,15 @@ javascript:
       'name', 'followed_count', 'following_count',
       { posts: ['sync_keys', 'title', 'comments_count', 'created_at'] }
     ]
-  }).then(model => window.model = model)
-  /*ArSyncModel.load({ api: 'newposts'})
-    newPosts: {
-      api: 'newposts',
-      query: ['user', 'title', 'created_at', 'comments_count']
-    }
-  }).load((vueData) => {
-    new Vue({ el: '#syncbody', data: vueData })
+  }).then(model => {
+    window.model = model
+    new Vue({ el: '#syncbody', data: { currentUser: model.data, newPosts: [] }})
+  })
+  /*ArSyncModel.load({
+    api: 'newposts',
+    query: ['sync_keys', 'user', 'title', 'created_at', 'comments_count']
+  }).then(model => {
+    new Vue({ el: '#syncbody', data: { currentUser: widnow.modle, newposts: model }})
   })*/
 
 #syncbody [v-cloak]

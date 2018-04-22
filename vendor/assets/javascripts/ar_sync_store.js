@@ -148,22 +148,30 @@ const SyncBatchLoader = {
 
 class ArSyncModel {
   constructor(query, data) {
-    console.error(data)
     this.query = query
     this.data = {}
+    this.children = {}
     this.paths = []
     this.sync_keys = data.sync_keys
     for (const key in data) {
       const subData = data[key]
+      const subQuery = query.attributes[key]
       if (key == 'sync_keys') continue
-      if (subData && subData.sync_keys) {
-        this.paths.push(key)
-        this.data[key] = new ArSyncModel(query.attributes[key], subData)
-      } else if(subData instanceof Array) {
-        this.paths.push(key)
-        this.data[key] = subData.map(el => {
-          return (el && el.sync_keys) ? new ArSyncModel(query.attributes[key], el) : el
-        })
+      if (subQuery && subQuery.attributes && subQuery.attributes.sync_keys) {
+        if (subData instanceof Array) {
+          this.paths.push(key)
+          subData.map(el => {
+            if (!el.sync_keys) console.error('err', subData, el)
+          })
+          const models = subData.map(el => new ArSyncModel(subQuery, el))
+          this.children[key] = models
+          this.data[key] = models.map(m => m.data)
+        } else {
+          this.paths.push(key)
+          const model = new ArSyncModel(subQuery, subData)
+          this.children[key] = model
+          this.data[key] = model.data
+        }
       } else {
         this.data[key] = subData
       }
@@ -173,24 +181,29 @@ class ArSyncModel {
   onnotify(path, notifyData) {
     const { action, class_name, id } = notifyData
     if (action == 'remove') {
-      if (this.data[path] instanceof Array) {
-        const array = this.data[path]
-        const idx = array.findIndex(a => a.data.id == id)
+      if (this.children[path] instanceof Array) {
+        const idx = this.data[path].findIndex(a => a.id == id)
         if (idx >= 0) {
-          array[idx].release()
-          array.splice(idx, 1)
+          this.children[path][idx].release()
+          this.children[path].splice(idx, 1)
+          this.data[path].splice(idx, 1)
         }
       } else {
+        this.children[path].release()
+        this.children[path] = null
         this.data[path] = null
       }
     } else if (action == 'add') {
       console.error(notifyData, path)
       const query = this.query.attributes[path]
       SyncBatchLoader.fetch(class_name, id, query).then((data) => {
-        if (this.data[path] instanceof Array) {
-          this.data[path].push(new ArSyncModel(query, data))
+        const model = new ArSyncModel(query, data)
+        if (this.children[path] instanceof Array) {
+          this.children[path].push(model)
+          this.data[path].push(model.data)
         } else {
-          this.data[path] = new ArSyncModel(query, data)
+          this.children[path] = model
+          this.data[path] = model.data
         }
       })
     } else {
