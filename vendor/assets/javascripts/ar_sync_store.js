@@ -160,16 +160,12 @@ class ArSyncModel {
       const subQuery = query.attributes[key]
       if (key == 'sync_keys') continue
       if (subQuery && subQuery.attributes && subQuery.attributes.sync_keys) {
+        this.paths.push(key)
         if (subData instanceof Array) {
-          this.paths.push(key)
-          subData.map(el => {
-            if (!el.sync_keys) console.error('err', subData, el)
-          })
           const models = subData.map(el => new ArSyncModel(subQuery, el))
           this.children[key] = models
           this.data[key] = models.map(m => m.data)
         } else if(subData) {
-          this.paths.push(key)
           const model = new ArSyncModel(subQuery, subData)
           this.children[key] = model
           this.data[key] = model.data
