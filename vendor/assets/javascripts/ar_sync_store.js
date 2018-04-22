@@ -145,22 +145,22 @@ const SyncBatchLoader = {
   }
 }
 
-SyncModel.loadFromApi = function(api, params, query) {
+ArSyncModel.loadFromApi = function(api, params, query) {
   const request = {}
   request[api] = { query, params }
-  return fetchSyncAPI(request).then(data => new SyncModel(data, query))
+  return fetchSyncAPI(request).then(data => new ArSyncModel(data, query))
 }
-SyncModel.load = function(api, idOrParams, query) {
+ArSyncModel.load = function(api, idOrParams, query) {
   if (typeof idOrParams == 'object') {
     const request = {}
     request[api] = { query, params: idOrParams }
-    return fetchSyncAPI(request).then(data => new SyncModel(data, query))
+    return fetchSyncAPI(request).then(data => new ArSyncModel(data, query))
   } else {
     const id = idOrParams
-    return SyncBatchLoader.fetch(api, id, query).then(data => new SyncModel(data, query))
+    return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(data, query))
   }
 }
-class SyncModel {
+class ArSyncModel {
   constructor(query, data) {
     this.query = query
     this.data = {}
@@ -170,11 +170,11 @@ class SyncModel {
       if (key == 'sync_keys') continue
       if (subData && subData.sync_keys) {
         this.paths.push(key)
-        this.data[key] = new SyncModel(subData, query[key])
+        this.data[key] = new ArSyncModel(subData, query[key])
       } else if(subData instanceof Array) {
         this.paths.push(key)
         this.data[key] = subData.map(el => {
-          return (el && el.sync_keys) ? new SyncModel(el, query[key]) : el
+          return (el && el.sync_keys) ? new ArSyncModel(el, query[key]) : el
         })
       } else {
         this.data[key] = subData
@@ -197,9 +197,9 @@ class SyncModel {
       const query = this.query[path]
       SyncBatchLoader.fetch(class_name, id, query, (data) => {
         if (this.data[path] instanceof Array) {
-          this.data[path].push(new SyncModel(data, query))
+          this.data[path].push(new ArSyncModel(data, query))
         } else {
-          this.data[path] = new SyncModel(data, query)
+          this.data[path] = new ArSyncModel(data, query)
         }
       })
     } else {
@@ -225,8 +225,8 @@ class SyncModel {
 }
 
 try {
-  module.exports = ArSyncStore
+  module.exports = ArSyncModel
 } catch (e) {
-  window.ArSyncStore = ArSyncStore
+  window.ArSyncModel = ArSyncModel
 }
 })()
