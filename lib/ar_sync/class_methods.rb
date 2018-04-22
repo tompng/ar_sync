@@ -106,7 +106,7 @@ module ArSync::ClassMethods
     _sync_define ArSync::DataField.new(:id)
 
     sync_has_data :sync_keys do |current_user|
-      [ArSync.sync_key(self, nil), ArSync.sync_key(self, current_user)]
+      ArSync.sync_keys(self, current_user)
     end
 
     before_destroy do

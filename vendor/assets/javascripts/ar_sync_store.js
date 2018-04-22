@@ -128,6 +128,7 @@ const SyncBatchLoader = {
       ;(g.callbacks[b.id] = g.callbacks[b.id] || []).push(b.callback)
       g.ids.add(b.id)
     }
+    this.batch = []
     const requests = []
     const requestBases = []
     for (const el of Object.values(grouped)) {
@@ -148,6 +149,7 @@ const SyncBatchLoader = {
 
 class ArSyncModel {
   constructor(query, data) {
+    if (data.collection) query = { attributes: { collection: query } }
     this.query = query
     this.data = {}
     this.children = {}
@@ -176,6 +178,7 @@ class ArSyncModel {
         this.data[key] = subData
       }
     }
+    this.collection = this.data.collection
     this.subscribe()
   }
   onnotify(path, notifyData) {
@@ -194,7 +197,6 @@ class ArSyncModel {
         this.data[path] = null
       }
     } else if (action == 'add') {
-      console.error(notifyData, path)
       const query = this.query.attributes[path]
       SyncBatchLoader.fetch(class_name, id, query).then((data) => {
         const model = new ArSyncModel(query, data)
@@ -220,7 +222,6 @@ class ArSyncModel {
       const val = this.query.attributes[key]
       if (!val || !val.attributes || !val.attributes.sync_keys) reloadQuery.attributes.push(key)
     }
-    console.error('rq', reloadQuery)
     return reloadQuery
   }
   update(data) {

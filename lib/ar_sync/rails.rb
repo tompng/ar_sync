@@ -56,7 +56,14 @@ module ArSync
 
     def api_call
       _api_call do |model, current_user, query|
-        ArSerializer.serialize model, query, context: current_user, include_id: true, use: :sync
+        serialized = ArSerializer.serialize model, query, context: current_user, include_id: true, use: :sync
+        next serialized unless model.is_a? ArSync::Collection
+        {
+          sync_keys: ArSync.sync_keys(model, current_user),
+          collection: serialized,
+          limit: model.limit,
+          order: model.order
+        }
       end
     end
   end

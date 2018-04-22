@@ -18,6 +18,10 @@ module ArSync
     @sync_send_block&.call "#{key}#{path}", action: action, class_name: model.class.base_class.name, id: model.id
   end
 
+  def self.sync_keys(model, current_user)
+    [sync_key(model), sync_key(model, current_user)]
+  end
+
   def self.sync_key(model, to_user = nil)
     if model.is_a? ArSync::Collection
       key = [to_user&.id, model.klass.name, model.name].join '/'

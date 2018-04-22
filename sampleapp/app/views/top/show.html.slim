@@ -8,14 +8,23 @@ javascript:
     ]
   }).then(model => {
     window.model = model
-    new Vue({ el: '#syncbody', data: { currentUser: model.data, newPosts: [] }})
+    if (!window.vueData) {
+      window.vueData = { currentUser: {}, newPosts: [] }
+      new Vue({ el: '#syncbody', data: vueData })
+    }
+    vueData.currentUser = model.data
   })
-  /*ArSyncModel.load({
+  ArSyncModel.load({
     api: 'newposts',
     query: ['sync_keys', 'user', 'title', 'created_at', 'comments_count']
   }).then(model => {
-    new Vue({ el: '#syncbody', data: { currentUser: widnow.modle, newposts: model }})
-  })*/
+    window.cmodel = model
+    if (!window.vueData) {
+      window.vueData = { currentUser: {}, newPosts: [] }
+      new Vue({ el: '#syncbody', data: vueData })
+    }
+    window.vueData.newPosts = model.data.collection
+  })
 
 #syncbody [v-cloak]
   h1 Top Page: welcome {{currentUser.name}}!

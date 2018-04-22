@@ -28,12 +28,12 @@ class ArSync::Collection
 
   def _sync_notify_child_changed(_child, _name, _to_user); end
 
-  def _sync_notify_child_added(child, name, to_user)
-    ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
+  def _sync_notify_child_added(child, _name, to_user)
+    ArSync.sync_send to: self, action: :add, model: child, path: :collection, to_user: to_user
   end
 
-  def _sync_notify_child_removed(child, name, to_user)
-    ArSync.sync_send to: self, action: :remove, model: child, path: name, to_user: to_user
+  def _sync_notify_child_removed(child, _name, to_user)
+    ArSync.sync_send to: self, action: :remove, model: child, path: :collection, to_user: to_user
   end
 
   def self._sync_children_info
