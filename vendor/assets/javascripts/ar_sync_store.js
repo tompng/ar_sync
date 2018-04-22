@@ -130,7 +130,7 @@ const SyncBatchLoader = {
     const requests = []
     const requestBases = []
     for (const el of grouped) {
-      requests.push([el.api, { query: el.query, params: { ids: [...el.ids] }]})
+      requests.push([el.api, { query: el.query, params: { ids: [...el.ids] }}])
       requestBases.push(el)
     }
     fetchSyncAPI(requests).then(data => {
@@ -145,21 +145,6 @@ const SyncBatchLoader = {
   }
 }
 
-ArSyncModel.loadFromApi = function(api, params, query) {
-  const request = {}
-  request[api] = { query, params }
-  return fetchSyncAPI(request).then(data => new ArSyncModel(data, query))
-}
-ArSyncModel.load = function(api, idOrParams, query) {
-  if (typeof idOrParams == 'object') {
-    const request = {}
-    request[api] = { query, params: idOrParams }
-    return fetchSyncAPI(request).then(data => new ArSyncModel(data, query))
-  } else {
-    const id = idOrParams
-    return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(data, query))
-  }
-}
 class ArSyncModel {
   constructor(query, data) {
     this.query = query
@@ -223,6 +208,23 @@ class ArSyncModel {
     this.listeners = []
   }
 }
+ArSyncModel.loadFromApi = function(api, params, query) {
+  const request = {}
+  request[api] = { query, params }
+  return fetchSyncAPI(request).then(data => new ArSyncModel(data, query))
+}
+ArSyncModel.load = function(api, idOrParams, query) {
+  if (typeof idOrParams == 'object') {
+    const request = {}
+    request[api] = { query, params: idOrParams }
+    return fetchSyncAPI(request).then(data => new ArSyncModel(data, query))
+  } else {
+    const id = idOrParams
+    return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(data, query))
+  }
+}
+
+
 
 try {
   module.exports = ArSyncModel

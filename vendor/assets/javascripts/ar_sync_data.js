@@ -2,9 +2,10 @@
 let ArSyncStore, fetchSyncAPI
 try {
   ArSyncStore = require('./ar_sync_store')
-  { fetchSyncAPI } = require('./ar_sync_fetch')
+  fetchSyncAPI = require('./ar_sync_fetch').fetchSyncAPI
 } catch(e) {
-  { ArSyncStore, fetchSyncAPI } = window
+  ArSyncStore = window.ArSyncStore
+  fetchSyncAPI = window.fetchSyncAPI
 }
 
 class ArSyncSubscriberListener {
@@ -48,12 +49,12 @@ class ArSyncSubscriber {
     ArSyncData.connectionAdapter.disconnect(key)
   }
 }
-ArSyncSubscriber.subscribe(key, func) {
-  const s = ArSyncSubscriber.subscribers[key]
-  if (!s) ArSyncSubscriber.subscribers[key] = s = new ArSyncSubscriber(key)
+ArSyncSubscriber.subscribe = function(key, func) {
+  let s = ArSyncSubscriber.subscribers[key]
+  if (!s) s = ArSyncSubscriber.subscribers[key] = new ArSyncSubscriber(key)
   return s.listen(func)
 }
-ArSyncSubscriber.notifyEmpty(key) {
+ArSyncSubscriber.notifyEmpty = function(key) {
   const s = ArSyncSubscriber.subscribers[key]
   if (!s) return
   s.release()

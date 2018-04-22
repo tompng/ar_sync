@@ -19,7 +19,7 @@ ArSyncData.connectionAdapter = {
     return this.cable().subscriptions.create(
       { channel: this.channelName, key }, { received, disconnected, connected }
     )
-  }
+  },
   disconnect(key) {
     /* unimplemented */
   }

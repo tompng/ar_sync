@@ -16,4 +16,4 @@ function fetchSyncAPI(requests, optionalParams) {
 fetchStaticAPI.apiEndPoint = '/static_api'
 fetchSyncAPI.apiEndPoint = '/sync_api'
 
-try { module.exports = { fetchStaticAPI, fetchSyncAPI } catch (e) {}
+try { module.exports = { fetchStaticAPI, fetchSyncAPI } } catch (e) {}
