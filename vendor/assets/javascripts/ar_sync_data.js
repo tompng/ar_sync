@@ -2,7 +2,7 @@
 let ArSyncStore, fetchSyncAPI
 try {
   ArSyncStore = require('./ar_sync_store')
-  fetchSyncAPI = require('./ar_sync_fetch').fetchSyncAPI
+  fetchSyncAPI = require('./ar_sync_fetch')
 } catch(e) {
   ArSyncStore = window.ArSyncStore
   fetchSyncAPI = window.fetchSyncAPI

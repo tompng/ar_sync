@@ -29,8 +29,7 @@ module ArSync
     def setup_routes
       inject_into_file(
         'config/routes.rb',
-        "\n  post '/sync_api', to: 'sync_api#sync_call'" +
-        "\n  post '/static_api', to: 'sync_api#static_call'",
+        "\n  post '/sync_api', to: 'sync_api#api_call'",
         after: 'Rails.application.routes.draw do'
       )
     end
