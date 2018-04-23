@@ -22,7 +22,7 @@ gem 'slim-rails'
 
 # gem 'ar_sync', github: 'tompng/ar_sync'
 gem 'ar_sync', path: '../'
-gem 'ar_serializer', github: 'tompng/ar_serializer'
+gem 'ar_serializer', github: 'tompng/ar_serializer', branch: :custom_defaults
 gem 'top_n_loader', github: 'tompng/top_n_loader'
 
 group :production do
