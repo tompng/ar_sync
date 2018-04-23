@@ -133,7 +133,7 @@ class ArSyncModel extends ArSyncContainerBase {
       const subData = data[aliasName]
       if (key == 'sync_keys') continue
       if (subQuery.attributes && subQuery.attributes.sync_keys) {
-        if (subData instanceof Array) {
+        if (subData instanceof Array || (subData && subData.collection && subData.order)) {
           const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData)
           this.children[aliasName] = collection
           this.data[aliasName] = collection.data
@@ -210,7 +210,15 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.query = query
     this.data = []
     this.children = []
-    for (const subData of data) {
+    let collection
+    if (data.collection && data.order) {
+      collection = data.collection
+      this.order = data.order
+    } else {
+      collection = data
+      this.order = { limit: null, mode: 'asc' }
+    }
+    for (const subData of collection) {
       const model = new ArSyncModel(this.query, subData)
       this.children.push(model)
       this.data.push(model.data)
@@ -223,8 +231,22 @@ class ArSyncCollection extends ArSyncContainerBase {
       const query = this.query
       SyncBatchLoader.fetch(class_name, id, query).then((data) => {
         const model = new ArSyncModel(query, data)
-        this.children.push(model)
-        this.data.push(model.data)
+        const overflow = this.order.limit && this.order.limit == this.data.length
+        if (this.order.mode == 'asc') {
+          this.children.push(model)
+          this.data.push(model.data)
+          if (overflow) {
+            this.children.shift()
+            this.data.shift()
+          }
+        } else {
+          this.children.unshift(model)
+          this.data.unshift(model.data)
+          if (overflow) {
+            this.children.pop()
+            this.data.pop()
+          }
+        }
       })
     } else if (action == 'remove') {
       const idx = this.data.findIndex(a => a.id == id)

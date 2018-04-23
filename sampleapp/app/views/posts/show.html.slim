@@ -20,7 +20,6 @@ javascript:
       ]
     }
   ]).then(([userModel, postModel]) => {
-  pm=postModel
     new Vue({ el: '#syncbody', data: { currentUser: userModel.data, post: postModel.data }})
   })
 

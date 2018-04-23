@@ -3,19 +3,14 @@ require_relative 'collection'
 
 
 class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
-  def initialize(records, klass:, order:, limit:)
+  def initialize(records, order:, limit:)
     @records = records
-    @order_key, @order_mode = ArSerializer::Field.parse_order klass, order
-    @limit = limit
+    @order = { mode: order, limit: limit }
   end
 
   def build
-    record_values = @records.map { |r| [r, {}] }
-    output = {
-      order: { key: @order_key, mode: @order_mode, limit: @limit },
-      collection: record_values.map(&:last)
-    }
-    [output, record_values]
+    values = @records.map { {} }
+    [{ order: @order, collection: values }, @records.zip(values)]
   end
 
 end
@@ -34,21 +29,21 @@ module ArSync::ClassMethods
     _sync_define ArSync::HasOneField.new(name), option, &data_block
   end
 
-  def sync_has_many(name, order: nil, limit: nil, preload: nil, association: nil, **option, &data_block)
+  def sync_has_many(name, order: :asc, limit: nil, preload: nil, association: nil, **option, &data_block)
+    raise "order not in [:asc, :desc] : #{order}" unless order.in? %i[asc desc]
     if data_block.nil? && preload.nil?
       preload = lambda do |records, _context, params|
         ArSerializer::Field.preload_association(
           self, records, association || name,
-          order: (!limit && params && params[:order]) || order || :asc,
+          order: (!limit && params && params[:order]) || order,
           limit: [params && params[:limit]&.to_i, limit].compact.min
         )
       end
       data_block = lambda do |preloaded, _context, params|
         records = preloaded ? preloaded[id] || [] : send(name)
-        next records unless limit || order
+        next records unless limit || order == :asc
         ArSync::CollectionWithOrder.new(
           records,
-          klass: self.class,
           order: (!limit && params && params[:order]) || order,
           limit: [params && params[:limit]&.to_i, limit].compact.min
         )
