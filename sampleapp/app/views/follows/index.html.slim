@@ -4,8 +4,8 @@ javascript:
     query: [
       'sync_keys', 'name',
       {
-        followeds: ['sync_keys', { from: ['sync_keys', 'id', 'name', { as: 'user' }] }],
-        followings: ['sync_keys', { to: ['sync_keys', 'id', 'name', { as: 'user' }] }]
+        followeds: ['sync_keys', { from: ['sync_keys', 'name', { as: 'user' }] }],
+        followings: ['sync_keys', { to: ['sync_keys', 'name', { as: 'user' }] }]
       }
     ]
   }).then((userModel) => {

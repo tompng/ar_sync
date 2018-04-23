@@ -10,7 +10,7 @@ javascript:
     },
     {
       api: 'newposts',
-      query: ['sync_keys', 'title', 'created_at', 'comments_count', { user: ['sync_keys', 'id', 'name'] }]
+      query: ['sync_keys', 'title', 'created_at', 'comments_count', { user: ['sync_keys', 'name'] }]
     }
   ]).then(([currentUserModel, newPostsModel]) => {
     new Vue({
