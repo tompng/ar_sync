@@ -240,6 +240,11 @@ class ArSyncCollection extends ArSyncContainerBase {
       console.error('warning: no sync_keys')
       this.sync_keys = []
     }
+    if (query.params && (query.params.order || query.params.limit)) {
+      this.order = { limit: query.params.limit, mode: query.params.order || 'asc' }
+    } else {
+      this.order = { limit: null, mode: 'asc' }
+    }
     this.query = query
     this.data = []
     this.children = []
@@ -254,7 +259,6 @@ class ArSyncCollection extends ArSyncContainerBase {
       this.order = data.order
     } else {
       collection = data
-      this.order = { limit: null, mode: 'asc' }
     }
     const newChildren = []
     const newData = []
