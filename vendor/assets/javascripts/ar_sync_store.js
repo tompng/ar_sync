@@ -126,25 +126,27 @@ class ArSyncModel extends ArSyncContainerBase {
       this.sync_keys = []
       console.error('warning: no sync_keys')
     }
-    for (const key in data) {
-      const subData = data[key]
+    this.data.id = data.id
+    for (const key in query.attributes) {
       const subQuery = query.attributes[key]
+      const aliasName = subQuery.as || key
+      const subData = data[aliasName]
       if (key == 'sync_keys') continue
-      if (subQuery && subQuery.attributes && subQuery.attributes.sync_keys) {
+      if (subQuery.attributes && subQuery.attributes.sync_keys) {
         if (subData instanceof Array) {
           const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData)
-          this.children[key] = collection
-          this.data[key] = collection.data
+          this.children[aliasName] = collection
+          this.data[aliasName] = collection.data
         } else {
           this.paths.push(key)
           if (subData) {
             const model = new ArSyncModel(subQuery, subData)
-            this.children[key] = model
-            this.data[key] = model.data
+            this.children[aliasName] = model
+            this.data[aliasName] = model.data
           }
         }
       } else {
-        this.data[key] = subData
+        this.data[aliasName] = subData
       }
     }
     this.subscribeAll()
@@ -203,7 +205,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       this.sync_keys = sync_keys.map(key => key + path)
     } else {
       console.error('warning: no sync_keys')
-      this.sykc_keys = []
+      this.sync_keys = []
     }
     this.query = query
     this.data = []
