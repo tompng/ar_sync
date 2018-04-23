@@ -34,7 +34,7 @@ class CommentsController < ApplicationController
   def reaction
     kind = params[:kind].presence
     reaction = Comment.find(params[:id]).reactions.find_by(user: current_user)
-    if kind
+    if kind.in? %w[like dislike]
       if reaction
         reaction.update kind: kind
       else
