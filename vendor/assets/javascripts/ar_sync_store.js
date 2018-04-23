@@ -48,7 +48,9 @@ class ArSyncContainerBase {
   initForReload(requests) {
     this.networkSubscriber = ArSyncSubscriber.connectionAdapter.subscribeNetwork((state) => {
       if (state) {
-        fetchSyncAPI(requests).then(data => this.replaceData(data[0]))
+        fetchSyncAPI(requests).then(data => {
+          if (this.data) this.replaceData(data[0])
+        })
       }
     })
   }
