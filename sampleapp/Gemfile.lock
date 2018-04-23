@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/tompng/ar_serializer.git
-  revision: 6c0b0dc9ad11e2800ff21bbb3ad8e8ac86b76991
+  revision: 6f7f1f4c3ae4b59d448e0e771802a52a9597444a
   branch: custom_defaults
   specs:
     ar_serializer (0.1.0)
