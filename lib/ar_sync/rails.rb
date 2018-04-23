@@ -60,9 +60,8 @@ module ArSync
         next serialized unless model.is_a? ArSync::Collection
         {
           sync_keys: ArSync.sync_keys(model, current_user),
-          collection: serialized,
-          limit: model.limit,
-          order: model.order
+          order: { mode: model.order, limit: model.limit },
+          collection: serialized
         }
       end
     end

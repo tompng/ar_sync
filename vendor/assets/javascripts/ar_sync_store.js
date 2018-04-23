@@ -95,7 +95,14 @@ class ArSyncContainerBase {
       return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(parsedQuery, data))
     } else {
       const requests = [{ api, query, params }]
-      return fetchSyncAPI(requests).then(data => new ArSyncModel(parsedQuery, data[0]))
+      return fetchSyncAPI(requests).then(data => {
+        const response = data[0]
+        if (response.collection && response.order) {
+          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response)
+        } else {
+          return new ArSyncModel(parsedQuery, response)
+        }
+      })
     }
   }
   static load(apiParams) {
