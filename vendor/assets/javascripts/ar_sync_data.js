@@ -20,7 +20,7 @@ class ArSyncSubscriberListener {
 }
 class ArSyncSubscriber {
   constructor(key) {
-    this.key
+    this.key = key
     const disconnected = () => console.error('disconnected: ' + key)
     const connected = () => console.error('connected: ' + key)
     const received = data => this.received(data)
@@ -48,7 +48,7 @@ class ArSyncSubscriber {
     }
   }
   release() {
-    ArSyncSubscriber.connectionAdapter.disconnect(key)
+    ArSyncSubscriber.connectionAdapter.disconnect(this.key)
   }
 }
 ArSyncSubscriber.subscribers = {}

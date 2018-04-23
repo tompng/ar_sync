@@ -11,17 +11,20 @@ try {
 }
 ArSyncSubscriber.connectionAdapter = {
   channelName: 'SyncChannel',
+  channels: {},
   cable() {
     if (!this._cable) this._cable = ActionCable.createConsumer()
     return this._cable
   },
   connect({ key, received, disconnected, connected }) {
-    return this.cable().subscriptions.create(
+    return this.channels[key] = this.cable().subscriptions.create(
       { channel: this.channelName, key }, { received, disconnected, connected }
     )
   },
   disconnect(key) {
-    /* unimplemented */
+    console.error('unsubscribed: ' + key)
+    this.channels[key].unsubscribe()
+    delete this.channels[key]
   }
 }
 })()
