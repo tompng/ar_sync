@@ -45,7 +45,15 @@ class ArSyncContainerBase {
   constructor() {
     this.listeners = []
   }
+  initForReload(requests) {
+    this.networkSubscriber = ArSyncSubscriber.connectionAdapter.subscribeNetwork((state) => {
+      if (state) {
+        fetchSyncAPI(requests).then(data => this.replaceData(data[0]))
+      }
+    })
+  }
   release() {
+    if (this.networkSubscriber) this.networkSubscriber.unsubscribe()
     this.unsubscribeAll()
     this.eachChild(child => child.release())
     this.data = null
@@ -98,9 +106,9 @@ class ArSyncContainerBase {
       return fetchSyncAPI(requests).then(data => {
         const response = data[0]
         if (response.collection && response.order) {
-          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response)
+          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, requests)
         } else {
-          return new ArSyncModel(parsedQuery, response)
+          return new ArSyncModel(parsedQuery, response, requests)
         }
       })
     }
@@ -122,34 +130,51 @@ class ArSyncContainerBase {
 }
 
 class ArSyncModel extends ArSyncContainerBase {
-  constructor(query, data){
+  constructor(query, data, requests){
     super()
+    if (requests) this.initForReload(requests)
     this.query = query
     this.data = {}
     this.children = {}
-    this.paths = []
     this.sync_keys = data.sync_keys
     if (!this.sync_keys) {
       this.sync_keys = []
       console.error('warning: no sync_keys')
     }
+    this.replaceData(data)
+  }
+  replaceData(data) {
+    this.unsubscribeAll()
     this.data.id = data.id
-    for (const key in query.attributes) {
-      const subQuery = query.attributes[key]
+    this.paths = []
+    for (const key in this.query.attributes) {
+      const subQuery = this.query.attributes[key]
       const aliasName = subQuery.as || key
       const subData = data[aliasName]
       if (key == 'sync_keys') continue
       if (subQuery.attributes && subQuery.attributes.sync_keys) {
         if (subData instanceof Array || (subData && subData.collection && subData.order)) {
-          const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData)
-          this.children[aliasName] = collection
-          this.data[aliasName] = collection.data
+          if (this.children[aliasName]) {
+            this.children[aliasName].replaceData(subData)
+          } else {
+            const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData)
+            this.children[aliasName] = collection
+            this.data[aliasName] = collection.data
+          }
         } else {
           this.paths.push(key)
           if (subData) {
-            const model = new ArSyncModel(subQuery, subData)
-            this.children[aliasName] = model
-            this.data[aliasName] = model.data
+            if (this.children[aliasName]) {
+              this.children[aliasName].replaceData(subData)
+            } else {
+              const model = new ArSyncModel(subQuery, subData)
+              this.children[aliasName] = model
+              this.data[aliasName] = model.data
+            }
+          } else {
+            if(this.children[aliasName]) this.children[aliasName].release()
+            delete this.children[aliasName]
+            this.data[aliasName] = null
           }
         }
       } else {
@@ -206,8 +231,9 @@ class ArSyncModel extends ArSyncContainerBase {
   }
 }
 class ArSyncCollection extends ArSyncContainerBase {
-  constructor(sync_keys, path, query, data){
+  constructor(sync_keys, path, query, data, requests){
     super()
+    if (requests) this.initForReload(requests)
     if (sync_keys) {
       this.sync_keys = sync_keys.map(key => key + path)
     } else {
@@ -217,6 +243,11 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.query = query
     this.data = []
     this.children = []
+    this.replaceData(data)
+  }
+  replaceData(data) {
+    const existings = {}
+    for (const child of this.children) existings[child.data.id] = child
     let collection
     if (data.collection && data.order) {
       collection = data.collection
@@ -225,11 +256,25 @@ class ArSyncCollection extends ArSyncContainerBase {
       collection = data
       this.order = { limit: null, mode: 'asc' }
     }
+    const newChildren = []
+    const newData = []
     for (const subData of collection) {
-      const model = new ArSyncModel(this.query, subData)
-      this.children.push(model)
-      this.data.push(model.data)
+      let model = existings[subData.id]
+      if (model) {
+        model.replaceData(subData)
+      } else {
+        model = new ArSyncModel(this.query, subData)
+      }
+      newChildren.push(model)
+      newData.push(model.data)
     }
+    while (this.children.length) {
+      const child = this.children.pop()
+      if (!existings[child.data.id]) child.release()
+    }
+    while (this.data.length) this.data.pop()
+    for (const child of newChildren) this.children.push(child)
+    for (const el of newData) this.data.push(el)
     this.subscribeAll()
   }
   consumeAdd(className, id) {

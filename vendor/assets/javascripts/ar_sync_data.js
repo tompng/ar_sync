@@ -21,13 +21,11 @@ class ArSyncSubscriberListener {
 class ArSyncSubscriber {
   constructor(key) {
     this.key = key
-    const disconnected = () => console.error('disconnected: ' + key)
-    const connected = () => console.error('connected: ' + key)
     const received = data => this.received(data)
     this.listeners = {}
     this.listenerSerial = 0
     this.listenerCount = 0
-    ArSyncSubscriber.connectionAdapter.connect({ key, received, disconnected, connected })
+    this.subscription = ArSyncSubscriber.connectionAdapter.subscribe(key, received)
   }
   listen(func) {
     const id = this.listenerSerial++
@@ -48,7 +46,7 @@ class ArSyncSubscriber {
     }
   }
   release() {
-    ArSyncSubscriber.connectionAdapter.disconnect(this.key)
+    this.subscription.unsubscribe()
   }
 }
 ArSyncSubscriber.subscribers = {}
