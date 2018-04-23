@@ -154,7 +154,7 @@ class ArSyncModel extends ArSyncContainerBase {
   eachChild(callback) {
     for (const key in this.children) callback(this.children[key])
   }
-  onnotify(notifyData, path) {
+  onNotify(notifyData, path) {
     const { action, class_name, id } = notifyData
     if (action == 'remove') {
       this.children[path].release()
@@ -175,10 +175,10 @@ class ArSyncModel extends ArSyncContainerBase {
     }
   }
   subscribeAll() {
-    const callback = data => this.onnotify(data)
+    const callback = data => this.onNotify(data)
     for (const key of this.sync_keys) this.subscribe(key, callback)
     for (const path of this.paths) {
-      const pathCallback = data => this.onnotify(data, path)
+      const pathCallback = data => this.onNotify(data, path)
       for (const key of this.sync_keys) this.subscribe(key + path, pathCallback)
     }
   }
@@ -225,43 +225,66 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
     this.subscribeAll()
   }
-  onnotify(notifyData) {
-    const { action, class_name, id } = notifyData
-    if (action == 'add') {
-      const query = this.query
-      SyncBatchLoader.fetch(class_name, id, query).then((data) => {
-        const model = new ArSyncModel(query, data)
-        const overflow = this.order.limit && this.order.limit == this.data.length
-        if (this.order.mode == 'asc') {
-          this.children.push(model)
-          this.data.push(model.data)
-          if (overflow) {
-            this.children.shift()
-            this.data.shift()
-          }
-        } else {
-          this.children.unshift(model)
-          this.data.unshift(model.data)
-          if (overflow) {
-            this.children.pop()
-            this.data.pop()
-          }
-        }
-      })
-    } else if (action == 'remove') {
-      const idx = this.data.findIndex(a => a.id == id)
-      if (idx >= 0) {
-        this.children[idx].release()
-        this.children.splice(idx, 1)
-        this.data.splice(idx, 1)
+  consumeAdd(className, id) {
+    if (this.order.limit === this.data.length) {
+      if (this.order.mode == 'asc') {
+        const last = this.data[this.data.length - 1]
+        if (last && last.id < id) return
+      } else {
+        const last = this.data[this.data.length - 1]
+        if (last && last.id > id) return
       }
+    }
+    SyncBatchLoader.fetch(className, id, this.query).then((data) => {
+      const model = new ArSyncModel(this.query, data)
+      const overflow = this.order.limit && this.order.limit == this.data.length
+      if (this.order.mode == 'asc') {
+        const last = this.data[this.data.length - 1]
+        this.children.push(model)
+        this.data.push(model.data)
+        if (last && last.id > id) {
+          this.children.sort((a, b) => a.data.id < b.data.id ? -1 : +1)
+          this.data.sort((a, b) => a.id < b.id ? -1 : +1)
+        }
+        if (overflow) {
+          this.children.shift().release()
+          this.data.shift()
+        }
+      } else {
+        const first = this.data[0]
+        this.children.unshift(model)
+        this.data.unshift(model.data)
+        if (first && first.id > id) {
+          this.children.sort((a, b) => a.data.id > b.data.id ? -1 : +1)
+          this.data.sort((a, b) => a.id > b.id ? -1 : +1)
+        }
+        if (overflow) {
+          this.children.pop().release()
+          this.data.pop()
+        }
+      }
+    })
+  }
+  consumeRemove(id) {
+    const idx = this.data.findIndex(a => a.id === id)
+    if (idx >= 0) {
+      this.children[idx].release()
+      this.children.splice(idx, 1)
+      this.data.splice(idx, 1)
+    }
+  }
+  onNotify(notifyData) {
+    if (notifyData.action == 'add') {
+      this.consumeAdd(notifyData.class_name, notifyData.id)
+    } else if (notifyData.action == 'remove') {
+      this.consumeRemove(notifyData.id)
     }
   }
   eachChild(callback) {
     for (const child of this.children) callback(child)
   }
   subscribeAll() {
-    const callback = data => this.onnotify(data)
+    const callback = data => this.onNotify(data)
     for (const key of this.sync_keys) this.subscribe(key, callback)
   }
 }
