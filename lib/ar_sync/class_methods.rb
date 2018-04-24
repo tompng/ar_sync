@@ -15,21 +15,25 @@ class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
 
 end
 module ArSync::ClassMethods
-  def sync_has_data(*names, **option, &original_data_block)
+  def sync_field(*names, **option, &data_block)
     @_sync_self = true
-    if original_data_block
-      data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
-    end
     names.each do |name|
-      _sync_define ArSync::DataField.new(name), option, &data_block
+      reflection = reflect_on_association option[:association] || name
+      if reflection&.is_a? ActiveRecord::Reflection::HasManyReflection
+        _sync_has_many name, option, &data_block
+      elsif reflection
+        _sync_has_one name, option, &data_block
+      else
+        _sync_define name, option, &data_block
+      end
     end
   end
 
-  def sync_has_one(name, **option, &data_block)
-    _sync_define ArSync::HasOneField.new(name), option, &data_block
+  def _sync_has_one(name, **option, &data_block)
+    _sync_define name, option, &data_block
   end
 
-  def sync_has_many(name, order: :asc, limit: nil, preload: nil, association: nil, **option, &data_block)
+  def _sync_has_many(name, order: :asc, limit: nil, preload: nil, association: nil, **option, &data_block)
     raise "order not in [:asc, :desc] : #{order}" unless order.in? %i[asc desc]
     if data_block.nil? && preload.nil?
       preload = lambda do |records, _context, params|
@@ -49,22 +53,21 @@ module ArSync::ClassMethods
         )
       end
     end
-    field = ArSync::HasManyField.new name, association: association, order: order, limit: limit
-    _sync_define field, preload: preload, association: association, **option, &data_block
+    _sync_define name, preload: preload, association: association, **option, &data_block
   end
 
-  def _sync_define(info, **option, &data_block)
+  def _sync_define(name, **option, &data_block)
     _initialize_sync_callbacks
-    _sync_children_info[info.name] = info
-    serializer_field info.name, **option, namespace: :sync, &data_block
-    serializer_field info.name, **option, &data_block
+    serializer_field name, **option, namespace: :sync, &data_block
+    serializer_field name, **option, &data_block
   end
 
-  def sync_parent(parent, inverse_of:, only_to: nil)
+  def sync_parent(parent, inverse_of: nil, affects: nil, only_to: nil)
+    raise ArgumentError unless [inverse_of, affects].compact.size == 1
     _initialize_sync_callbacks
     _sync_parents_info << [
       parent,
-      { inverse_name: inverse_of, only_to: only_to }
+      { inverse_name: inverse_of || affects, only_to: only_to, owned: inverse_of.present? }
     ]
   end
 
@@ -86,16 +89,6 @@ module ArSync::ClassMethods
     @_sync_parents_info ||= []
   end
 
-  def _sync_children_info
-    @_sync_children_info ||= {}
-  end
-
-  def _sync_child_info(name)
-    info = _sync_children_info[name]
-    return info if info
-    superclass._sync_child_info name if superclass < ActiveRecord::Base
-  end
-
   def _each_sync_parent(&block)
     _sync_parents_info.each(&block)
     superclass._each_sync_parent(&block) if superclass < ActiveRecord::Base
@@ -114,9 +107,9 @@ module ArSync::ClassMethods
     prepend mod
     attr_reader :_sync_parents_info_before_mutation
     @_sync_callbacks_initialized = true
-    _sync_define ArSync::DataField.new(:id)
+    _sync_define :id
 
-    sync_has_data :sync_keys do |current_user|
+    sync_field :sync_keys do |current_user|
       ArSync.sync_keys(self, current_user)
     end
 

@@ -6,14 +6,14 @@ module ArSync::InstanceMethods
 
   def _sync_current_parents_info
     [].tap do |parents|
-      self.class._each_sync_parent do |parent, inverse_name:, only_to:|
+      self.class._each_sync_parent do |parent, inverse_name:, only_to:, owned:|
         parent = send parent if parent.is_a? Symbol
         parent = instance_exec(&parent) if parent.is_a? Proc
         if only_to
           to_user = instance_exec(&only_to)
           parent = nil unless to_user
         end
-        parents << [parent, [inverse_name, to_user]]
+        parents << [parent, [inverse_name, to_user, owned]]
       end
     end
   end
@@ -39,28 +39,25 @@ module ArSync::InstanceMethods
     end
   end
 
-  def _sync_notify_child_removed(child, name, to_user)
-    case self.class._sync_child_info name
-    when ArSync::DataField
-      ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
-    when ArSync::HasOneField, ArSync::HasManyField
+  def _sync_notify_child_removed(child, name, to_user, owned)
+    if owned
       ArSync.sync_send to: self, action: :remove, model: child, path: name, to_user: to_user
-    end
-  end
-
-  def _sync_notify_child_added(child, name, to_user)
-    case self.class._sync_child_info name
-    when ArSync::DataField
+    else
       ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
-    when ArSync::HasOneField, ArSync::HasManyField
-      ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
     end
   end
 
-  def _sync_notify_child_changed(_child, name, to_user)
-    if self.class._sync_child_info(name).is_a? ArSync::DataField
-      ArSync.sync_send(to: self, action: :update, model: self, to_user: to_user)
+  def _sync_notify_child_added(child, name, to_user, owned)
+    if owned
+      ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
+    else
+      ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
     end
+  end
+
+  def _sync_notify_child_changed(_child, _name, to_user, owned)
+    return if owned
+    ArSync.sync_send(to: self, action: :update, model: self, to_user: to_user)
   end
 
   def _sync_notify_self
