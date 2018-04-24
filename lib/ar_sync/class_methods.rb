@@ -1,17 +1,5 @@
 require_relative 'collection'
 
-class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
-  def initialize(records, order:, limit:)
-    @records = records
-    @order = { mode: order, limit: limit }
-  end
-
-  def build
-    values = @records.map { {} }
-    [{ order: @order, collection: values }, @records.zip(values)]
-  end
-
-end
 module ArSync::ClassMethods
   def sync_field(*names, **option, &data_block)
     @_sync_self = true

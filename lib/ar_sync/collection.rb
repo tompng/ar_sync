@@ -36,3 +36,15 @@ class ArSync::Collection
     defined_collections[[klass, name]]
   end
 end
+
+class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
+  def initialize(records, order:, limit:)
+    @records = records
+    @order = { mode: order, limit: limit }
+  end
+
+  def build
+    values = @records.map { {} }
+    [{ order: @order, collection: values }, @records.zip(values)]
+  end
+end
