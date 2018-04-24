@@ -5,10 +5,8 @@ class Post < ApplicationRecord
 
   sync_define_collection :latest10, limit: 10, order: :desc
   sync_parent :user, inverse_of: :posts
-  sync_has_data :title, :body, :created_at, :updated_at
-  sync_has_many :comments
-  sync_has_many :comments_last5, association: :comments, order: :desc, limit: 5
-  sync_has_data :comments_count, count_of: :comments
-  sync_has_one :user
+  sync_field :title, :body, :created_at, :updated_at, :comments, :user
+  sync_field :comments_last5, association: :comments, order: :desc, limit: 5
+  sync_field :comments_count, count_of: :comments
   include SyncReactionConcern
 end

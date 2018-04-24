@@ -14,13 +14,13 @@ module SyncReactionConcern
       Reaction.where(user: user, target: records).index_by(&:target_id)
     end
 
-    sync_has_many :reactions
+    sync_field :reactions
 
-    sync_has_data :reaction_summary, preload: :reaction_summary_loader do |preloaded|
+    sync_field :reaction_summary, preload: :reaction_summary_loader do |preloaded|
       preloaded[id] || {}
     end
 
-    sync_has_one :my_reaction, preload: :my_reaction_loader do |preloaded|
+    sync_field :my_reaction, preload: :my_reaction_loader do |preloaded|
       preloaded[id]
     end
   end

@@ -7,20 +7,17 @@ class User < ApplicationRecord
   has_many :following_users, through: :followings, source: :to
   has_many :followed_users, through: :followeds, source: :from
 
-  sync_has_data :name
-  sync_has_many :posts
-  sync_has_many :followings
-  sync_has_many :followeds
-  sync_has_data :is_following, preload: lambda { |users, current_user|
+  sync_field :name, :posts, :followings, :followeds
+  sync_field :is_following, preload: lambda { |users, current_user|
     Set.new Follow.where(from: current_user, to: users).pluck(:to_id)
   } do |preloaded|
     preloaded.include? id
   end
-  sync_has_data :is_followed, preload: lambda { |users, current_user|
+  sync_field :is_followed, preload: lambda { |users, current_user|
     Set.new Follow.where(from: users, to: current_user).pluck(&:from_id)
   } do |preloaded|
     preloaded.include? id
   end
-  sync_has_data :following_count, count_of: :followings
-  sync_has_data :followed_count, count_of: :followeds
+  sync_field :following_count, count_of: :followings
+  sync_field :followed_count, count_of: :followeds
 end
