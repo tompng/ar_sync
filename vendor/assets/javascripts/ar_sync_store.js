@@ -124,7 +124,7 @@ class ArSyncContainerBase {
         this._load(param).then(model => {
           resultModels[i] = model
           countdown --
-          if (countdown == 0) resolve(resultModels)
+          if (countdown === 0) resolve(resultModels)
         })
       })
     })
@@ -153,7 +153,7 @@ class ArSyncModel extends ArSyncContainerBase {
       const subQuery = this.query.attributes[key]
       const aliasName = subQuery.as || key
       const subData = data[aliasName]
-      if (key == 'sync_keys') continue
+      if (key === 'sync_keys') continue
       if (subQuery.attributes && subQuery.attributes.sync_keys) {
         if (subData instanceof Array || (subData && subData.collection && subData.order)) {
           if (this.children[aliasName]) {
@@ -190,11 +190,12 @@ class ArSyncModel extends ArSyncContainerBase {
   }
   onNotify(notifyData, path) {
     const { action, class_name, id } = notifyData
-    if (action == 'remove') {
+    if (action === 'remove') {
       this.children[path].release()
       this.children[path] = null
       this.data[path] = null
-    } else if (action == 'add') {
+    } else if (action === 'add') {
+      if (this.data.id === id) return
       const query = this.query.attributes[path]
       SyncBatchLoader.fetch(class_name, id, query).then((data) => {
         const model = new ArSyncModel(query, data)
@@ -220,7 +221,7 @@ class ArSyncModel extends ArSyncContainerBase {
     if (this.reloadQueryCache) return this.reloadQueryCache
     const reloadQuery = this.reloadQueryCache = { attributes: [] }
     for (const key in this.query.attributes) {
-      if (key == 'sync_keys') continue
+      if (key === 'sync_keys') continue
       const val = this.query.attributes[key]
       if (!val || !val.attributes || !val.attributes.sync_keys) reloadQuery.attributes.push(key)
     }
@@ -284,8 +285,9 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.subscribeAll()
   }
   consumeAdd(className, id) {
+    if (this.data.findIndex(a => a.id === id) >= 0) return
     if (this.order.limit === this.data.length) {
-      if (this.order.mode == 'asc') {
+      if (this.order.mode === 'asc') {
         const last = this.data[this.data.length - 1]
         if (last && last.id < id) return
       } else {
@@ -295,8 +297,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
     SyncBatchLoader.fetch(className, id, this.query).then((data) => {
       const model = new ArSyncModel(this.query, data)
-      const overflow = this.order.limit && this.order.limit == this.data.length
-      if (this.order.mode == 'asc') {
+      const overflow = this.order.limit && this.order.limit === this.data.length
+      if (this.order.mode === 'asc') {
         const last = this.data[this.data.length - 1]
         this.children.push(model)
         this.data.push(model.data)
@@ -332,9 +334,9 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
   }
   onNotify(notifyData) {
-    if (notifyData.action == 'add') {
+    if (notifyData.action === 'add') {
       this.consumeAdd(notifyData.class_name, notifyData.id)
-    } else if (notifyData.action == 'remove') {
+    } else if (notifyData.action === 'remove') {
       this.consumeRemove(notifyData.id)
     }
   }
