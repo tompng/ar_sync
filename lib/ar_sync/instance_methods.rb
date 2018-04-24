@@ -43,9 +43,7 @@ module ArSync::InstanceMethods
     case self.class._sync_child_info name
     when ArSync::DataField
       ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
-    when ArSync::HasOneField
-      ArSync.sync_send to: self, action: :remove, model: child, path: name, to_user: to_user
-    when ArSync::HasManyField
+    when ArSync::HasOneField, ArSync::HasManyField
       ArSync.sync_send to: self, action: :remove, model: child, path: name, to_user: to_user
     end
   end
@@ -54,9 +52,7 @@ module ArSync::InstanceMethods
     case self.class._sync_child_info name
     when ArSync::DataField
       ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
-    when ArSync::HasOneField
-      ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
-    when ArSync::HasManyField
+    when ArSync::HasOneField, ArSync::HasManyField
       ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
     end
   end

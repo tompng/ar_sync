@@ -101,11 +101,6 @@ module ArSync::ClassMethods
     superclass._each_sync_parent(&block) if superclass < ActiveRecord::Base
   end
 
-  def _each_sync_child(&block)
-    _sync_children_info.each(&block)
-    superclass._each_sync_child(&block) if superclass < ActiveRecord::Base
-  end
-
   def _initialize_sync_callbacks
     return if instance_variable_defined? '@_sync_callbacks_initialized'
     mod = Module.new do
