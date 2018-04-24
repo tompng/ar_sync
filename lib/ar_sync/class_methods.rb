@@ -7,16 +7,10 @@ module ArSync::ClassMethods
       reflection = reflect_on_association option[:association] || name
       if reflection&.is_a? ActiveRecord::Reflection::HasManyReflection
         _sync_has_many name, option, &data_block
-      elsif reflection
-        _sync_has_one name, option, &data_block
       else
         _sync_define name, option, &data_block
       end
     end
-  end
-
-  def _sync_has_one(name, **option, &data_block)
-    _sync_define name, option, &data_block
   end
 
   def _sync_has_many(name, order: :asc, limit: nil, preload: nil, association: nil, **option, &data_block)
