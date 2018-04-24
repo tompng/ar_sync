@@ -1,5 +1,3 @@
-require_relative 'field'
-
 class ArSync::Collection
   attr_reader :klass, :name, :limit, :order
   def initialize(klass, name, limit: nil, order: nil)
@@ -7,8 +5,6 @@ class ArSync::Collection
     @name = name
     @limit = limit
     @order = order
-    @field = ArSync::CollectionField.new name, limit: limit, order: order
-    self.class._sync_children_info[[klass, name]] = @field
     self.class.defined_collections[[klass, name]] = self
     define_singleton_method name do
       to_a
@@ -34,10 +30,6 @@ class ArSync::Collection
 
   def _sync_notify_child_removed(child, _name, to_user, _owned)
     ArSync.sync_send to: self, action: :remove, model: child, path: :collection, to_user: to_user
-  end
-
-  def self._sync_children_info
-    @sync_children_info ||= {}
   end
 
   def self.find(klass, name)

@@ -1,6 +1,4 @@
-require_relative 'field'
 require_relative 'collection'
-
 
 class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
   def initialize(records, order:, limit:)
