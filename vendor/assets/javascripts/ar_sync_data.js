@@ -18,8 +18,8 @@ class ArSyncData {
   }
   immutable() { return false }
   release() {
-    for (const subscription of this.subscriptions) {
-      subscription.unsubscribe()
+    for (const list of Object.values(this.subscriptions)) {
+      for (const s of list) s.unsubscribe()
     }
     this.subscriptions = {}
   }
@@ -106,7 +106,7 @@ class ArSyncData {
     let timer
     let patches = []
     const received = patch => this.patchReceived(name, patch)
-    this.subscriptions[name] = keys.forEach(key => {
+    this.subscriptions[name] = keys.map(key => {
       const connectionName = name + '/' + key
       const disconnected = () => this.subscriptionDisconnected(connectionName)
       const connected = () => this.subscriptionConnected(connectionName)
