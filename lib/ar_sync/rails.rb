@@ -48,16 +48,15 @@ module ArSync
       if respond_to?(ArSync.config.current_user_method)
         current_user = send ArSync.config.current_user_method
       end
-      api_responses = {}
-      params[:requests].each do |name, req|
-        api_name = req[:api]
+      responses = params[:requests].map do |request|
+        api_name = request[:api]
         api = api_list[api_name.to_s]
         raise "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless api
-        api_params = req[:params] || {}
+        api_params = request[:params] || {}
         model = instance_exec api_params, &api
-        api_responses[name] = yield model, current_user, req[:query].as_json
+        yield model, current_user, request[:query].as_json
       end
-      render json: api_responses
+      render json: responses
     end
 
     def sync_call

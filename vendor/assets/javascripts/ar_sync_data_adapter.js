@@ -9,7 +9,7 @@ try {
     ActionCable = window.ActionCable
   } catch(e) {}
 }
-ArSyncData.connectionAdapter = {
+ArSyncModel.connectionAdapter = {
   channelName: 'SyncChannel',
   cable() {
     if (!this._cable) this._cable = ActionCable.createConsumer()

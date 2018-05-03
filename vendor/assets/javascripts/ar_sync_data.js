@@ -1,39 +1,39 @@
 (function(){
 let ArSyncStore
+let arSyncApiFetch
 try {
   ArSyncStore = require('./ar_sync_store')
+  syncApiFetch = require('./ar_sync_api_fetch')
 } catch(e) {
   ArSyncStore = window.ArSyncStore
+  arSyncApiFetch = window.arSyncApiFetch
 }
 
-class ArSyncData {
-  constructor(requests, optionalParams) {
-    this.requests = requests
-    this.optionalParams = optionalParams
-    this.subscriptions = {}
-    this.stores = {}
+class ArSyncModel {
+  constructor(request) {
+    this.request = request
+    this.subscriptions = []
+    this.store = null
     this.data = {}
-    this.bufferedPatches = {}
+    this.bufferedPatches = []
     this.connectionState = { connections: {}, connected: 0, count: 0, needsReload: false }
   }
   immutable() { return false }
   release() {
-    for (const list of Object.values(this.subscriptions)) {
-      for (const s of list) s.unsubscribe()
-    }
-    this.subscriptions = {}
+    this.destroy()
+  }
+  destroy() {
+    this.unsubscribeAll()
+  }
+  unsubscribeAll() {
+    for (const s of this.subscriptions) s.unsubscribe()
+    this.subscriptions = []
   }
   load(callback) {
-    this.apiCall().then(syncData => {
-      let count = 0
-      for (const name in syncData) {
-        count += syncData[name].keys.length
-      }
-      this.connectionState.count = count
-      for (const name in syncData) {
-        const { keys, data, limit, order } = syncData[name]
-        this.initializeStore(name, keys, data, { limit, order, immutable: this.immutable() })
-      }
+    arSyncApiFetch(this.request).then(syncData => {
+      this.connectionState.count = syncData.keys.length
+      const { keys, data, limit, order } = syncData
+      this.initializeStore(keys, data, { limit, order, immutable: this.immutable() })
     }).then(()=>{
       if (callback) callback(this.data)
     })
@@ -43,26 +43,19 @@ class ArSyncData {
     this.changedCallback = callback
     return this
   }
-  patchReceived(name, patch) {
+  patchReceived(patch) {
     const buffer = this.bufferedPatches
-    ;(buffer[name] = buffer[name] || []).push(patch)
+    buffer.push(patch)
     if (this.bufferTimer) return
     this.bufferTimer = setTimeout(() => {
       this.bufferTimer = null
+      this.bufferedPatches
       const buf = this.bufferedPatches
-      this.bufferedPatches = {}
-      const changes = {}
-      for (const name in buf) {
-        changes[name] = this.stores[name].batchUpdate(buf[name])
-      }
-      if (this.immutable()) {
-        this.data = {}
-        for (const name in this.stores) {
-          this.data[name] = this.stores[name].data
-        }
-      }
+      this.bufferedPatches = []
+      const changes = this.store.batchUpdate(buf)
+      this.data = this.store.data
       if (this.changedCallback) this.changedCallback(changes)
-    }, 20)
+    }, 16)
   }
   reconnected(callback) {
     this.reconnectedCallback = callback
@@ -70,20 +63,20 @@ class ArSyncData {
   disconnected(callback) {
     this.disconnectedCallback = callback
   }
-  subscriptionDisconnected(name) {
+  subscriptionDisconnected(key) {
     const state = this.connectionState
-    if (!state.connections[name]) return
-    state.connections[name] = false
+    if (!state.connections[key]) return
+    state.connections[key] = false
     state.connected--
     if (!state.needsReload) {
       state.needsReload = true
       if (this.disconnectedCallback) this.disconnectedCallback()
     }
   }
-  subscriptionConnected(name) {
+  subscriptionConnected(key) {
     const state = this.connectionState
-    if (state.connections[name]) return
-    state.connections[name] = true
+    if (state.connections[key]) return
+    state.connections[key] = true
     state.connected++
     if (state.needsReload && state.connected === state.count) {
       state.needsReload = false
@@ -93,47 +86,34 @@ class ArSyncData {
       })
     }
   }
-  initializeStore(name, keys, data, option) {
-    const query = this.requests[name].query
-    const prevStore = this.stores[name]
+  initializeStore(keys, data, option) {
+    const query = this.request.query
+    const prevStore = this.store
     if (prevStore) {
       prevStore.replaceData(data)
       return
     }
     const store = new ArSyncStore(query, data, option)
-    this.stores[name] = store
-    this.data[name] = store.data
-    let timer
+    this.store = store
+    this.data = store.data
     let patches = []
-    const received = patch => this.patchReceived(name, patch)
-    this.subscriptions[name] = keys.map(key => {
-      const connectionName = name + '/' + key
-      const disconnected = () => this.subscriptionDisconnected(connectionName)
-      const connected = () => this.subscriptionConnected(connectionName)
-      return ArSyncData.connectionAdapter.connect({ key, received, disconnected, connected })
+    const received = patch => this.patchReceived(patch)
+    this.subscriptions = keys.map(key => {
+      const disconnected = () => this.subscriptionDisconnected(key)
+      const connected = () => this.subscriptionConnected(key)
+      return ArSyncModel.connectionAdapter.connect({ key, received, disconnected, connected })
     })
   }
-  apiCall() {
-    const headers = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    }
-    const body = JSON.stringify(Object.assign({ requests: this.requests }, this.optionalParams))
-    const option = { credentials: 'include', method: 'POST', headers, body }
-    return fetch(ArSyncData.apiEndPoint, option).then(res => res.json())
-  }
 }
-ArSyncData.apiEndPoint = '/sync_api'
 
-class ArSyncImmutableData extends ArSyncData {
+class ArSyncImmutableModel extends ArSyncModel {
   immutable() { return true }
 }
 
-
 try {
-  module.exports = { ArSyncData, ArSyncImmutableData }
+  module.exports = { ArSyncModel, ArSyncImmutableModel }
 } catch (e) {
-  window.ArSyncData = ArSyncData
-  window.ArSyncImmutableData = ArSyncImmutableData
+  window.ArSyncModel = ArSyncModel
+  window.ArSyncImmutableModel = ArSyncImmutableModel
 }
 })()
