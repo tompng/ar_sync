@@ -16,6 +16,7 @@ function apiFetch(request) {
     batches.push([request, resolve])
     if (batchFetchTimer) return
     batchFetchTimer = setTimeout(()=>{
+      batchFetchTimer = null
       const requests = []
       const callbacks = []
       for (const batch of batches) {
