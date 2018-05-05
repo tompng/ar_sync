@@ -38,7 +38,12 @@ module ArSync
     def setup_js
       inject_into_file(
         'app/assets/javascripts/application.js',
-        "//= require action_cable\n//= require ar_sync\n",
+        [
+          '//= require ar_sync',
+          '//= require action_cable',
+          'require ar_sync_actioncable_adapter',
+          'ArSyncModel.setConnectionAdapter(new ArSyncActionCableAdapter())'
+        ].join("\n") + "\n",
         before: '//= require_tree .'
       )
     end

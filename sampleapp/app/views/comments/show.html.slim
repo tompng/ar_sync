@@ -1,18 +1,17 @@
 javascript:
-  new ArSyncData({
-    currentUser: {
-      api: 'profile',
-      query: ['id', 'name']
-    },
-    comment: {
-      api: 'comment',
-      params: { id: location.pathname.match(/\d+/)[0] },
-      query: [
-        'body', 'post_id', 'reaction_summary', 'user', { my_reaction: 'kind' }
-      ]
-    }
-  }).load((vueData) => {
-    new Vue({ el: '#syncbody', data: vueData })
+  const currentUserModel = new ArSyncModel({
+    api: 'profile',
+    query: ['id', 'name']
+  })
+  const commentModel = new ArSyncModel({
+    api: 'comment',
+    params: { id: location.pathname.match(/\d+/)[0] },
+    query: [
+      'body', 'post_id', 'reaction_summary', 'user', { my_reaction: 'kind' }
+    ]
+  })
+  ArSyncModel.waitForLoad(currentUserModel, commentModel).then(() => {
+    new Vue({ el: '#syncbody', data: { currentUser: currentUserModel.data, comment: commentModel.data } })
   })
 
 

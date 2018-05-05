@@ -5,9 +5,48 @@ class NormalUpdator { // overwrites object. ex: Vue.js
     this.changed = []
   }
   replaceData(data, newData) {
-    for (const key in newData) {
-      data[key] = newData[key]
+    const replaceArray = (as, bs) => {
+      const aids = {}
+      for (const a of as) {
+        if (!a.id) return false
+        aids[a.id] = a
+      }
+      const order = {}
+      for (let i = 0; i < bs.length; i++) {
+        const b = bs[i]
+        if (!b.id) return false
+        if (aids[b.id]) {
+          replaceObject(aids[b.id], b)
+        } else {
+          as.push(b)
+        }
+        order[b.id] = i + 1
+      }
+      as.sort((a, b) => {
+        const oa = order[a.id] || Infinity
+        const ob = order[b.id] || Infinity
+        return oa > ob ? +1 : oa < ob ? -1 : 0
+      })
+      while (as.length && !order[as[as.length - 1].id]) as.pop()
+      return true
     }
+    const replaceObject = (aobj, bobj) => {
+      const keys = {}
+      for (const key in aobj) keys[key] = true
+      for (const key in bobj) keys[key] = true
+      for (const key in keys) {
+        const a = aobj[key]
+        const b = bobj[key]
+        if ((a instanceof Array) && (b instanceof Array)) {
+          if (!replaceArray(a, b)) aobj[key] = b
+        } else if(a && b && (typeof a === 'object') && (typeof b === 'object') && !(a instanceof Array) && !(b instanceof Array)) {
+          replaceObject(a, b)
+        } else if (a !== b) {
+          aobj[key] = b
+        }
+      }
+    }
+    replaceObject(data, newData)
     return data
   }
   add(tree, path, column, value, orderParam) {

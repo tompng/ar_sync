@@ -53,14 +53,13 @@ end
 ```html
 <!-- if you're using vue -->
 <script>
-  new ArSyncData({
-    user: {
-      api: 'my_simple_user_api',
-      params: { id: location.hash.match(/\d+/)[0] },
-      query: ['id', 'name', { posts: ['title', 'created_at'] }]
-    }
-  }).load((vueData) => {
-    new Vue({ el: '#foobar', data: vueData })
+  const userModel = new ArSyncModel({
+    api: 'my_simple_user_api',
+    params: { id: location.hash.match(/\d+/)[0] },
+    query: ['id', 'name', { posts: ['title', 'created_at'] }]
+  })
+  userModel.onload(() => {
+    new Vue({ el: '#foobar', data: { user: userModel.data } })
   })
 </script>
 <div id='foobar'>
