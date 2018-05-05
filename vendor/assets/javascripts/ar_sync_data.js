@@ -8,7 +8,7 @@ try {
   arSyncApiFetch = window.arSyncApiFetch
 }
 
-class ArSyncModel {
+class ArSyncBaseModel {
   constructor(request, option = {}) {
     this.immutable = option.immutable ? true : false
     this.request = request
@@ -16,13 +16,27 @@ class ArSyncModel {
     this.store = null
     this.data = {}
     this.bufferedPatches = []
-    this.connectionState = { connections: {}, connected: 0, count: 0, needsReload: false }
+    this.eventListeners = { events: {}, serial: 0 }
+    this.networkSubscription = ArSyncBaseModel.connectionManager.subscribeNetwork((status) => {
+      if (status) {
+        this.load(() => {
+          this.trigger('reconnect')
+          this.trigger('change')
+        })
+      } else {
+        this.unsubscribeAll()
+        this.trigger('disconnect')
+      }
+    })
+    this.load(() => {
+      this.trigger('load')
+      this.loaded = true
+      this.trigger('change')
+    })
   }
   release() {
-    this.destroy()
-  }
-  destroy() {
     this.unsubscribeAll()
+    this.networkSubscription.unsubscribe()
   }
   unsubscribeAll() {
     for (const s of this.subscriptions) s.unsubscribe()
@@ -30,17 +44,10 @@ class ArSyncModel {
   }
   load(callback) {
     arSyncApiFetch(this.request).then(syncData => {
-      this.connectionState.count = syncData.keys.length
       const { keys, data, limit, order } = syncData
       this.initializeStore(keys, data, { limit, order, immutable: this.immutable })
-    }).then(()=>{
       if (callback) callback(this.data)
     })
-    return this
-  }
-  changed(callback) {
-    this.changedCallback = callback
-    return this
   }
   patchReceived(patch) {
     const buffer = this.bufferedPatches
@@ -53,60 +60,123 @@ class ArSyncModel {
       this.bufferedPatches = []
       const changes = this.store.batchUpdate(buf)
       this.data = this.store.data
-      if (this.changedCallback) this.changedCallback(changes)
+      this.trigger('change', changes)
     }, 16)
   }
-  reconnected(callback) {
-    this.reconnectedCallback = callback
+  subscribe(event, callback) {
+    let listeners = this.eventListeners.events[event]
+    if (!listeners) this.eventListeners.events[event] = listeners = {}
+    const id = this.eventListeners.serial++
+    listeners[id] = callback
+    return { unsubscribe: () => { delete listeners[id] } }
   }
-  disconnected(callback) {
-    this.disconnectedCallback = callback
-  }
-  subscriptionDisconnected(key) {
-    const state = this.connectionState
-    if (!state.connections[key]) return
-    state.connections[key] = false
-    state.connected--
-    if (!state.needsReload) {
-      state.needsReload = true
-      if (this.disconnectedCallback) this.disconnectedCallback()
-    }
-  }
-  subscriptionConnected(key) {
-    const state = this.connectionState
-    if (state.connections[key]) return
-    state.connections[key] = true
-    state.connected++
-    if (state.needsReload && state.connected === state.count) {
-      state.needsReload = false
-      this.load(() => {
-        if (this.reconnectedCallback) this.reconnectedCallback()
-        if (this.changedCallback) this.changedCallback()
-      })
-    }
+  trigger(event, arg) {
+    console.error('event', event, arg)
+    const listeners = this.eventListeners.events[event]
+    if (!listeners) return
+    for (const callback of Object.values(listeners)) callback(arg)
   }
   initializeStore(keys, data, option) {
     const query = this.request.query
     const prevStore = this.store
-    if (prevStore) {
-      prevStore.replaceData(data)
-      return
+    if (this.store) {
+      this.store.replaceData(data)
+    } else {
+      this.store = new ArSyncStore(query, data, option)
+      this.data = this.store.data
     }
-    const store = new ArSyncStore(query, data, option)
-    this.store = store
-    this.data = store.data
     this.subscriptions = keys.map(key => {
-      ArSyncModel.connectionManager.subscribe(key, patch => this.patchReceived(patch))
+      return ArSyncBaseModel.connectionManager.subscribe(key, patch => this.patchReceived(patch))
     })
-  }
-  static setConnectionAdapter(adapter) {
-    this.connectionManager = new ArSyncConnectionManager(adapter)
   }
 }
 
+class ArSyncModel {
+  constructor(request, option) {
+    this._ref = ArSyncModel.retrieveRef(request, option)
+    this.data = this._ref.model.data
+    this._listenerSerial = 0
+    this._listeners = {}
+    const setData = () => this.data = this._ref.model.data
+    this.subscribe('load', setData)
+    this.subscribe('change', setData)
+  }
+  onload(callback) {
+    if (this._ref.model.loaded) {
+      callback()
+      return
+    }
+    const subscription = this.subscribe('load', () => {
+      callback()
+      subscription.unsubscribe()
+    })
+  }
+  subscribe(event, callback) {
+    const id = this._listenerSerial++
+    const subscription = this._ref.model.subscribe(event, callback)
+    const unsubscribe = () => {
+      subscription.unsubscribe()
+      delete this._listeners[id]
+    }
+    return this._listeners[id] = { unsubscribe }
+  }
+  release() {
+    for (const s of Object.values(this._listeners)) s.unsubscribe()
+    this._listeners = {}
+    ArSyncModel._detach(this._ref)
+    this._ref = null
+  }
+  static setConnectionAdapter(adapter) {
+    ArSyncBaseModel.connectionManager = new ArSyncConnectionManager(adapter)
+  }
+  static retrieveRef(request, option) {
+    const key = JSON.stringify([request, option])
+    let ref = ArSyncModel._cache[key]
+    if (!ref) {
+      const model = new ArSyncBaseModel(request, option)
+      ref = ArSyncModel._cache[key] = { key, count: 0, timer: null, model }
+    }
+    ArSyncModel._attach(ref)
+    return ref
+  }
+  static _detach(ref) {
+    ref.count--
+    const timeout = ArSyncModel.cacheTimeout
+    if (ref.count !== 0) return
+    const timedout = () => {
+      ref.model.release()
+      delete ArSyncModel._cache[ref.key]
+    }
+    if (timeout) {
+      ref.timer = setTimeout(timedout, timeout)
+    } else {
+      timedout()
+    }
+  }
+  static _attach(ref) {
+    ref.count++
+    if (ref.timer) clearTimeout(ref.timer)
+  }
+  static waitForLoad(...models) {
+    return new Promise((resolve) => {
+      let count = 0
+      for (const model of models) {
+        console.error(model)
+        model.onload(() => {
+          count++
+          if (models.length == count) resolve(models)
+        })
+      }
+    })
+  }
+}
+ArSyncModel._cache = {}
+ArSyncModel.cacheTimeout = 10 * 1000
+
 try {
-  module.exports = { ArSyncModel }
+  module.exports = { ArSyncModel, ArSyncBaseModel }
 } catch (e) {
   window.ArSyncModel = ArSyncModel
+  window.ArSyncBaseModel = ArSyncBaseModel
 }
 })()
