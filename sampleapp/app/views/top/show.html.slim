@@ -1,19 +1,17 @@
 javascript:
-  new ArSyncModel({
+  const currentUserModel = new ArSyncModel({
     api: 'profile',
     query: [
       'name', 'followed_count', 'following_count',
       { posts: ['title', 'comments_count', 'created_at'] }
     ]
-  }).load((data) => {
-    window.currentUser = data
   })
-  new ArSyncModel({
+  const postsModel = new ArSyncModel({
     api: 'newposts',
     query: ['user', 'title', 'created_at', 'comments_count']
-  }).load((data) => {
-    window.newPosts = data
-    new Vue({ el: '#syncbody', data: { currentUser: window.currentUser, newPosts: window.newPosts } })
+  })
+  ArSyncModel.waitForLoad(currentUserModel, postsModel).then(() => {
+    new Vue({ el: '#syncbody', data: { currentUser: currentUserModel.data, newPosts: postsModel.data } })
   })
 
 #syncbody [v-cloak]
