@@ -1,6 +1,9 @@
 import React, { PureComponent } from 'react'
 import { render } from 'react-dom'
-import { ArSyncImmutableData } from 'ar_sync'
+import { ArSyncModel } from 'ar_sync'
+import ActionCable from 'actioncable'
+import ArSyncActionCableAdapter from 'ar_sync/vendor/assets/javascripts/ar_sync_actioncable_adapter'
+ArSyncModel.setConnectionAdapter(new ArSyncActionCableAdapter())
 
 class PostItem extends PureComponent {
   render() {
@@ -19,25 +22,23 @@ class PostItem extends PureComponent {
 class TopPage extends PureComponent {
   constructor(props, context) {
     super(props, context)
-    this.state = null
-    const syncData = new ArSyncImmutableData({
-      currentUser: {
-        api: 'profile',
-        query: [
-          'name', 'followed_count', 'following_count',
-          { posts: ['title', 'comments_count', 'created_at'] }
-        ]
-      },
-      newPosts: {
-        api: 'newposts',
-        query: ['user', 'title', 'created_at', 'comments_count']
-      }
-    })
-    const update = () => this.setState(syncData.data)
-    syncData.load(update).changed(update)
+    this.state = {}
+    const currentUserModel = new ArSyncModel({
+      api: 'profile',
+      query: [
+        'name', 'followed_count', 'following_count',
+        { posts: ['title', 'comments_count', 'created_at'] }
+      ]
+    }, { immutable: true })
+    const newPostsModel = new ArSyncModel({
+      api: 'newposts',
+      query: ['user', 'title', 'created_at', 'comments_count']
+    }, { immutable: true })
+    currentUserModel.subscribe('change', () => this.setState({ currentUser: currentUserModel.data }))
+    newPostsModel.subscribe('change', () => this.setState({ newPosts: newPostsModel.data }))
   }
   render() {
-    if (!this.state) return <div>loading...</div>
+    if (!this.state.currentUser) return <div>loading...</div>
     const { currentUser } = this.state
     return <div>
       <h1>TopPage React Version: welcome {currentUser.name}!</h1>
