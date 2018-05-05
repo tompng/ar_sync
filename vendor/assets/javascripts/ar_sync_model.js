@@ -1,11 +1,13 @@
 (function(){
-let ArSyncStore, arSyncApiFetch
+let ArSyncStore, arSyncApiFetch, ArSyncConnectionManager
 try {
   ArSyncStore = require('./ar_sync_store')
-  syncApiFetch = require('./ar_sync_api_fetch')
+  arSyncApiFetch = require('./ar_sync_api_fetch')
+  ArSyncConnectionManager = require('./ar_sync_connection_manager')
 } catch(e) {
   ArSyncStore = window.ArSyncStore
   arSyncApiFetch = window.arSyncApiFetch
+  ArSyncConnectionManager = window.ArSyncConnectionManager
 }
 
 class ArSyncBaseModel {

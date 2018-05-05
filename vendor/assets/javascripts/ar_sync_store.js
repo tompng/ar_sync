@@ -233,7 +233,7 @@ class ArSyncStore {
       if (column) {
         this.data = updator.add(this.data, actualPath, column, obj)
       } else if (!data.find(o => o.id === id)) {
-        const ordering = { ...patch.ordering }
+        const ordering = Object.assign({}, patch.ordering)
         const limitOverride = query.params && query.params.limit
         if (!ordering.order) ordering.order = query.params && query.params.order
         if (!ordering.limit || limitOverride && limitOverride < ordering.limit) ordering.limit = limitOverride
