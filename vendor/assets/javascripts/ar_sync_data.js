@@ -1,6 +1,5 @@
 (function(){
-let ArSyncStore
-let arSyncApiFetch
+let ArSyncStore, arSyncApiFetch
 try {
   ArSyncStore = require('./ar_sync_store')
   syncApiFetch = require('./ar_sync_api_fetch')
@@ -10,7 +9,8 @@ try {
 }
 
 class ArSyncModel {
-  constructor(request) {
+  constructor(request, option = {}) {
+    this.immutable = option.immutable ? true : false
     this.request = request
     this.subscriptions = []
     this.store = null
@@ -18,7 +18,6 @@ class ArSyncModel {
     this.bufferedPatches = []
     this.connectionState = { connections: {}, connected: 0, count: 0, needsReload: false }
   }
-  immutable() { return false }
   release() {
     this.destroy()
   }
@@ -33,7 +32,7 @@ class ArSyncModel {
     arSyncApiFetch(this.request).then(syncData => {
       this.connectionState.count = syncData.keys.length
       const { keys, data, limit, order } = syncData
-      this.initializeStore(keys, data, { limit, order, immutable: this.immutable() })
+      this.initializeStore(keys, data, { limit, order, immutable: this.immutable })
     }).then(()=>{
       if (callback) callback(this.data)
     })
@@ -96,24 +95,18 @@ class ArSyncModel {
     const store = new ArSyncStore(query, data, option)
     this.store = store
     this.data = store.data
-    let patches = []
-    const received = patch => this.patchReceived(patch)
     this.subscriptions = keys.map(key => {
-      const disconnected = () => this.subscriptionDisconnected(key)
-      const connected = () => this.subscriptionConnected(key)
-      return ArSyncModel.connectionAdapter.connect({ key, received, disconnected, connected })
+      ArSyncModel.connectionManager.subscribe(key, patch => this.patchReceived(patch))
     })
+  }
+  static setConnectionAdapter(adapter) {
+    this.connectionManager = new ArSyncConnectionManager(adapter)
   }
 }
 
-class ArSyncImmutableModel extends ArSyncModel {
-  immutable() { return true }
-}
-
 try {
-  module.exports = { ArSyncModel, ArSyncImmutableModel }
+  module.exports = { ArSyncModel }
 } catch (e) {
   window.ArSyncModel = ArSyncModel
-  window.ArSyncImmutableModel = ArSyncImmutableModel
 }
 })()

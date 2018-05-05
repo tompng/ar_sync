@@ -14,3 +14,5 @@
 //= require action_cable
 //= require ar_sync
 //= require_tree .
+//= require ar_sync_actioncable_adapter
+ArSyncModel.setConnectionAdapter(new ArSyncActionCableAdapter())
