@@ -33,12 +33,13 @@ class CommentsController < ApplicationController
 
   def reaction
     kind = params[:kind].presence
-    reaction = Comment.find(params[:id]).reactions.find_by(user: current_user)
-    if kind
+    comment = Comment.find params[:id]
+    reaction = comment.reactions.find_by user: current_user
+    if kind && kind != 'null'
       if reaction
         reaction.update kind: kind
       else
-        Comment.find(params[:id]).reactions.create(user: current_user, kind: kind)
+        comment.reactions.create user: current_user, kind: kind
       end
     else
       reaction&.destroy

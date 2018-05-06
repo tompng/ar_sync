@@ -37,12 +37,13 @@ class PostsController < ApplicationController
 
   def reaction
     kind = params[:kind].presence
-    reaction = Post.find(params[:id]).reactions.find_by(user: current_user)
-    if kind
+    post = Post.find params[:id]
+    reaction = post.reactions.find_by user: current_user
+    if kind && kind != 'null'
       if reaction
         reaction.update! kind: kind
       else
-        Post.find(params[:id]).reactions.create!(user: current_user, kind: kind)
+        post.reactions.create! user: current_user, kind: kind
       end
     else
       reaction&.destroy!
