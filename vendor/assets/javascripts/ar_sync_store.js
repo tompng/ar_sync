@@ -101,17 +101,25 @@ class Updator {
     const jb = JSON.stringify(b)
     return ja === jb
   }
-  add(tree, accessKeys, path, column, value, orderParam) {
+  add(tree, accessKeys, path, column, value, orderParam, reducer) {
+    if (reducer && reducer.filter && !reducr.filter(value)) return
     const root = this.mark(tree)
     const data = this.trace(root, accessKeys)
-    if (data) this.assign(data, path, column, value, orderParam)
+    if (!data) return root
+    if (reducer && reducer.add) {
+      reducer.add(data, path, column, value, orderParam)
+    } else {
+      this.assign(data, path, column, value, orderParam)
+    }
     return root
   }
-  remove(tree, accessKeys, path, column) {
+  remove(tree, accessKeys, path, column, reducer) {
     const root = this.mark(tree)
     let data = this.trace(root, accessKeys)
     if (!data) return root
-    if (data.constructor === Array) {
+    if (reducer && reducer.remove) {
+      reducer.remove(data, path, column)
+    } else if (data.constructor === Array) {
       this.changes.push({ path: path.concat([data[column].id]), value: null })
       data.splice(column, 1)
     } else if (data[column] !== null) {
@@ -181,7 +189,7 @@ class ArSyncStore {
       if (subq) {
         const subcol = subq.column || key
         if (data[subcol] !== value) {
-          this.data = updator.add(this.data, accessKeys, actualPath, subcol, value)
+          this.data = updator.add(this.data, accessKeys, actualPath, subcol, value, null, subq.reducer)
         }
       }
     }
@@ -204,7 +212,7 @@ class ArSyncStore {
       } else {
         const { attributes } = query
         if (!attributes[nameOrId]) return
-        const column = attributes[nameOrId].column || nameOrId
+        const column = attributes[nameOrId].as || nameOrId
         query = attributes[nameOrId]
         actualPath.push(column)
         accessKeys.push(column)
@@ -220,7 +228,7 @@ class ArSyncStore {
     } else if (nameOrId) {
       const { attributes } = query
       if (!attributes[nameOrId]) return
-      column = attributes[nameOrId].column || nameOrId
+      column = attributes[nameOrId].as || nameOrId
       query = attributes[nameOrId]
     } else {
       this._applyPatch(data, accessKeys, actualPath, updator, query, patchData)
@@ -229,20 +237,20 @@ class ArSyncStore {
     if (action === 'create') {
       const obj = this._slicePatch(patchData, query)
       if (column) {
-        this.data = updator.add(this.data, accessKeys, actualPath, column, obj)
+        this.data = updator.add(this.data, accessKeys, actualPath, column, obj, null, query.reducer)
       } else if (!data.find(o => o.id === id)) {
         const ordering = Object.assign({}, patch.ordering)
         const limitOverride = query.params && query.params.limit
         ordering.order = query.params && query.params.order || ordering.order
         if (ordering.limit == null || limitOverride != null && limitOverride < ordering.limit) ordering.limit = limitOverride
-        this.data = updator.add(this.data, accessKeys, actualPath, data.length, obj, ordering)
+        this.data = updator.add(this.data, accessKeys, actualPath, data.length, obj, ordering, query.reducer)
       }
     } else if (action === 'destroy') {
       if (column) {
-        this.data = updator.remove(this.data, accessKeys, actualPath, column)
+        this.data = updator.remove(this.data, accessKeys, actualPath, column, query.reducer)
       } else {
         const idx = data.findIndex(o => o.id === id)
-        if (idx >= 0) this.data = updator.remove(this.data, accessKeys, actualPath, idx)
+        if (idx >= 0) this.data = updator.remove(this.data, accessKeys, actualPath, idx, query.reducer)
       }
     } else {
       if (column) {
@@ -258,10 +266,11 @@ class ArSyncStore {
     }
   }
 
-  static parseQuery(query, attrsonly){
+  static parseQuery(query, attrsonly, withoutReducer){
     const attributes = {}
     let column = null
     let params = null
+    let reducer = null
     if (query.constructor !== Array) query = [query]
     for (const arg of query) {
       if (typeof(arg) === 'string') {
@@ -270,24 +279,27 @@ class ArSyncStore {
         for (const key in arg){
           const value = arg[key]
           if (attrsonly) {
-            attributes[key] = this.parseQuery(value)
+            attributes[key] = this.parseQuery(value, false, withoutReducer)
             continue
           }
           if (key === 'attributes') {
-            const child = this.parseQuery(value, true)
+            const child = this.parseQuery(value, true, withoutReducer)
             for (const k in child) attributes[k] = child[k]
           } else if (key === 'as') {
             column = value
           } else if (key === 'params') {
             params = value
+          } else if (key === 'reducer') {
+            reducer = value
           } else {
-            attributes[key] = this.parseQuery(value)
+            attributes[key] = this.parseQuery(value, false, withoutReducer)
           }
         }
       }
     }
     if (attrsonly) return attributes
-    return { attributes, column, params }
+    if (withoutReducer) return { attributes, as: column, params }
+    return { attributes, as: column, params, reducer }
   }
 }
 

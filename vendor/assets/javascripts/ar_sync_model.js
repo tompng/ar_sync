@@ -14,6 +14,9 @@ class ArSyncBaseModel {
   constructor(request, option = {}) {
     this.immutable = option.immutable ? true : false
     this.request = request
+    this.requestWithoutReducer = Object.assign({}, request, {
+      query: ArSyncStore.parseQuery(request.query, true, true)
+    })
     this.subscriptions = []
     this.store = null
     this.data = {}
@@ -46,7 +49,7 @@ class ArSyncBaseModel {
     this.subscriptions = []
   }
   load(callback, retryCount = 0) {
-    arSyncApiFetch(this.request).then(syncData => {
+    arSyncApiFetch(this.requestWithoutReducer).then(syncData => {
       const { keys, data, limit, order } = syncData
       this.initializeStore(keys, data, { limit, order, immutable: this.immutable })
       if (callback) callback(this.data)
