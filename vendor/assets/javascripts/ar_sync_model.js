@@ -41,15 +41,23 @@ class ArSyncBaseModel {
     this.networkSubscription.unsubscribe()
   }
   unsubscribeAll() {
+    if (this.retryLoadTimer) clearTimeout(this.retryLoadTimer)
     for (const s of this.subscriptions) s.unsubscribe()
     this.subscriptions = []
   }
-  load(callback) {
+  load(callback, retryCount = 0) {
     arSyncApiFetch(this.request).then(syncData => {
       const { keys, data, limit, order } = syncData
       this.initializeStore(keys, data, { limit, order, immutable: this.immutable })
       if (callback) callback(this.data)
-    })
+    }).catch(() => this.retryLoad(callback, retryCount + 1))
+  }
+  retryLoad(callback, retryCount) {
+    const sleepSeconds = Math.min(Math.pow(2, retryCount), 30)
+    this.retryLoadTimer = setTimeout(() => {
+      this.retryLoadTimer = null
+      this.load(callback, retryCount)
+    }, sleepSeconds * 1000)
   }
   patchReceived(patch) {
     const buffer = this.bufferedPatches
