@@ -3,8 +3,10 @@ ENV['DATABASE_NAME'] = database_name
 File.unlink database_name if File.exist? database_name
 require_relative 'seed'
 $patches = []
-ArSync.on_update do |key, patch|
-  $patches << { key: key, **patch }
+ArSync.on_notification do |events|
+  events.each do |key, patch|
+    $patches << { key: key, **patch }
+  end
 end
 
 query = [name: { as: '名前' }, posts: [:user, :title, as: :articles, my_comments: [:star_count, as: :my_opinions], comments: [:star_count, :user, my_stars: :id, my_star: { as: :my_reaction }]]]

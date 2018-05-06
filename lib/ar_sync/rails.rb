@@ -4,8 +4,10 @@ module ArSync
     end
   end
 
-  self.on_update do |key, patch|
-    ActionCable.server.broadcast key, patch
+  self.on_notification do |events|
+    events.each do |key, patch|
+      ActionCable.server.broadcast key, patch
+    end
   end
 
   self.config.key_prefix = 'ar_sync_'
@@ -20,7 +22,13 @@ module ArSync
     end
   end
 
-  ActionController::Base.include StaticJsonConcern
+  ActionController::Base.class_eval do
+    include StaticJsonConcern
+    def action_with_compact_ar_sync_notification(&block)
+      ArSync.with_compact_notification(&block)
+    end
+    around_action :action_with_compact_ar_sync_notification
+  end
 
   module ApiControllerConcern
     extend ActiveSupport::Concern

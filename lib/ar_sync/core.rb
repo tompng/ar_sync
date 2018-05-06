@@ -7,15 +7,29 @@ module ArSync
   extend ActiveSupport::Concern
   include ArSync::InstanceMethods
 
-  def self.on_update(&block)
+  def self.on_notification(&block)
     @sync_send_block = block
   end
 
-  self.on_update do end
+  def self.with_compact_notification
+    key = :ar_sync_compact_notifications
+    Thread.current[key] = []
+    yield
+  ensure
+    events = Thread.current[key]
+    Thread.current[key] = nil
+    @sync_send_block&.call events if events.present?
+  end
 
   def self.sync_send(to:, action:, path:, data:, to_user: nil, ordering: nil)
     key = sync_key to, path.grep(Symbol), to_user
-    @sync_send_block&.call key, action: action, path: path, data: data, ordering: ordering
+    event = [key, action: action, path: path, data: data, ordering: ordering]
+    buffer = Thread.current[:ar_sync_compact_notifications]
+    if buffer
+      buffer << event
+    else
+      @sync_send_block&.call [event]
+    end
   end
 
   def self.sync_key(model, path, to_user = nil)
