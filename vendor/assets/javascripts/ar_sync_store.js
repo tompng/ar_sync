@@ -1,10 +1,16 @@
 (function(){
 
-class NormalUpdator { // overwrites object. ex: Vue.js
-  constructor() {
+class Updator {
+  constructor(immutable) {
     this.changed = []
+    this.markedObjects = []
+    this.immutable = immutable
   }
   replaceData(data, newData) {
+    if (this.immutable) return newData
+    return recursivelyReplaceData(data, newData)
+  }
+  recursivelyReplaceData(data, newData) {
     const replaceArray = (as, bs) => {
       const aids = {}
       for (const a of as) {
@@ -49,45 +55,8 @@ class NormalUpdator { // overwrites object. ex: Vue.js
     replaceObject(data, newData)
     return data
   }
-  add(tree, path, column, value, orderParam) {
-    this.changed.push([path, column, true])
-    let data = tree
-    path.forEach(key => { data = data[key] })
-    if (data.constructor === Array && !data[column]) {
-      const limitReached = orderParam && orderParam.limit && data.length === orderParam.limit
-      if (orderParam && orderParam.order == 'desc') {
-        data.unshift(value)
-        if (limitReached) data.pop()
-      } else {
-        data.push(value)
-        if (limitReached) data.shift()
-      }
-    } else {
-      data[column] = value
-    }
-    return tree
-  }
-  remove(tree, path, column) {
-    this.changed.push([path, column, false])
-    let data = tree
-    path.forEach(p => { data = data[p] })
-    if (data.constructor === Array) {
-      data.splice(column, 1)
-    } else {
-      data[column] = null
-    }
-    return tree
-  }
-}
-class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
-  constructor() {
-    this.changed = []
-    this.markedObjects = []
-  }
-  replaceData(data, newData) {
-    return newData
-  }
   mark(obj) {
+    if (!this.immutable) return obj
     if (obj.__mark__) return obj
     let marked
     if (obj.constructor === Array) {
@@ -101,7 +70,7 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
   }
   trace(data, path) {
     path.forEach(key => {
-      data[key] = this.mark(data[key])
+      if (this.immutable) data[key] = this.mark(data[key])
       data = data[key]
     })
     return data
@@ -121,14 +90,14 @@ class ImmutableUpdator { // don't overwrite object. ex: React PureComponent
     }
   }
   add(tree, path, column, value, orderParam) {
-    this.changed.push([path, column, true])
+    this.changed.push([path, column, value])
     const root = this.mark(tree)
     const el = this.trace(root, path)
     this.assign(el, column, value, orderParam)
     return root
   }
   remove(tree, path, column) {
-    this.changed.push([path, column, false])
+    this.changed.push([path, column, null])
     const root = this.mark(tree)
     let data = this.trace(root, path)
     if (data.constructor === Array) {
@@ -149,17 +118,15 @@ class ArSyncStore {
   constructor(query, data, option = {}) {
     this.data = data
     this.query = ArSyncStore.parseQuery(query)
-    this.updatorClass = option.updatorClass || (
-      option.immutable ? ImmutableUpdator : NormalUpdator
-    )
+    this.immutable = option.immutable
   }
   replaceData(data) {
-    this.data = new this.updatorClass().replaceData(this.data, data)
+    this.data = new Updator(this.immutable).replaceData(this.data, data)
   }
   batchUpdate(patches) {
-    const updator = this.updatorClass && new this.updatorClass()
+    const updator = new Updator(this.immutable)
     patches.forEach(patch => this._update(patch, updator))
-    if (updator.cleanup) updator.cleanup()
+    updator.cleanup()
     return updator.changed
   }
   update(patch) {
