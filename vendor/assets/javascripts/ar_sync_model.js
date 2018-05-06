@@ -50,7 +50,10 @@ class ArSyncBaseModel {
       const { keys, data, limit, order } = syncData
       this.initializeStore(keys, data, { limit, order, immutable: this.immutable })
       if (callback) callback(this.data)
-    }).catch(() => this.retryLoad(callback, retryCount + 1))
+    }).catch(e => {
+      console.error(e)
+      this.retryLoad(callback, retryCount + 1)
+    })
   }
   retryLoad(callback, retryCount) {
     const sleepSeconds = Math.min(Math.pow(2, retryCount), 30)
