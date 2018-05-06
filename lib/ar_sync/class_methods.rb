@@ -96,6 +96,7 @@ module ArSync::ClassMethods
     _sync_define ArSync::DataField.new(:id)
     %i[create update destroy].each do |action|
       after_commit on: action do
+        next if ArSync.skip_notification?
         self.class.default_scoped.scoping { _sync_notify action }
       end
     end

@@ -21,6 +21,19 @@ module ArSync
     @sync_send_block&.call events if events.present?
   end
 
+  def self.skip_notification?
+    Thread.current[:ar_sync_skip_notification]
+  end
+
+  def self.without_notification
+    key = :ar_sync_skip_notification
+    flag_was = Thread.current[key]
+    Thread.current[key] = true
+    yield
+  ensure
+    Thread.current[key] = flag_was
+  end
+
   def self.sync_send(to:, action:, path:, data:, to_user: nil, ordering: nil)
     key = sync_key to, path.grep(Symbol), to_user
     event = [key, action: action, path: path, data: data, ordering: ordering]
