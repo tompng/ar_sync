@@ -84,7 +84,6 @@ class ArSyncBaseModel {
     return { unsubscribe: () => { delete listeners[id] } }
   }
   trigger(event, arg) {
-    console.error('event', event, arg)
     const listeners = this.eventListeners.events[event]
     if (!listeners) return
     for (const callback of Object.values(listeners)) callback(arg)
@@ -174,7 +173,6 @@ class ArSyncModel {
     return new Promise((resolve) => {
       let count = 0
       for (const model of models) {
-        console.error(model)
         model.onload(() => {
           count++
           if (models.length == count) resolve(models)
