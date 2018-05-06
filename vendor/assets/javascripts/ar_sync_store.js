@@ -8,7 +8,7 @@ class Updator {
   }
   replaceData(data, newData) {
     if (this.immutable) return newData
-    return recursivelyReplaceData(data, newData)
+    return this.recursivelyReplaceData(data, newData)
   }
   recursivelyReplaceData(data, newData) {
     const replaceArray = (as, bs) => {
@@ -18,8 +18,7 @@ class Updator {
         aids[a.id] = a
       }
       const order = {}
-      for (let i = 0; i < bs.length; i++) {
-        const b = bs[i]
+      bs.forEach((b, i) => {
         if (!b.id) return false
         if (aids[b.id]) {
           replaceObject(aids[b.id], b)
@@ -27,7 +26,7 @@ class Updator {
           as.push(b)
         }
         order[b.id] = i + 1
-      }
+      })
       as.sort((a, b) => {
         const oa = order[a.id] || Infinity
         const ob = order[b.id] || Infinity
@@ -132,25 +131,37 @@ class ArSyncStore {
   update(patch) {
     return this.batchUpdate([patch])
   }
+  _slicePatch(patchData, query) {
+    const obj = {}
+    for (const key in patchData) {
+      if (key === 'id') {
+        obj.id = patchData.id
+      } else {
+        const subq = query.attributes[key]
+        if (subq) {
+          obj[subq.column || key] = patchData[key]
+        }
+      }
+    }
+    return obj
+  }
+  _applyPatch(data, actualPath, updator, query, patchData) {
+    for (const key in patchData) {
+      const subq = query.attributes[key]
+      const value = patchData[key]
+      if (subq) {
+        const subcol = subq.column || key
+        if (data[subcol] !== value) {
+          this.data = updator.add(this.data, actualPath, subcol, value)
+        }
+      }
+    }
+  }
   _update(patch, updator) {
     const { action, path } = patch
     const patchData = patch.data
     let query = this.query
     let data = this.data
-    function slicePatch(patchData, query) {
-      const obj = {}
-      for (const key in patchData) {
-        if (key === 'id') {
-          obj.id = patchData.id
-        } else {
-          const subq = query.attributes[key]
-          if (subq) {
-            obj[subq.column || key] = patchData[key]
-          }
-        }
-      }
-      return obj
-    }
     const actualPath = []
     for(let i=0; i<path.length - 1; i++) {
       const nameOrId = path[i]
@@ -171,18 +182,6 @@ class ArSyncStore {
     }
     const nameOrId = path[path.length - 1]
     let id, column
-    const applyPatch = (data, query, patchData) => {
-      for (const key in patchData) {
-        const subq = query.attributes[key]
-        const value = patchData[key]
-        if (subq) {
-          const subcol = subq.column || key
-          if (data[subcol] !== value) {
-            this.data = updator.add(this.data, actualPath, subcol, value)
-          }
-        }
-      }
-    }
     if (typeof(nameOrId) === 'number') {
       id = nameOrId
       const idx = data.findIndex(o => o.id === id)
@@ -192,11 +191,11 @@ class ArSyncStore {
       column = attributes[nameOrId].column || nameOrId
       query = attributes[nameOrId]
     } else {
-      applyPatch(data, query, patchData)
+      this._applyPatch(data, actualPath, updator, query, patchData)
       return
     }
     if (action === 'create') {
-      const obj = slicePatch(patchData, query)
+      const obj = this._slicePatch(patchData, query)
       if (column) {
         this.data = updator.add(this.data, actualPath, column, obj)
       } else if (!data.find(o => o.id === id)) {
@@ -221,7 +220,7 @@ class ArSyncStore {
         if (idx < 0) return
         actualPath.push(idx)
       }
-      applyPatch(data, query, patchData)
+      this._applyPatch(data, actualPath, updator, query, patchData)
     }
   }
 
