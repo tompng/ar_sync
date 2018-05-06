@@ -90,14 +90,14 @@ class Updator {
     }
   }
   add(tree, path, column, value, orderParam) {
-    this.changed.push([path, column, value])
+    this.changed.push({ path: path.concat([column]), value: value })
     const root = this.mark(tree)
     const el = this.trace(root, path)
     this.assign(el, column, value, orderParam)
     return root
   }
   remove(tree, path, column) {
-    this.changed.push([path, column, null])
+    this.changed.push({ path: path.concat([column]), value: null })
     const root = this.mark(tree)
     let data = this.trace(root, path)
     if (data.constructor === Array) {
