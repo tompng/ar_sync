@@ -87,24 +87,34 @@ class Updator {
         if (limitReached) removed = el.pop()
       }
       if (removed) this.changes.push({ path: path.concat([removed.id]), value: null })
-    } else {
+    } else if (!this.valueEquals(el[column], value)) {
       this.changes.push({ path: path.concat([column]), value })
       el[column] = value
     }
   }
+  valueEquals(a, b) {
+    if (a === b) return true
+    if (!a || !b) return a == b
+    if (typeof a !== 'object') return false
+    if (typeof b !== 'object') return false
+    const ja = JSON.stringify(a)
+    const jb = JSON.stringify(b)
+    return ja === jb
+  }
   add(tree, accessKeys, path, column, value, orderParam) {
     const root = this.mark(tree)
-    const el = this.trace(root, accessKeys)
-    this.assign(el, path, column, value, orderParam)
+    const data = this.trace(root, accessKeys)
+    if (data) this.assign(data, path, column, value, orderParam)
     return root
   }
   remove(tree, accessKeys, path, column) {
     const root = this.mark(tree)
     let data = this.trace(root, accessKeys)
+    if (!data) return root
     if (data.constructor === Array) {
       this.changes.push({ path: path.concat([data[column].id]), value: null })
       data.splice(column, 1)
-    } else {
+    } else if (data[column] !== null) {
       this.changes.push({ path: path.concat([column]), value: null })
       data[column] = null
     }
