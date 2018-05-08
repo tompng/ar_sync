@@ -16,7 +16,7 @@ module ArSync::InstanceMethods
         fallbacks[name] = nil if info.type == :one
       end
     end
-    data = ArSerializer.serialize self, names, use: :sync
+    data = ArSync.serialize self, names
     fallbacks.update data
   end
 

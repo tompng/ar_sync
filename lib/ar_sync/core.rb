@@ -62,7 +62,7 @@ module ArSync
     end
     {
       keys: keys,
-      data: ArSerializer.serialize(collection.to_a, args, context: current_user, include_id: true, use: :sync)
+      data: serialize(collection.to_a, args, user: current_user)
     }
   end
 
@@ -73,7 +73,7 @@ module ArSync
     end
     {
       keys: keys,
-      data: ArSerializer.serialize(model, args, context: current_user, include_id: true, use: :sync)
+      data: serialize(model, args, user: current_user)
     }
   end
 
@@ -93,7 +93,7 @@ module ArSync
     paths
   end
 
-  def self.serialize(record_or_records, current_user = nil, query)
-    ArSerializer.serialize record_or_records, query, context: current_user
+  def self.serialize(record_or_records, query, user: nil)
+    ArSerializer.serialize record_or_records, query, context: user, include_id: true, use: :sync
   end
 end

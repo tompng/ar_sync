@@ -18,7 +18,7 @@ module ArSync
       if respond_to?(ArSync.config.current_user_method)
         current_user = send ArSync.config.current_user_method
       end
-      ArSync.serialize(record_or_records, current_user, query.as_json)
+      ArSync.serialize(record_or_records, query.as_json, user: current_user)
     end
   end
 
@@ -82,9 +82,9 @@ module ArSync
       _api_call :static, self.class.configured_static_apis do |model, current_user, query|
         case model
         when ArSync::Collection, ActiveRecord::Relation, Array
-          ArSync.serialize model.to_a, current_user, query
+          ArSync.serialize model.to_a, query, user: current_user
         when ActiveRecord::Base
-          ArSync.serialize model, current_user, query
+          ArSync.serialize model, query, user: current_user
         else
           model
         end

@@ -21,7 +21,7 @@ class ArSync::DataField < ArSync::Field
   end
 
   def data(parent, _child, to_user:, **)
-    ArSerializer.serialize parent, name, context: to_user, use: :sync
+    ArSync.serialize parent, name, user: to_user
   end
 
   def path(_child)
