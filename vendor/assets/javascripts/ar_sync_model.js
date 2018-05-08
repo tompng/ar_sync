@@ -23,7 +23,7 @@ class ArSyncBaseModel {
       if (status) {
         this.load(() => {
           this.trigger('reconnect')
-          this.trigger('change')
+          this.trigger('change', { path: [], value: this.data })
         })
       } else {
         this.unsubscribeAll()
@@ -33,7 +33,7 @@ class ArSyncBaseModel {
     this.load(() => {
       this.trigger('load')
       this.loaded = true
-      this.trigger('change')
+      this.trigger('change', { path: [], value: this.data })
     })
   }
   release() {
@@ -73,7 +73,7 @@ class ArSyncBaseModel {
       this.bufferedPatches = []
       const changes = this.store.batchUpdate(buf)
       this.data = this.store.data
-      if (changes.length) this.trigger('change', changes)
+      changes.forEach(change => this.trigger('change', change))
     }, 16)
   }
   subscribe(event, callback) {
