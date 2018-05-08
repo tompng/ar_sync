@@ -74,34 +74,38 @@ class Updator {
     })
     return data
   }
-  assign(el, column, value, orderParam) {
+  assign(el, path, column, value, orderParam) {
     if (el.constructor === Array && !el[column]) {
+      this.changes.push({ path: path.concat([value.id]), value })
       const limitReached = orderParam && orderParam.limit != null && el.length === orderParam.limit
+      let removed = null
       if (orderParam && orderParam.order == 'desc') {
         el.unshift(value)
-        if (limitReached) el.pop()
+        if (limitReached) removed = el.pop()
       } else {
         el.push(value)
-        if (limitReached) el.shift()
+        if (limitReached) removed = el.pop()
       }
+      if (removed) this.changes.push({ path: path.concat([removed.id]), value: null })
     } else {
+      this.changes.push({ path: path.concat([column]), value })
       el[column] = value
     }
   }
   add(tree, accessKeys, path, column, value, orderParam) {
-    this.changes.push({ path, value })
     const root = this.mark(tree)
     const el = this.trace(root, accessKeys)
-    this.assign(el, column, value, orderParam)
+    this.assign(el, path, column, value, orderParam)
     return root
   }
   remove(tree, accessKeys, path, column) {
-    this.changes.push({ path, value: null })
     const root = this.mark(tree)
     let data = this.trace(root, accessKeys)
     if (data.constructor === Array) {
+      this.changes.push({ path: path.concat([data[column].id]), value: null })
       data.splice(column, 1)
     } else {
+      this.changes.push({ path: path.concat([column]), value: null })
       data[column] = null
     }
     return root
@@ -167,7 +171,7 @@ class ArSyncStore {
       if (subq) {
         const subcol = subq.column || key
         if (data[subcol] !== value) {
-          this.data = updator.add(this.data, accessKeys, actualPath.concat([subcol]), subcol, value)
+          this.data = updator.add(this.data, accessKeys, actualPath, subcol, value)
         }
       }
     }
@@ -215,20 +219,20 @@ class ArSyncStore {
     if (action === 'create') {
       const obj = this._slicePatch(patchData, query)
       if (column) {
-        this.data = updator.add(this.data, accessKeys, actualPath.concat([column]), column, obj)
+        this.data = updator.add(this.data, accessKeys, actualPath, column, obj)
       } else if (!data.find(o => o.id === id)) {
         const ordering = Object.assign({}, patch.ordering)
         const limitOverride = query.params && query.params.limit
-        if (!ordering.order) ordering.order = query.params && query.params.order
+        ordering.order = query.params && query.params.order || ordering.order
         if (ordering.limit == null || limitOverride != null && limitOverride < ordering.limit) ordering.limit = limitOverride
-        this.data = updator.add(this.data, accessKeys, actualPath.concat(id), data.length, obj, ordering)
+        this.data = updator.add(this.data, accessKeys, actualPath, data.length, obj, ordering)
       }
     } else if (action === 'destroy') {
       if (column) {
-        this.data = updator.remove(this.data, accessKeys, actualPath.concat([column]), column)
+        this.data = updator.remove(this.data, accessKeys, actualPath, column)
       } else {
         const idx = data.findIndex(o => o.id === id)
-        if (idx >= 0) this.data = updator.remove(this.data, accessKeys, actualPath.concat([id]), idx)
+        if (idx >= 0) this.data = updator.remove(this.data, accessKeys, actualPath, idx)
       }
     } else {
       if (column) {
