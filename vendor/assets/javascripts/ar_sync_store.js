@@ -76,7 +76,7 @@ class Updator {
   }
   assign(el, column, value, orderParam) {
     if (el.constructor === Array && !el[column]) {
-      const limitReached = orderParam && orderParam.limit && el.length === orderParam.limit
+      const limitReached = orderParam && orderParam.limit != null && el.length === orderParam.limit
       if (orderParam && orderParam.order == 'desc') {
         el.unshift(value)
         if (limitReached) el.pop()
@@ -220,7 +220,7 @@ class ArSyncStore {
         const ordering = Object.assign({}, patch.ordering)
         const limitOverride = query.params && query.params.limit
         if (!ordering.order) ordering.order = query.params && query.params.order
-        if (!ordering.limit || limitOverride && limitOverride < ordering.limit) ordering.limit = limitOverride
+        if (ordering.limit == null || limitOverride != null && limitOverride < ordering.limit) ordering.limit = limitOverride
         this.data = updator.add(this.data, accessKeys, actualPath.concat(id), data.length, obj, ordering)
       }
     } else if (action === 'destroy') {
