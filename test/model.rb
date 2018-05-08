@@ -18,7 +18,7 @@ class Post < ActiveRecord::Base
 
   sync_parent :user, inverse_of: :posts
   sync_has_data :id, :title, :body
-  sync_has_data :user, includes: :user do
+  sync_has_data :user do
     { name: user.name }
   end
   sync_has_many :comments
@@ -34,9 +34,9 @@ class Comment < ActiveRecord::Base
   belongs_to :post
   has_many :stars
   sync_parent :post, inverse_of: :comments
-  sync_parent :post, inverse_of: :my_comments, only_to: ->{ user }
+  sync_parent :post, inverse_of: :my_comments, only_to: :user
   sync_has_data :id, :body
-  sync_has_data :user, includes: :user do
+  sync_has_data :user do
     { name: user.name }
   end
   sync_has_data(:star_count, preload: lambda { |comments|
