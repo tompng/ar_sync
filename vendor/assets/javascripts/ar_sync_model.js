@@ -73,7 +73,7 @@ class ArSyncBaseModel {
       this.bufferedPatches = []
       const changes = this.store.batchUpdate(buf)
       this.data = this.store.data
-      this.trigger('change', changes)
+      if (changes.length) this.trigger('change', changes)
     }, 16)
   }
   subscribe(event, callback) {
@@ -137,6 +137,9 @@ class ArSyncModel {
     this._listeners = {}
     ArSyncModel._detach(this._ref)
     this._ref = null
+  }
+  dig(data, path) {
+    return this._ref.model.store.dig(data, path)
   }
   static setConnectionAdapter(adapter) {
     ArSyncBaseModel.connectionManager = new ArSyncConnectionManager(adapter)
