@@ -86,7 +86,7 @@ class ArSyncBaseModel {
   trigger(event, arg) {
     const listeners = this.eventListeners.events[event]
     if (!listeners) return
-    for (const callback of Object.values(listeners)) callback(arg)
+    for (const id in listeners) listeners[id](arg)
   }
   initializeStore(keys, data, option) {
     const query = this.request.query
@@ -133,7 +133,7 @@ class ArSyncModel {
     return this._listeners[id] = { unsubscribe }
   }
   release() {
-    for (const s of Object.values(this._listeners)) s.unsubscribe()
+    for (const id in this._listeners) this._listeners[id].unsubscribe()
     this._listeners = {}
     ArSyncModel._detach(this._ref)
     this._ref = null

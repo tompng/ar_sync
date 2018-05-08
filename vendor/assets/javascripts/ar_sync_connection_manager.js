@@ -15,12 +15,11 @@ class ArSyncConnectionManager {
   triggerNetworkChange(status) {
     if (this.networkStatus == status) return
     this.networkStatus = status
-    for (const listeners of Object.values(this.networkListeners)) {
-      listeners(status)
-    }
+    for (const id in this.networkListeners) this.networkListeners[id](status)
   }
   unsubscribeAll() {
-    for (const subscription of Object.values(this.subscriptions)) {
+    for (const id in this.subscriptions) {
+      const subscription = this.subscriptions[id]
       subscription.listeners = {}
       subscription.connection.unsubscribe()
     }
@@ -61,7 +60,7 @@ class ArSyncConnectionManager {
   received(key, data) {
     const subscription = this.subscriptions[key]
     if (!subscription) return
-    for (const func of Object.values(subscription.listeners)) func(data)
+    for (const id in subscription.listeners) subscription.listeners[id](data)
   }
 }
 
