@@ -7,8 +7,10 @@ module ArSync::ClassMethods
     if original_data_block
       data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
     end
+    option = option.dup
+    user_specific = option.delete :user_specific
     names.each do |name|
-      _sync_define ArSync::DataField.new(name), option, &data_block
+      _sync_define ArSync::DataField.new(name, user_specific: user_specific), option, &data_block
     end
   end
 

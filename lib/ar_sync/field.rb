@@ -16,8 +16,17 @@ class ArSync::Field
 end
 
 class ArSync::DataField < ArSync::Field
+  def initialize(name, user_specific: false)
+    super name
+    @user_specific = user_specific
+  end
+
   def type
     :data
+  end
+
+  def user_specific?
+    @user_specific
   end
 
   def data(parent, _child, to_user:, **)
