@@ -4,6 +4,7 @@ module ArSync
       create_file 'app/controllers/sync_api_controller.rb', <<~CODE
         class SyncApiController < ApplicationController
           include ArSync::ApiControllerConcern
+          protect_from_forgery except: [:sync_call, :static_call]
 
           # api :my_data do |_params|
           #   current_user
