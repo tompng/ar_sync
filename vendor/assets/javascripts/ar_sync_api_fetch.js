@@ -23,6 +23,7 @@ function apiFetch(request) {
         requests.push(batch[0])
         callbacks.push(batch[1])
       }
+      batches = []
       apiBatchFetch(requests).then((result) => {
         for (let i in result) callbacks[i](result[i])
       }).catch(reject)
