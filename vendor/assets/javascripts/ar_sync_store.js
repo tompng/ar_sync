@@ -76,7 +76,13 @@ class Updator {
   }
   assign(el, path, column, value, orderParam) {
     if (el.constructor === Array && !el[column]) {
-      this.changes.push({ path: path.concat([value.id]), value })
+      this.changes.push({
+        path: path.concat([value.id]),
+        target: el,
+        id: value.id,
+        valueWas: null,
+        value
+      })
       const limitReached = orderParam && orderParam.limit != null && el.length === orderParam.limit
       let removed = null
       if (orderParam && orderParam.order == 'desc') {
@@ -86,9 +92,21 @@ class Updator {
         el.push(value)
         if (limitReached) removed = el.pop()
       }
-      if (removed) this.changes.push({ path: path.concat([removed.id]), value: null })
+      if (removed) this.changes.push({
+        path: path.concat([removed.id]),
+        target: el,
+        id: removed.id,
+        valueWas: removed,
+        value: null
+      })
     } else if (!this.valueEquals(el[column], value)) {
-      this.changes.push({ path: path.concat([column]), value })
+      this.changes.push({
+        path: path.concat([column]),
+        target: el,
+        column: column,
+        valueWas: el[column],
+        value
+      })
       el[column] = value
     }
   }
@@ -112,10 +130,22 @@ class Updator {
     let data = this.trace(root, accessKeys)
     if (!data) return root
     if (data.constructor === Array) {
-      this.changes.push({ path: path.concat([data[column].id]), value: null })
+      this.changes.push({
+        path: path.concat([data[column].id]),
+        target: data,
+        id: data[column].id,
+        valueWas: data[column],
+        value: null
+      })
       data.splice(column, 1)
     } else if (data[column] !== null) {
-      this.changes.push({ path: path.concat([column]), value: null })
+      this.changes.push({
+        path: path.concat([column]),
+        target: data,
+        column: column,
+        valueWas: data[column],
+        value: null
+      })
       data[column] = null
     }
     return root
@@ -194,7 +224,7 @@ class ArSyncStore {
     let data = this.data
     const actualPath = []
     const accessKeys = []
-    for(let i=0; i<path.length - 1; i++) {
+    for (let i = 0; i < path.length - 1; i++) {
       const nameOrId = path[i]
       if (typeof(nameOrId) === 'number') {
         const idx = data.findIndex(o => o.id === nameOrId)
