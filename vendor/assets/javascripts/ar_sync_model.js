@@ -31,8 +31,8 @@ class ArSyncBaseModel {
       }
     })
     this.load(() => {
-      this.trigger('load')
       this.loaded = true
+      this.trigger('load')
       this.trigger('change', { path: [], value: this.data })
     })
   }
@@ -71,9 +71,12 @@ class ArSyncBaseModel {
       this.bufferedPatches
       const buf = this.bufferedPatches
       this.bufferedPatches = []
-      const changes = this.store.batchUpdate(buf)
+      const { changes, events } = this.store.batchUpdate(buf)
       this.data = this.store.data
       changes.forEach(change => this.trigger('change', change))
+      events.forEach(event => {
+        this.trigger(event.type, event.data)
+      })
     }, 16)
   }
   subscribe(event, callback) {
