@@ -137,10 +137,11 @@ class ArSyncStore {
     this.data = new Updator(this.immutable).replaceData(this.data, data)
   }
   batchUpdate(patches) {
+    const events = []
     const updator = new Updator(this.immutable)
-    patches.forEach(patch => this._update(patch, updator))
+    patches.forEach(patch => this._update(patch, updator, events))
     updator.cleanup()
-    return updator.changes
+    return { changes: updator.changes, events }
   }
   update(patch) {
     return this.batchUpdate([patch])
@@ -186,7 +187,7 @@ class ArSyncStore {
       }
     }
   }
-  _update(patch, updator) {
+  _update(patch, updator, events) {
     const { action, path } = patch
     const patchData = patch.data
     let query = this.query
@@ -213,48 +214,52 @@ class ArSyncStore {
       if (!data) return
     }
     const nameOrId = path[path.length - 1]
-    let id, column
+    let id, idx, column, target = data
     if (typeof(nameOrId) === 'number') {
       id = nameOrId
-      const idx = data.findIndex(o => o.id === id)
+      idx = data.findIndex(o => o.id === id)
+      target = data[idx]
     } else if (nameOrId) {
       const { attributes } = query
       if (!attributes[nameOrId]) return
       column = attributes[nameOrId].column || nameOrId
       query = attributes[nameOrId]
-    } else {
-      this._applyPatch(data, accessKeys, actualPath, updator, query, patchData)
-      return
+      target = data[column]
     }
     if (action === 'create') {
       const obj = this._slicePatch(patchData, query)
       if (column) {
         this.data = updator.add(this.data, accessKeys, actualPath, column, obj)
-      } else if (!data.find(o => o.id === id)) {
+      } else if (!target) {
         const ordering = Object.assign({}, patch.ordering)
         const limitOverride = query.params && query.params.limit
         ordering.order = query.params && query.params.order || ordering.order
         if (ordering.limit == null || limitOverride != null && limitOverride < ordering.limit) ordering.limit = limitOverride
         this.data = updator.add(this.data, accessKeys, actualPath, data.length, obj, ordering)
       }
-    } else if (action === 'destroy') {
+      return
+    }
+    if (action === 'destroy') {
       if (column) {
         this.data = updator.remove(this.data, accessKeys, actualPath, column)
-      } else {
-        const idx = data.findIndex(o => o.id === id)
-        if (idx >= 0) this.data = updator.remove(this.data, accessKeys, actualPath, idx)
+      } else if (idx >= 0) {
+        this.data = updator.remove(this.data, accessKeys, actualPath, idx)
       }
+      return
+    }
+    if (!target) return
+    if (column) {
+      actualPath.push(column)
+      accessKeys.push(column)
+    } else if (id) {
+      actualPath.push(id)
+      accessKeys.push(idx)
+    }
+    if (action === 'update') {
+      this._applyPatch(target, accessKeys, actualPath, updator, query, patchData)
     } else {
-      if (column) {
-        actualPath.push(column)
-        accessKeys.push(column)
-      } else {
-        const idx = data.findIndex(o => o.id === id)
-        if (idx < 0) return
-        actualPath.push(id)
-        accessKeys.push(idx)
-      }
-      this._applyPatch(data, accessKeys, actualPath, updator, query, patchData)
+      const eventData = { target, path: actualPath, data: patchData.data }
+      events.push({ type: patchData.type, data: eventData })
     }
   }
 
