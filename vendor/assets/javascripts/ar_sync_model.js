@@ -31,8 +31,8 @@ class ArSyncBaseModel {
       }
     })
     this.load(() => {
-      this.trigger('load')
       this.loaded = true
+      this.trigger('load')
       this.trigger('change', { path: [], value: this.data })
     })
   }
