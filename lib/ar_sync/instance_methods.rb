@@ -20,6 +20,15 @@ module ArSync::InstanceMethods
     fallbacks.update data
   end
 
+  def sync_send_event(type:, relation: nil, to_user: nil, data:)
+    path = [*relation]
+    event_data = { type: type, data: data }
+    if self.class._sync_self?
+      ArSync.sync_send to: self, action: :event, path: path, data: event_data, to_user: to_user
+    end
+    _sync_notify_parent(:event, path: path, data: event_data, only_to_user: to_user)
+  end
+
   def _sync_notify_parent(action, path: nil, data: nil, order_param: nil, only_to_user: nil)
     self.class._each_sync_parent do |parent, inverse_name:, only_to:|
       if only_to

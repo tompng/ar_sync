@@ -17,6 +17,11 @@ class ArSync::Collection
 
   def _sync_notify_parent(*); end
 
+  def sync_send_event(type:, to_user: nil, data:)
+    event_data = { type: type, data: data }
+    ArSync.sync_send to: self, action: :event, path: [], data: event_data, to_user: to_user
+  end
+
   def to_a
     all = klass.all
     all = all.order id: order if order
