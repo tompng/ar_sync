@@ -194,8 +194,8 @@ class ArSyncStore {
   _slicePatch(patchData, query) {
     const obj = {}
     for (const key in patchData) {
-      if (key === 'id') {
-        obj.id = patchData.id
+      if (key === 'id' || query.attributes['*']) {
+        obj[key] = patchData[key]
       } else {
         const subq = query.attributes[key]
         if (subq) {
