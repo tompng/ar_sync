@@ -1,8 +1,9 @@
 module ArSync
   module Rails
-    class Engine < ::Rails::Engine
-    end
+    class Engine < ::Rails::Engine; end
   end
+
+  class ApiNotFound < StandardError; end
 
   self.on_notification do |events|
     events.each do |key, patch|
@@ -57,14 +58,31 @@ module ArSync
         current_user = send ArSync.config.current_user_method
       end
       responses = params[:requests].map do |request|
-        api_name = request[:api]
-        api = api_list[api_name.to_s]
-        raise "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless api
-        api_params = request[:params] || {}
-        model = instance_exec api_params, &api
-        yield model, current_user, request[:query].as_json
+        begin
+          api_name = request[:api]
+          api = api_list[api_name.to_s]
+          raise ArSync::ApiNotFound, "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless api
+          api_params = request[:params] || {}
+          model = instance_exec api_params, &api
+          { data: yield(model, current_user, request[:query].as_json) }
+        rescue StandardError => e
+          { error: handle_exception(e) }
+        end
       end
       render json: responses
+    end
+
+    def handle_exception(e)
+      logger.error e
+      case e
+      when ArSerializer::InvalidQuery, ArSync::ApiNotFound
+        { type: 'Bad Request', message: e.message }
+      when ActiveRecord::RecordNotFound
+        { type: 'Record Not Found', message: e.message }
+      else
+        message = "#{e.class.name} #{e.message}" unless ::Rails.env.production?
+        { type: 'Internal Server Error', message: message }
+      end
     end
 
     def sync_call
