@@ -72,8 +72,12 @@ module ArSync
       render json: responses
     end
 
-    def handle_exception(e)
+    def log_internal_error e
       logger.error e
+    end
+
+    def handle_exception(e)
+      log_internal_error e
       case e
       when ArSerializer::InvalidQuery, ArSync::ApiNotFound
         { type: 'Bad Request', message: e.message }
