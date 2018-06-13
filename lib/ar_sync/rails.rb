@@ -11,10 +11,6 @@ module ArSync
     end
   end
 
-  on_update do |key, patch|
-    ActionCable.server.broadcast key, patch
-  end
-
   config.key_prefix = 'ar_sync_'
   config.current_user_method = :current_user
 
@@ -27,7 +23,13 @@ module ArSync
     end
   end
 
-  ActionController::Base.include StaticJsonConcern
+  ActionController::Base.class_eval do
+    include StaticJsonConcern
+    def action_with_compact_ar_sync_notification(&block)
+      ArSync.with_compact_notification(&block)
+    end
+    around_action :action_with_compact_ar_sync_notification
+  end
 
   module ApiControllerConcern
     extend ActiveSupport::Concern
