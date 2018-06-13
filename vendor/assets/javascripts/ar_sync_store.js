@@ -23,21 +23,15 @@ const SyncBatchLoader = {
       g.ids.add(b.id)
     }
     this.batch = []
-    const requests = []
-    const requestBases = []
     for (const el of Object.values(grouped)) {
-      requests.push({ api: el.api, query: el.query, params: [...el.ids]})
-      requestBases.push(el)
-    }
-    fetchSyncAPI(requests).then(data => {
-      for (let i = 0; i < data.length; i++) {
-        const b = requestBases[i]
-        for (const d of data[i]) {
-          for (const c of b.callbacks[d.id]) c(d)
+      const request = { api: el.api, query: el.query, params: [...el.ids]}
+      fetchSyncAPI(request).then(data => {
+        for (const d of data) {
+          for (const c of el.callbacks[d.id]) c(d)
         }
-      }
-      this.processing = false
-    })
+        this.processing = false
+      })
+    }
   }
 }
 
@@ -45,11 +39,11 @@ class ArSyncContainerBase {
   constructor() {
     this.listeners = []
   }
-  initForReload(requests) {
+  initForReload(request) {
     this.networkSubscriber = ArSyncSubscriber.connectionAdapter.subscribeNetwork((state) => {
       if (state) {
-        fetchSyncAPI(requests).then(data => {
-          if (this.data) this.replaceData(data[0])
+        fetchSyncAPI(request).then(data => {
+          if (this.data) this.replaceData(data)
         })
       }
     })
@@ -104,13 +98,12 @@ class ArSyncContainerBase {
     if (id) {
       return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(parsedQuery, data))
     } else {
-      const requests = [{ api, query, params }]
-      return fetchSyncAPI(requests).then(data => {
-        const response = data[0]
+      const request = { api, query, params }
+      return fetchSyncAPI(request).then(response => {
         if (response.collection && response.order) {
-          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, requests)
+          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request)
         } else {
-          return new ArSyncModel(parsedQuery, response, requests)
+          return new ArSyncModel(parsedQuery, response, request)
         }
       })
     }
@@ -234,9 +227,9 @@ class ArSyncModel extends ArSyncContainerBase {
   }
 }
 class ArSyncCollection extends ArSyncContainerBase {
-  constructor(sync_keys, path, query, data, requests){
+  constructor(sync_keys, path, query, data, request){
     super()
-    if (requests) this.initForReload(requests)
+    if (request) this.initForReload(request)
     if (sync_keys) {
       this.sync_keys = sync_keys.map(key => key + path)
     } else {
