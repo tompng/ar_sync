@@ -1,15 +1,22 @@
 module ArSync
   module Rails
-    class Engine < ::Rails::Engine
+    class Engine < ::Rails::Engine; end
+  end
+
+  class ApiNotFound < StandardError; end
+
+  on_notification do |events|
+    events.each do |key, patch|
+      ActionCable.server.broadcast key, patch
     end
   end
 
-  self.on_update do |key, patch|
+  on_update do |key, patch|
     ActionCable.server.broadcast key, patch
   end
 
-  self.config.key_prefix = 'ar_sync_'
-  self.config.current_user_method = :current_user
+  config.key_prefix = 'ar_sync_'
+  config.current_user_method = :current_user
 
   module StaticJsonConcern
     def ar_sync_static_json(record_or_records, query)
@@ -44,14 +51,35 @@ module ArSync
         current_user = send ArSync.config.current_user_method
       end
       api_responses = params[:requests].map do |req|
-        api_name = req[:api]
-        api = self.class.configured_apis[api_name.to_s]
-        raise "API named `#{api_name}` not configured" unless api
-        api_params = req[:params] || {}
-        model = instance_exec api_params, &api
-        yield model, current_user, req[:query].as_json
+        begin
+          api_name = req[:api]
+          api = self.class.configured_apis[api_name.to_s]
+          raise ArSync::ApiNotFound, "API named `#{api_name}` not configured" unless api
+          api_params = req[:params] || {}
+          model = instance_exec api_params, &api
+          { data: yield(model, current_user, req[:query].as_json) }
+        rescue StandardError => e
+          { error: handle_exception(e) }
+        end
       end
       render json: api_responses
+    end
+
+    def log_internal_error(e)
+      logger.error e
+    end
+
+    def handle_exception(e)
+      log_internal_error e
+      case e
+      when ArSerializer::InvalidQuery, ArSync::ApiNotFound
+        { type: 'Bad Request', message: e.message }
+      when ActiveRecord::RecordNotFound
+        { type: 'Record Not Found', message: e.message }
+      else
+        message = "#{e.class.name} #{e.message}" unless ::Rails.env.production?
+        { type: 'Internal Server Error', message: message }
+      end
     end
 
     def api_call
