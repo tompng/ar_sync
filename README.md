@@ -26,14 +26,13 @@ rails g ar_sync:install
 class User < ApplicationRecord
   has_many :posts
   ...
-  sync_has_data :name
-  sync_has_many :posts
+  sync_field :name, :posts
 end
 
 class Post < ApplicationRecord
   belongs_to :user
   ...
-  sync_has_data :title, :body, :created_at, :updated_at
+  sync_field :title, :body, :created_at, :updated_at
   sync_parent :user, inverse_of: :posts
 end
 ```
@@ -43,8 +42,14 @@ end
 # app/controllers/sync_api_controller.rb
 class SyncApiController < ApplicationController
   include ArSync::ApiControllerConcern
-  api :my_simple_user_api do |params|
-    User.where(condition).find params[:id]
+  api User do |ids|
+    User.where(curren_user_can_view).where id: ids
+  end
+  api Post do |ids|
+    Post.where(curren_user_can_view).where id: ids
+  end
+  api :profile do
+    current_user
   end
 end
 ```
@@ -53,14 +58,12 @@ end
 ```html
 <!-- if you're using vue -->
 <script>
-  new ArSyncData({
-    user: {
-      api: 'my_simple_user_api',
-      params: { id: location.hash.match(/\d+/)[0] },
-      query: ['id', 'name', { posts: ['title', 'created_at'] }]
-    }
-  }).load((vueData) => {
-    new Vue({ el: '#foobar', data: vueData })
+  ArSyncModel.load({
+    api: 'User',
+    id: 3,
+    query: ['id', 'sync_keys', 'name', { posts: ['sync_keys', 'title', 'created_at'] }]
+  }).then((userModel) => {
+    new Vue({ el: '#foobar', data: { user: userModel.data } })
   })
 </script>
 <div id='foobar'>
@@ -78,7 +81,3 @@ end
   </a> to create a new post with random title and body
 </div>
 ```
-
-Now, your view and ActiveRecord are synchronized.
-
-In the sample above, clicking `Create Here` will add a new link to the created post immediately.
