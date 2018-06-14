@@ -1,40 +1,5 @@
 (function(){
 
-const SyncBatchLoader = {
-  processing: false,
-  batch: [],
-  fetch(api, id, query) {
-    return new Promise((resolve, _reject) => {
-      this.batch.push({ api, id, query, callback: resolve })
-      if (!this.processing) {
-        this.processing = true
-        setTimeout(() => this.process(), 16)
-      }
-    })
-  },
-  process() {
-    const grouped = {}
-    callbacks = {}
-    for (const b of this.batch) {
-      const key = b.api + ':' + JSON.stringify(b.query)
-      ;(callbacks[key] = callbacks[key] || []).push(b.callback)
-      const g = grouped[key] = grouped[key] || { api: b.api, query: b.query, ids: new Set, callbacks: {} }
-      ;(g.callbacks[b.id] = g.callbacks[b.id] || []).push(b.callback)
-      g.ids.add(b.id)
-    }
-    this.batch = []
-    for (const el of Object.values(grouped)) {
-      const request = { api: el.api, query: el.query, params: [...el.ids]}
-      fetchSyncAPI(request).then(data => {
-        for (const d of data) {
-          for (const c of el.callbacks[d.id]) c(d)
-        }
-        this.processing = false
-      })
-    }
-  }
-}
-
 class ArSyncContainerBase {
   constructor() {
     this.listeners = []
@@ -96,7 +61,7 @@ class ArSyncContainerBase {
   static _load({ api, id, params, query }) {
     const parsedQuery = ArSyncModel.parseQuery(query)
     if (id) {
-      return SyncBatchLoader.fetch(api, id, query).then(data => new ArSyncModel(parsedQuery, data))
+      return fetchSyncAPI({ api, id, query }).then(data => new ArSyncModel(parsedQuery, data))
     } else {
       const request = { api, query, params }
       return fetchSyncAPI(request).then(response => {
@@ -190,14 +155,14 @@ class ArSyncModel extends ArSyncContainerBase {
     } else if (action === 'add') {
       if (this.data.id === id) return
       const query = this.query.attributes[path]
-      SyncBatchLoader.fetch(class_name, id, query).then((data) => {
+      fetchSyncAPI({ api: class_name, id, query }).then((data) => {
         const model = new ArSyncModel(query, data)
         if (this.children[path]) this.children[path].release()
         this.children[path] = model
         this.data[path] = model.data
       })
     } else {
-      SyncBatchLoader.fetch(class_name, id, this.reloadQuery()).then((data) => {
+      fetchSyncAPI({ api: class_name, id, query: this.reloadQuery() }).then((data) => {
         this.update(data)
       })
     }
@@ -288,7 +253,7 @@ class ArSyncCollection extends ArSyncContainerBase {
         if (last && last.id > id) return
       }
     }
-    SyncBatchLoader.fetch(className, id, this.query).then((data) => {
+    fetchSyncAPI({ api: className, id, query: this.query }).then((data) => {
       const model = new ArSyncModel(this.query, data)
       const overflow = this.order.limit && this.order.limit === this.data.length
       if (this.order.mode === 'asc') {
