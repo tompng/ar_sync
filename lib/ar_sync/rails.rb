@@ -5,14 +5,14 @@ module ArSync
 
   class ApiNotFound < StandardError; end
 
-  self.on_notification do |events|
+  on_notification do |events|
     events.each do |key, patch|
       ActionCable.server.broadcast key, patch
     end
   end
 
-  self.config.key_prefix = 'ar_sync_'
-  self.config.current_user_method = :current_user
+  config.key_prefix = 'ar_sync_'
+  config.current_user_method = :current_user
 
   module StaticJsonConcern
     def ar_sync_static_json(record_or_records, query)
