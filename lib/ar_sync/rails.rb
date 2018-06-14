@@ -41,11 +41,11 @@ module ArSync
       end
 
       def configured_sync_apis
-        @configured_apis ||= {}
+        @configured_sync_apis ||= {}
       end
 
       def configured_static_apis
-        @configured_apis ||= {}
+        @configured_static_apis ||= {}
       end
     end
 
