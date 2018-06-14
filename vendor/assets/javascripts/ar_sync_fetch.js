@@ -99,7 +99,6 @@ class ApiFetcher {
 }
 
 const fetcher = new ApiFetcher('/sync_api')
-window.fetcher = fetcher
 const apifetch = request => fetcher.fetch(request)
 try {
   module.exports = apifetch

@@ -1,7 +1,7 @@
 (function(){
 let ArSyncSubscriber, ActionCable
 try {
-  ArSyncSubscriber = require('./ar_sync_data').ArSyncSubscriber
+  ArSyncSubscriber = require('./ar_sync_data')
   ActionCable = require('actioncable')
 } catch(e) {
   try {

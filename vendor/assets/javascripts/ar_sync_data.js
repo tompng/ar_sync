@@ -1,12 +1,4 @@
 (function(){
-let ArSyncStore, fetchSyncAPI
-try {
-  ArSyncStore = require('./ar_sync_store')
-  fetchSyncAPI = require('./ar_sync_fetch')
-} catch(e) {
-  ArSyncStore = window.ArSyncStore
-  fetchSyncAPI = window.fetchSyncAPI
-}
 
 class ArSyncSubscriberListener {
   constructor(subscriber, id, func) {
@@ -63,7 +55,7 @@ ArSyncSubscriber.notifyEmpty = function(key) {
 }
 
 try {
-  module.exports = { ArSyncSubscriber }
+  module.exports = ArSyncSubscriber
 } catch (e) {
   window.ArSyncSubscriber = ArSyncSubscriber
 }

@@ -1,4 +1,12 @@
 (function(){
+let ArSyncSubscriber, fetchSyncAPI
+try {
+  ArSyncSubscriber = require('./ar_sync_data')
+  fetchSyncAPI = require('./ar_sync_fetch')
+} catch(e) {
+  ArSyncSubscriber = window.ArSyncSubscriber
+  fetchSyncAPI = window.fetchSyncAPI
+}
 
 class ArSyncContainerBase {
   constructor() {
@@ -306,7 +314,6 @@ class ArSyncCollection extends ArSyncContainerBase {
     for (const key of this.sync_keys) this.subscribe(key, callback)
   }
 }
-
 
 try {
   module.exports = { ArSyncModel, ArSyncCollection }
