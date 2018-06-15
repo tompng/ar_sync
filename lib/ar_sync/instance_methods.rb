@@ -31,11 +31,12 @@ module ArSync::InstanceMethods
 
   def _sync_notify_parent(action, path: nil, data: nil, order_param: nil, only_to_user: nil)
     self.class._each_sync_parent do |parent, inverse_name:, only_to:|
+      only_to_user2 = only_to_user
       if only_to
         to_user = only_to.is_a?(Symbol) ? instance_eval(&only_to) : instance_exec(&only_to)
         next unless to_user
         next if only_to_user && only_to_user != to_user
-        only_to_user = to_user
+        only_to_user2 = to_user
       end
       parent = send(parent) if parent.is_a? Symbol
       parent = instance_exec(&parent) if parent.is_a? Proc
@@ -50,7 +51,7 @@ module ArSync::InstanceMethods
       path2 = [*association_field.path(self), *path]
       ArSync.sync_send(
         to: parent, action: action2, path: path2, data: data2,
-        to_user: only_to_user,
+        to_user: only_to_user2,
         ordering: order_param2
       )
       parent._sync_notify_parent action2, path: path2, data: data2, order_param: order_param2, only_to_user: to_user || only_to_user
