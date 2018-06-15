@@ -1,13 +1,13 @@
 GIT
   remote: https://github.com/tompng/ar_serializer.git
-  revision: 9da51254610d8929a0459362f86a05dc114876ad
+  revision: 3ddfffb781b8d2741aa02fd312ac7c1e57430be7
   specs:
     ar_serializer (0.1.0)
       activerecord
 
 GIT
   remote: https://github.com/tompng/top_n_loader.git
-  revision: 4a5d9efb72b916686a129d3b45a8d8595ca44055
+  revision: 86cfc7a18acd6cf0781fd4704694ffa1869854a6
   specs:
     top_n_loader (0.1.0)
       activerecord
