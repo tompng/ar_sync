@@ -109,22 +109,24 @@ class ArSyncBaseModel {
 class ArSyncModel {
   constructor(request, option) {
     this._ref = ArSyncModel.retrieveRef(request, option)
-    this.data = this._ref.model.data
     this._listenerSerial = 0
     this._listeners = {}
-    const setData = () => this.data = this._ref.model.data
-    this.subscribe('load', setData)
+    const setData = () => {
+      this.data = this._ref.model.data
+      this.loaded = this._ref.model.loaded
+    }
+    setData()
     this.subscribe('change', setData)
   }
   onload(callback) {
-    if (this._ref.model.loaded) {
-      callback()
-      return
-    }
+    this.subscribeOnce('load', callback)
+  }
+  subscribeOnce(event, callback) {
     const subscription = this.subscribe('load', () => {
       callback()
       subscription.unsubscribe()
     })
+    return subscription
   }
   subscribe(event, callback) {
     const id = this._listenerSerial++
@@ -132,6 +134,10 @@ class ArSyncModel {
     const unsubscribe = () => {
       subscription.unsubscribe()
       delete this._listeners[id]
+    }
+    if (this.loaded) {
+      if (event === 'load') setTimeout(callback, 0)
+      if (event === 'change') setTimeout(() => callback([], this.data), 0)
     }
     return this._listeners[id] = { unsubscribe }
   }
