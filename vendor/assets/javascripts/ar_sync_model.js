@@ -116,6 +116,7 @@ class ArSyncModel {
       this.loaded = this._ref.model.loaded
     }
     setData()
+    this.subscribe('load', setData)
     this.subscribe('change', setData)
   }
   onload(callback) {
