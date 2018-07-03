@@ -138,7 +138,7 @@ class ArSyncModel {
     }
     if (this.loaded) {
       if (event === 'load') setTimeout(callback, 0)
-      if (event === 'change') setTimeout(() => callback([], this.data), 0)
+      if (event === 'change') setTimeout(() => callback({ path: [], value: this.data }), 0)
     }
     return this._listeners[id] = { unsubscribe }
   }
