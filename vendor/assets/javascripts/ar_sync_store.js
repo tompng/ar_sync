@@ -209,8 +209,8 @@ class ArSyncStore {
     for (const key in patchData) {
       const subq = query.attributes[key]
       const value = patchData[key]
-      if (subq) {
-        const subcol = subq.column || key
+      if (subq || query.attributes['*']) {
+        const subcol = (subq && subq.column) || key
         if (data[subcol] !== value) {
           this.data = updator.add(this.data, accessKeys, actualPath, subcol, value)
         }
