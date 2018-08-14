@@ -4,15 +4,18 @@ module ArSync
       create_file 'app/controllers/sync_api_controller.rb', <<~CODE
         class SyncApiController < ApplicationController
           include ArSync::ApiControllerConcern
-          protect_from_forgery except: [:sync_call, :static_call]
+          class SyncApiSchema
+            include ArSerializer::Serializable
+            # serializer_field :my_data do |current_user|
+            #   current_user
+            # end
 
-          # api :my_data do |_params|
-          #   current_user
-          # end
-
-          # api :comment do |params|
-          #   Comment.where(current_user_can_access).find params[:id]
-          # end
+            # api :comment do |current_user, id:|
+            #   Comment.where(current_user_can_access).find id
+            # end
+          end
+          class StaticApiSchema < SyncApiSchema
+          end
         end
       CODE
     end
