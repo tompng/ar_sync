@@ -4,10 +4,11 @@ require_relative 'collection'
 module ArSync::ClassMethods
   def sync_has_data(*names, **option, &original_data_block)
     @_sync_self = true
+    option = option.dup
     if original_data_block
       data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
     end
-    option = option.dup
+    option[:params_type] = {}
     user_specific = option.delete :user_specific
     names.each do |name|
       _sync_define ArSync::DataField.new(name, user_specific: user_specific), option, &data_block
@@ -22,7 +23,7 @@ module ArSync::ClassMethods
     _sync_define ArSync::HasOneField.new(name), option, &data_block
   end
 
-  def sync_has_many(name, order: :asc, propagate_when: nil, limit: nil, preload: nil, association: nil, **option, &data_block)
+  def sync_has_many(name, order: :asc, propagate_when: nil, params_type: nil, limit: nil, preload: nil, association: nil, **option, &data_block)
     if data_block.nil? && preload.nil?
       preload = lambda do |records, _context, params|
         ArSerializer::Field.preload_association(
@@ -34,9 +35,12 @@ module ArSync::ClassMethods
       data_block = lambda do |preloaded, _context, _params|
         preloaded ? preloaded[id] || [] : send(name)
       end
+      params_type = { limit: :int, order: :any }
+    else
+      params_type = {}
     end
     field = ArSync::HasManyField.new name, association: association, order: order, limit: limit, propagate_when: propagate_when
-    _sync_define field, preload: preload, association: association, **option, &data_block
+    _sync_define field, preload: preload, association: association, params_type: params_type, **option, &data_block
   end
 
   def _sync_define(info, **option, &data_block)
