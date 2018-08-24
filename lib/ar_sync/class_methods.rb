@@ -25,9 +25,10 @@ module ArSync::ClassMethods
 
   def sync_has_many(name, order: :asc, propagate_when: nil, params_type: nil, limit: nil, preload: nil, association: nil, **option, &data_block)
     if data_block.nil? && preload.nil?
+      underscore_name = name.to_s.underscore.to_sym
       preload = lambda do |records, _context, params|
         ArSerializer::Field.preload_association(
-          self, records, association || name,
+          self, records, association || underscore_name,
           order: (!limit && params && params[:order]) || order,
           limit: [params && params[:limit]&.to_i, limit].compact.min
         )
