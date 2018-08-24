@@ -1,16 +1,14 @@
 GIT
-  remote: https://github.com/tompng/ar_serializer.git
-  revision: 753febab64374fd941dcc173801706bec12bf15a
-  branch: type
-  specs:
-    ar_serializer (0.1.0)
-      activerecord
-
-GIT
   remote: https://github.com/tompng/top_n_loader.git
   revision: 86cfc7a18acd6cf0781fd4704694ffa1869854a6
   specs:
     top_n_loader (0.1.0)
+      activerecord
+
+PATH
+  remote: ../../ar_serializer
+  specs:
+    ar_serializer (0.1.0)
       activerecord
 
 PATH
@@ -86,6 +84,9 @@ GEM
     ffi (1.9.23)
     globalid (0.4.1)
       activesupport (>= 4.2.0)
+    graphiql-rails (1.4.11)
+      railties
+      sprockets-rails
     i18n (1.0.0)
       concurrent-ruby (~> 1.0)
     listen (3.1.5)
@@ -207,6 +208,7 @@ DEPENDENCIES
   babel-transpiler
   byebug
   capybara (~> 2.13)
+  graphiql-rails
   listen (>= 3.0.5, < 3.2)
   pg
   pry-rails
