@@ -34,7 +34,9 @@ module ArSync
       inject_into_file(
         'config/routes.rb',
         "\n  post '/sync_api', to: 'sync_api#sync_call'" +
-        "\n  post '/static_api', to: 'sync_api#static_call'",
+        "\n  post '/static_api', to: 'sync_api#static_call'" +
+        "\n  post '/graphql', to: 'sync_api#graphql_call'" +
+        "\n  get '/graphql_schema', to: 'sync_api#graphql_schema'",
         after: 'Rails.application.routes.draw do'
       )
     end

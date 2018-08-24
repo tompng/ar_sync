@@ -33,22 +33,23 @@ module ArSync
 
   module ApiControllerConcern
     extend ActiveSupport::Concern
+    include ArSerializer::Serializable
 
     included do
       protect_from_forgery except: [:sync_call, :static_call]
     end
 
-    def _api_call(type, schema)
+    def _api_call(type)
       if respond_to?(ArSync.config.current_user_method)
         current_user = send ArSync.config.current_user_method
       end
       responses = params[:requests].map do |request|
         begin
           api_name = request[:api]
-          info = schema._serializer_field_info api_name
+          info = self.class._serializer_field_info api_name
           raise ArSync::ApiNotFound, "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless info
           api_params = (request[:params].as_json || {}).transform_keys(&:to_sym)
-          model = info.data_block.call current_user, api_params
+          model = instance_exec(current_user, api_params, &info.data_block)
           { data: yield(model, current_user, request[:query].as_json) }
         rescue StandardError => e
           { error: handle_exception(e) }
@@ -58,7 +59,7 @@ module ArSync
     end
 
     def log_internal_error e
-      logger.error e
+      logger.error e.message
     end
 
     def handle_exception(e)
@@ -75,7 +76,7 @@ module ArSync
     end
 
     def sync_call
-      _api_call :sync, self.class.const_get('SyncApiSchema') do |model, current_user, query|
+      _api_call :sync do |model, current_user, query|
         case model
         when ArSync::Collection
           ArSync.sync_collection_api model, current_user, query
@@ -85,8 +86,20 @@ module ArSync
       end
     end
 
+    def graphql_schema
+      render plain: ArSerializer::GraphQL.definition(self.class)
+    end
+
+    def graphql_call
+      render json: ArSerializer::GraphQL.serialize(
+        self,
+        params[:query],
+        context: current_user
+      )
+    end
+
     def static_call
-      _api_call :static, self.class.const_get('StaticApiSchema') do |model, current_user, query|
+      _api_call :static do |model, current_user, query|
         case model
         when ArSync::Collection, ActiveRecord::Relation, Array
           ArSync.serialize model.to_a, query, user: current_user
