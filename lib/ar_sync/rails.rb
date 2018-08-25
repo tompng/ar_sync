@@ -94,6 +94,7 @@ module ArSync
       render json: ArSerializer::GraphQL.serialize(
         self,
         params[:query],
+        operation_name: params[:operationName],
         context: current_user
       )
     rescue StandardError => e
