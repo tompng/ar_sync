@@ -96,6 +96,8 @@ module ArSync
         params[:query],
         context: current_user
       )
+    rescue StandardError => e
+      render json: { error: handle_exception(e) }
     end
 
     def static_call
