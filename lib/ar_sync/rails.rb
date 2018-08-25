@@ -95,6 +95,7 @@ module ArSync
         self,
         params[:query],
         operation_name: params[:operationName],
+        variables: (params[:variables] || {}).as_json,
         context: current_user
       )
     rescue StandardError => e
