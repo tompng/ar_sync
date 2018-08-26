@@ -2,16 +2,16 @@ require_relative 'field'
 require_relative 'collection'
 
 module ArSync::ClassMethods
-  def sync_has_data(*names, **option, &original_data_block)
+  def sync_has_data(*names, user_specific: nil, **option, &original_data_block)
     @_sync_self = true
     option = option.dup
     if original_data_block
       data_block = ->(*args) { instance_exec(*args, &original_data_block).as_json }
     end
     option[:params_type] = {}
-    user_specific = option.delete :user_specific
     names.each do |name|
-      _sync_define ArSync::DataField.new(name, user_specific: user_specific), option, &data_block
+      type_override = reflect_on_association(name.to_s.underscore) ? { type: :any } : {}
+      _sync_define ArSync::DataField.new(name, user_specific: user_specific), option.merge(type_override), &data_block
     end
   end
 
