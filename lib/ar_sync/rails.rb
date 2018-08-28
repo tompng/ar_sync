@@ -36,7 +36,7 @@ module ArSync
     include ArSerializer::Serializable
 
     included do
-      protect_from_forgery except: [:sync_call, :static_call]
+      protect_from_forgery except: %i[sync_call static_call graphql_call]
       serializer_field :__schema do
         ArSerializer::GraphQL::SchemaClass.new self.class
       end
