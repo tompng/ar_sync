@@ -1,23 +1,18 @@
 class SyncApiController < ApplicationController
   include ArSync::ApiControllerConcern
-
-  api :newposts do |_params|
+  serializer_field :newposts, type: [Post] do
     Post.sync_collection(:latest10)
   end
-
-  api :profile do |_params|
-    current_user
+  serializer_field :profile, type: User do |user|
+    user
   end
-
-  api :user do |params|
-    User.find params[:id]
+  serializer_field :user, type: User do |_user, id:|
+    User.find id
   end
-
-  api :post do |params|
-    Post.find params[:id]
+  serializer_field :post, type: Post do |_user, id:|
+    Post.find id
   end
-
-  api :comment do |params|
-    Comment.find params[:id]
+  serializer_field :comment, type: Comment do |_user, id:|
+    Comment.find id
   end
 end

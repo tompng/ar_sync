@@ -4,15 +4,14 @@ module ArSync
       create_file 'app/controllers/sync_api_controller.rb', <<~CODE
         class SyncApiController < ApplicationController
           include ArSync::ApiControllerConcern
-          protect_from_forgery except: [:sync_call, :static_call]
-
-          # api :my_data do |_params|
+          # serializer_field :my_data do |_user|
           #   current_user
           # end
 
-          # api :comment do |params|
-          #   Comment.where(current_user_can_access).find params[:id]
+          # serializer_field :comment do |_user, id:|
+          #   Comment.where(current_user_can_access).find id
           # end
+          end
         end
       CODE
     end
@@ -31,7 +30,9 @@ module ArSync
       inject_into_file(
         'config/routes.rb',
         "\n  post '/sync_api', to: 'sync_api#sync_call'" +
-        "\n  post '/static_api', to: 'sync_api#static_call'",
+        "\n  post '/static_api', to: 'sync_api#static_call'" +
+        "\n  post '/graphql', to: 'sync_api#graphql_call'" +
+        "\n  get '/schema.graphql', to: 'sync_api#graphql_schema'",
         after: 'Rails.application.routes.draw do'
       )
     end

@@ -25,6 +25,8 @@ gem 'ar_sync', path: '../'
 gem 'ar_serializer', github: 'tompng/ar_serializer'
 gem 'top_n_loader', github: 'tompng/top_n_loader'
 
+gem 'graphiql-rails'
+
 group :production do
   # Use Redis adapter to run Action Cable in production
   gem 'redis', '~> 3.0'

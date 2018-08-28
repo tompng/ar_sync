@@ -1,6 +1,9 @@
 Rails.application.routes.draw do
   post '/sync_api', to: 'sync_api#sync_call'
   post '/static_api', to: 'sync_api#static_call'
+  post '/graphql', to: 'sync_api#graphql_call'
+  get '/schema.graphql', to: 'sync_api#graphql_schema'
+  mount GraphiQL::Rails::Engine, at: '/graphiql', graphql_path: '/graphql'
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
   root to: 'top#show'
   get '/react_top', to: 'top#react'
