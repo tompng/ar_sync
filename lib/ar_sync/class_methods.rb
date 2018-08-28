@@ -47,8 +47,8 @@ module ArSync::ClassMethods
   def _sync_define(info, **option, &data_block)
     _initialize_sync_callbacks
     _sync_children_info[info.name] = info
+    serializer_field info.name, **option, &data_block unless _serializer_field_info info.name
     serializer_field info.name, **option, namespace: :sync, &data_block
-    serializer_field info.name, **option, &data_block
   end
 
   def sync_parent(parent, inverse_of:, only_to: nil)
