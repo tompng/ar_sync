@@ -36,11 +36,53 @@ module ArSync
     include ArSerializer::Serializable
 
     included do
-      protect_from_forgery except: [:sync_call, :static_call]
+      protect_from_forgery except: %i[sync_call static_call graphql_call]
       serializer_field :__schema do
         ArSerializer::GraphQL::SchemaClass.new self.class
       end
     end
+
+    def sync_call
+      _api_call :sync do |model, current_user, query|
+        case model
+        when ArSync::Collection
+          ArSync.sync_collection_api model, current_user, query
+        when ActiveRecord::Base
+          ArSync.sync_api model, current_user, query
+        end
+      end
+    end
+
+    def graphql_schema
+      render plain: ArSerializer::GraphQL.definition(self.class)
+    end
+
+    def graphql_call
+      render json: ArSerializer::GraphQL.serialize(
+        self,
+        params[:query],
+        operation_name: params[:operationName],
+        variables: (params[:variables] || {}).as_json,
+        context: current_user
+      )
+    rescue StandardError => e
+      render json: { error: handle_exception(e) }
+    end
+
+    def static_call
+      _api_call :static do |model, current_user, query|
+        case model
+        when ArSync::Collection, ActiveRecord::Relation, Array
+          ArSync.serialize model.to_a, query, user: current_user
+        when ActiveRecord::Base
+          ArSync.serialize model, query, user: current_user
+        else
+          model
+        end
+      end
+    end
+
+    private
 
     def _api_call(type)
       if respond_to?(ArSync.config.current_user_method)
@@ -98,46 +140,6 @@ module ArSync
       else
         message = "#{exception.class} (#{exception.message})" unless ::Rails.env.production?
         { type: 'Internal Server Error', message: message.to_s, backtrace: backtrace }
-      end
-    end
-
-    def sync_call
-      _api_call :sync do |model, current_user, query|
-        case model
-        when ArSync::Collection
-          ArSync.sync_collection_api model, current_user, query
-        when ActiveRecord::Base
-          ArSync.sync_api model, current_user, query
-        end
-      end
-    end
-
-    def graphql_schema
-      render plain: ArSerializer::GraphQL.definition(self.class)
-    end
-
-    def graphql_call
-      render json: ArSerializer::GraphQL.serialize(
-        self,
-        params[:query],
-        operation_name: params[:operationName],
-        variables: (params[:variables] || {}).as_json,
-        context: current_user
-      )
-    rescue StandardError => e
-      render json: { error: handle_exception(e) }
-    end
-
-    def static_call
-      _api_call :static do |model, current_user, query|
-        case model
-        when ArSync::Collection, ActiveRecord::Relation, Array
-          ArSync.serialize model.to_a, query, user: current_user
-        when ActiveRecord::Base
-          ArSync.serialize model, query, user: current_user
-        else
-          model
-        end
       end
     end
   end
