@@ -15,7 +15,4 @@ class SyncApiController < ApplicationController
   serializer_field :comment, type: Comment do |_user, id:|
     Comment.find id
   end
-  serializer_field :__schema do
-    ArSerializer::GraphQL::SchemaClass.new SyncApiController
-  end
 end
