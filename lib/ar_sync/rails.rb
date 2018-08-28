@@ -58,20 +58,42 @@ module ArSync
       render json: responses
     end
 
-    def log_internal_error e
-      logger.error e.message
+    def log_internal_exception_trace(trace)
+      if logger.formatter&.respond_to? :tags_text
+        logger.fatal trace.join("\n#{logger.formatter.tags_text}")
+      else
+        logger.fatal trace.join("\n")
+      end
     end
 
-    def handle_exception(e)
-      log_internal_error e
-      case e
+    def exception_trace(exception)
+      backtrace_cleaner = request.get_header 'action_dispatch.backtrace_cleaner'
+      wrapper = ActionDispatch::ExceptionWrapper.new backtrace_cleaner, exception
+      trace = wrapper.application_trace
+      trace.empty? ? wrapper.framework_trace : trace
+    end
+
+    def log_internal_exception(exception)
+      ActiveSupport::Deprecation.silence do
+        logger.fatal '  '
+        logger.fatal "#{exception.class} (#{exception.message}):"
+        log_internal_exception_trace exception.annoted_source_code if exception.respond_to?(:annoted_source_code)
+        logger.fatal '  '
+        log_internal_exception_trace exception_trace(exception)
+      end
+    end
+
+    def handle_exception(exception)
+      log_internal_exception exception
+      backtrace = exception_trace exception unless ::Rails.env.production?
+      case exception
       when ArSerializer::InvalidQuery, ArSync::ApiNotFound
-        { type: 'Bad Request', message: e.message }
+        { type: 'Bad Request', message: exception.message, backtrace: backtrace }
       when ActiveRecord::RecordNotFound
-        { type: 'Record Not Found', message: e.message }
+        { type: 'Record Not Found', message: exception.message, backtrace: backtrace }
       else
-        message = "#{e.class.name} #{e.message}" unless ::Rails.env.production?
-        { type: 'Internal Server Error', message: message }
+        message = "#{exception.class} (#{exception.message})" unless ::Rails.env.production?
+        { type: 'Internal Server Error', message: message.to_s, backtrace: backtrace }
       end
     end
 
