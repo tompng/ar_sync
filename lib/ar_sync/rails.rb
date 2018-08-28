@@ -87,10 +87,11 @@ module ArSync
       log_internal_exception exception
       backtrace = exception_trace exception unless ::Rails.env.production?
       case exception
-      when ArSerializer::InvalidQuery, ArSync::ApiNotFound
+      when ArSerializer::InvalidQuery, ArSync::ApiNotFound, ArSerializer::GraphQL::Parser::ParseError
         { type: 'Bad Request', message: exception.message, backtrace: backtrace }
       when ActiveRecord::RecordNotFound
-        { type: 'Record Not Found', message: exception.message, backtrace: backtrace }
+        message = exception.message unless ::Rails.env.production?
+        { type: 'Record Not Found', message: message.to_s, backtrace: backtrace }
       else
         message = "#{exception.class} (#{exception.message})" unless ::Rails.env.production?
         { type: 'Internal Server Error', message: message.to_s, backtrace: backtrace }
