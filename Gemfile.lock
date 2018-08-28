@@ -1,7 +1,6 @@
 GIT
   remote: https://github.com/tompng/ar_serializer
-  revision: 753febab64374fd941dcc173801706bec12bf15a
-  branch: type
+  revision: 20b5911575a623833ef3bcb955c9ada39a699894
   specs:
     ar_serializer (0.1.0)
       activerecord
