@@ -6,8 +6,21 @@ class Updator {
     this.markedObjects = []
     this.immutable = immutable
   }
+  static createFrozenObject(obj) {
+    if (!obj) return obj
+    if (obj.constructor === Array) {
+      obj = obj.map(el => Updator.createFrozenObject(el))
+    } else if (typeof obj === 'object') {
+      obj = Object.assign({}, obj)
+      for (const key in obj) {
+        obj[key] = Updator.createFrozenObject(obj[key])
+      }
+    }
+    Object.freeze(obj)
+    return obj
+  }
   replaceData(data, newData) {
-    if (this.immutable) return newData
+    if (this.immutable) return Updator.createFrozenObject(newData)
     return this.recursivelyReplaceData(data, newData)
   }
   recursivelyReplaceData(data, newData) {
@@ -75,6 +88,7 @@ class Updator {
     return data
   }
   assign(el, path, column, value, orderParam) {
+    if (this.immutable) value = Updator.createFrozenObject(value)
     if (el.constructor === Array && !el[column]) {
       this.changes.push({
         path: path.concat([value.id]),
@@ -153,13 +167,14 @@ class Updator {
   cleanup() {
     this.markedObjects.forEach(marked => {
       delete marked.__mark__
+      Object.freeze(marked)
     })
   }
 }
 
 class ArSyncStore {
   constructor(query, data, option = {}) {
-    this.data = data
+    this.data = option.immutable ? Updator.createFrozenObject(data) : data
     this.query = ArSyncStore.parseQuery(query)
     this.immutable = option.immutable
   }
