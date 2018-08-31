@@ -4,6 +4,21 @@ function selectPatch(patches, keys) {
   return dup(patches).filter(arr => keys.indexOf(arr.key) >= 0)
 }
 
+function testDeepFrozen(obj) {
+  if (!Object.isFrozen(obj)) return false
+  if (!obj) return true
+  if (typeof obj === 'array') {
+    for (const el of obj) {
+      if (!testDeepFrozen(el)) return false
+    }
+  } else if (typeof obj === 'object') {
+    for (const el of Object.values(obj)) {
+      if (!testDeepFrozen(el)) return false
+    }
+  }
+  return true
+}
+
 function compareObject(a, b, path, key){
   if (!path) path = []
   if (key) (path = [].concat(path)).push(key)
@@ -62,6 +77,7 @@ function executeTest({ names, queries, keysList, initials, tests }) {
           const state = states[i]
           console.log(compareObject(store.data, state))
           if (immutable) console.log(compareObject(dataWas, dataWasCloned))
+          if (immutable) console.log(testDeepFrozen(store.data))
         }
       } catch (e) {
         console.log(e)
