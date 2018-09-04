@@ -52,7 +52,12 @@ class ArSyncBaseModel {
       if (callback) callback(this.data)
     }).catch(e => {
       console.error(e)
-      this.retryLoad(callback, retryCount + 1)
+      if (e.retry) {
+        this.retryLoad(callback, retryCount + 1)
+      } else {
+        this.initializeStore([], {}, { immutable: this.immutable })
+        if (callback) callback(this.data)
+      }
     })
   }
   retryLoad(callback, retryCount) {

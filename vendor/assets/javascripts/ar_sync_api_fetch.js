@@ -53,8 +53,9 @@ class ApiFetcher {
             }
           }
         }).catch((e) => {
+          const error = { type: e.name, message: e.message, retry: true }
           for (const callbacks of callbacksList) {
-            for (const callback of callbacks) callback.reject({ type: e.name, message: e.message })
+            for (const callback of callbacks) callback.reject(error)
           }
         })
       }, 16)
