@@ -45,7 +45,15 @@ module ArSync
     def sync_call
       _api_call :sync do |model, current_user, query|
         case model
-        when ArSync::Collection
+        when ArSync::Collection::Graph, ArSync::GraphSync
+          serialized = ArSerializer.serialize model, query, context: current_user, include_id: true, use: :sync
+          next serialized if model.is_a? ArSync::GraphSync
+          {
+            sync_keys: ArSync.sync_keys(model, current_user),
+            order: { mode: model.order, limit: model.limit },
+            collection: serialized
+          }
+        when ArSync::Collection::Tree
           ArSync.sync_collection_api model, current_user, query
         when ActiveRecord::Base
           ArSync.sync_api model, current_user, query

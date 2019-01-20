@@ -73,8 +73,7 @@ module ArSync::TreeSync::ClassMethods
 
   def sync_define_collection(name, limit: nil, order: :asc)
     _initialize_sync_callbacks
-    collection = ArSync::Collection.new self, name, limit: limit, order: order
-    collection.initialize_field
+    collection = ArSync::Collection::Tree.new self, name, limit: limit, order: order
     sync_parent collection, inverse_of: [self, name]
   end
 
@@ -163,7 +162,7 @@ module ArSync::GraphSync::ClassMethods
 
   def sync_define_collection(name, limit: nil, order: :asc)
     _initialize_sync_callbacks
-    collection = ArSync::Collection.new self, name, limit: limit, order: order
+    collection = ArSync::Collection::Graph.new self, name, limit: limit, order: order
     sync_parent collection, inverse_of: [self, name]
   end
 

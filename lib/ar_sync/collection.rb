@@ -11,13 +11,6 @@ class ArSync::Collection
     define_singleton_method(name) { to_a }
   end
 
-  def initialize_field
-    @field = ArSync::CollectionField.new @name, limit: @limit, order: @order
-    self.class._sync_children_info[[@klass, @name]] = @field
-  end
-
-  def _sync_notify_parent(*); end
-
   def sync_send_event(type:, to_user: nil, data:)
     event_data = { type: type, data: data }
     ArSync.sync_tree_send to: self, action: :event, path: [], data: event_data, to_user: to_user
@@ -34,6 +27,20 @@ class ArSync::Collection
     @defined_collections ||= {}
   end
 
+  def self.find(klass, name)
+    defined_collections[[klass, name]]
+  end
+end
+
+class ArSync::Collection::Tree < ArSync::Collection
+  def initialize(*)
+    super
+    @field = ArSync::CollectionField.new @name, limit: @limit, order: @order
+    self.class._sync_children_info[[@klass, @name]] = @field
+  end
+
+  def _sync_notify_parent(*); end
+
   def self._sync_children_info
     @sync_children_info ||= {}
   end
@@ -41,11 +48,9 @@ class ArSync::Collection
   def self._sync_child_info(key)
     _sync_children_info[key]
   end
+end
 
-  def self.find(klass, name)
-    defined_collections[[klass, name]]
-  end
-
+class ArSync::Collection::Graph < ArSync::Collection
   def _sync_notify_child_changed(_child, _name, _to_user, _owned); end
 
   def _sync_notify_child_added(child, _name, to_user, _owned)

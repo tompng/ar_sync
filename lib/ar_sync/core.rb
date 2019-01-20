@@ -54,7 +54,7 @@ module ArSync
 
   def self.sync_graph_send(to:, action:, model:, path: nil, to_user: nil)
     key = sync_graph_key to, to_user
-    event = ["#{key}#{path}", action: action, class_name: model.class.base_class.name, id: model.id]
+    event = ["#{key}/#{path}", action: action, class_name: model.class.base_class.name, id: model.id]
     buffer = Thread.current[:ar_sync_compact_notifications]
     if buffer
       buffer << event
