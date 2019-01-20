@@ -4,8 +4,15 @@ require_relative 'class_methods'
 require_relative 'instance_methods'
 
 module ArSync
-  extend ActiveSupport::Concern
-  include ArSync::InstanceMethods
+  ArSync::TreeSync.module_eval do
+    extend ActiveSupport::Concern
+    include ArSync::TreeSync::InstanceMethods
+  end
+
+  ArSync::GraphSync.module_eval do
+    extend ActiveSupport::Concern
+    include ArSync::GraphSync::InstanceMethods
+  end
 
   def self.on_notification(&block)
     @sync_send_block = block

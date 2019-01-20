@@ -1,6 +1,7 @@
 require 'pry'
 require_relative 'db'
 require 'ar_sync'
+ArSync.use :tree
 
 class User < ActiveRecord::Base
   has_many :posts, dependent: :destroy

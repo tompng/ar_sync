@@ -7,12 +7,13 @@ class ArSync::Collection
     @name = name
     @limit = limit
     @order = order
+    self.class.defined_collections[[klass, name]] = self
+    define_singleton_method(name) { to_a }
+  end
+
+  def initialize_field
     @field = ArSync::CollectionField.new name, limit: limit, order: order
     self.class._sync_children_info[[klass, name]] = @field
-    self.class.defined_collections[[klass, name]] = self
-    define_singleton_method name do
-      to_a
-    end
   end
 
   def _sync_notify_parent(*); end
@@ -43,5 +44,27 @@ class ArSync::Collection
 
   def self.find(klass, name)
     defined_collections[[klass, name]]
+  end
+
+  def _sync_notify_child_changed(_child, _name, _to_user, _owned); end
+
+  def _sync_notify_child_added(child, _name, to_user, _owned)
+    ArSync.sync_send to: self, action: :add, model: child, path: :collection, to_user: to_user
+  end
+
+  def _sync_notify_child_removed(child, _name, to_user, _owned)
+    ArSync.sync_send to: self, action: :remove, model: child, path: :collection, to_user: to_user
+  end
+end
+
+class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
+  def initialize(records, order:, limit:)
+    @records = records
+    @order = { mode: order, limit: limit }
+  end
+
+  def build
+    values = @records.map { {} }
+    [{ order: @order, collection: values }, @records.zip(values)]
   end
 end
