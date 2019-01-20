@@ -41,7 +41,7 @@ module ArSync
     Thread.current[key] = flag_was
   end
 
-  def self.sync_send(to:, action:, path:, data:, to_user: nil, ordering: nil)
+  def self.sync_tree_send(to:, action:, path:, data:, to_user: nil, ordering: nil)
     key = sync_key to, path.grep(Symbol), to_user
     event = [key, action: action, path: path, data: data, ordering: ordering]
     buffer = Thread.current[:ar_sync_compact_notifications]
@@ -50,6 +50,21 @@ module ArSync
     else
       @sync_send_block&.call [event]
     end
+  end
+
+  def self.sync_graph_send(to:, action:, model:, path: nil, to_user: nil)
+    key = sync_graph_key to, to_user
+    event = ["#{key}#{path}", action: action, class_name: model.class.base_class.name, id: model.id]
+    buffer = Thread.current[:ar_sync_compact_notifications]
+    if buffer
+      buffer << event
+    else
+      @sync_send_block&.call [event]
+    end
+  end
+
+  def self.sync_graph_key(model, to_user = nil)
+    sync_key model, :graph_sync, to_user
   end
 
   def self.sync_key(model, path, to_user = nil)

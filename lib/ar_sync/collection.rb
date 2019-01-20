@@ -12,15 +12,15 @@ class ArSync::Collection
   end
 
   def initialize_field
-    @field = ArSync::CollectionField.new name, limit: limit, order: order
-    self.class._sync_children_info[[klass, name]] = @field
+    @field = ArSync::CollectionField.new @name, limit: @limit, order: @order
+    self.class._sync_children_info[[@klass, @name]] = @field
   end
 
   def _sync_notify_parent(*); end
 
   def sync_send_event(type:, to_user: nil, data:)
     event_data = { type: type, data: data }
-    ArSync.sync_send to: self, action: :event, path: [], data: event_data, to_user: to_user
+    ArSync.sync_tree_send to: self, action: :event, path: [], data: event_data, to_user: to_user
   end
 
   def to_a

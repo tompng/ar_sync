@@ -3,6 +3,7 @@ require 'ar_sync'
 
 module Tree
   class BaseRecord < ActiveRecord::Base
+    self.abstract_class = true
   end
 end
 ArSync.use :tree, klass: Tree::BaseRecord

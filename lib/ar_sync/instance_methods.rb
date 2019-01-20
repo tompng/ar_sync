@@ -2,7 +2,7 @@ module ArSync::TreeSync::InstanceMethods
   def _sync_notify(action)
     if self.class._sync_self?
       data = action == :destroy ? nil : _sync_data
-      ArSync.sync_send to: self, action: action, path: [], data: data
+      ArSync.sync_tree_send to: self, action: action, path: [], data: data
     end
     _sync_notify_parent action
   end
@@ -25,7 +25,7 @@ module ArSync::TreeSync::InstanceMethods
     path = [*relation]
     event_data = { type: type, data: data }
     if self.class._sync_self?
-      ArSync.sync_send to: self, action: :event, path: path, data: event_data, to_user: to_user
+      ArSync.sync_tree_send to: self, action: :event, path: path, data: event_data, to_user: to_user
     end
     _sync_notify_parent(:event, path: path, data: event_data, only_to_user: to_user)
   end
@@ -51,7 +51,7 @@ module ArSync::TreeSync::InstanceMethods
       data2 = path || action2 == :destroy ? data : association_field.data(parent, self, to_user: to_user, action: action)
       order_param2 = path ? order_param : association_field.order_param
       path2 = [*association_field.path(self), *path]
-      ArSync.sync_send(
+      ArSync.sync_tree_send(
         to: parent, action: action2, path: path2, data: data2,
         to_user: only_to_user2,
         ordering: order_param2
@@ -73,7 +73,7 @@ module ArSync::GraphSync::InstanceMethods
         parent = send parent if parent.is_a? Symbol
         parent = instance_exec(&parent) if parent.is_a? Proc
         if only_to
-          to_user = instance_exec(&only_to)
+          to_user = to_user = only_to.is_a?(Symbol) ? instance_eval(&only_to) : instance_exec(&only_to)
           parent = nil unless to_user
         end
         parents << [parent, [inverse_name, to_user, owned]]
@@ -104,26 +104,26 @@ module ArSync::GraphSync::InstanceMethods
 
   def _sync_notify_child_removed(child, name, to_user, owned)
     if owned
-      ArSync.sync_send to: self, action: :remove, model: child, path: name, to_user: to_user
+      ArSync.sync_graph_send to: self, action: :remove, model: child, path: name, to_user: to_user
     else
-      ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
+      ArSync.sync_graph_send to: self, action: :update, model: self, to_user: to_user
     end
   end
 
   def _sync_notify_child_added(child, name, to_user, owned)
     if owned
-      ArSync.sync_send to: self, action: :add, model: child, path: name, to_user: to_user
+      ArSync.sync_graph_send to: self, action: :add, model: child, path: name, to_user: to_user
     else
-      ArSync.sync_send to: self, action: :update, model: self, to_user: to_user
+      ArSync.sync_graph_send to: self, action: :update, model: self, to_user: to_user
     end
   end
 
   def _sync_notify_child_changed(_child, _name, to_user, owned)
     return if owned
-    ArSync.sync_send(to: self, action: :update, model: self, to_user: to_user)
+    ArSync.sync_graph_send(to: self, action: :update, model: self, to_user: to_user)
   end
 
   def _sync_notify_self
-    ArSync.sync_send(to: self, action: :update, model: self)
+    ArSync.sync_graph_send(to: self, action: :update, model: self)
   end
 end

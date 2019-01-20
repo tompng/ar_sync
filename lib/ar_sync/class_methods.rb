@@ -129,7 +129,7 @@ module ArSync::GraphSync::ClassMethods
   end
 
   def _sync_has_many(name, order: :asc, limit: nil, preload: nil, association: nil, **option, &data_block)
-    raise "order not in [:asc, :desc] : #{order}" unless order.in? %i[asc desc]
+    raise "order not in [:asc, :desc] : #{order}" unless %i[asc desc].include? order
     if data_block.nil? && preload.nil?
       underscore_name = name.to_s.underscore.to_sym
       preload = lambda do |records, _context, params|
