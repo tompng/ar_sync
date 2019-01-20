@@ -1,5 +1,5 @@
 require_relative 'db'
-require_relative 'model'
+require_relative 'model_tree'
 database_file = ActiveRecord::Base.connection.instance_eval { @config[:database] }
 File.unlink database_file if File.exist? database_file
 ActiveRecord::Base.clear_all_connections!
@@ -29,15 +29,15 @@ ActiveRecord::Migration::Current.class_eval do
 end
 
 users = Array.new 4 do |i|
-  User.create name: "User#{i}"
+  Tree::User.create name: "User#{i}"
 end
 posts = Array.new 16 do |i|
-  Post.create user: users.sample, title: "Post#{i}", body: "post #{i}"
+  Tree::Post.create user: users.sample, title: "Post#{i}", body: "post #{i}"
 end
 comments = Array.new 64 do |i|
-  Comment.create user: users.sample, post: posts.sample, body: "post #{i}"
+  Tree::Comment.create user: users.sample, post: posts.sample, body: "post #{i}"
 end
 stars = Array.new 128 do
-  Star.create user: users.sample, comment: comments.sample
+  Tree::Star.create user: users.sample, comment: comments.sample
 end
 p users.size, posts.size, comments.size, stars.size

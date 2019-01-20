@@ -1,16 +1,22 @@
-require 'pry'
 require_relative 'db'
 require 'ar_sync'
-ArSync.use :tree
 
-class User < ActiveRecord::Base
+module Tree
+  class BaseRecord < ActiveRecord::Base
+  end
+end
+ArSync.use :tree, klass: Tree::BaseRecord
+
+class Tree::User < Tree::BaseRecord
+  self.table_name = :users
   has_many :posts, dependent: :destroy
   sync_has_data :id, :name
   sync_has_many :posts
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
 end
 
-class Post < ActiveRecord::Base
+class Tree::Post < Tree::BaseRecord
+  self.table_name = :posts
   belongs_to :user
   has_many :comments, dependent: :destroy
 
@@ -27,13 +33,14 @@ class Post < ActiveRecord::Base
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
   sync_has_many :comments
   sync_has_many :my_comments, preload: lambda { |posts, user|
-    Comment.where(post_id: posts.map(&:id), user: user).group_by(&:post_id)
+    Tree::Comment.where(post_id: posts.map(&:id), user: user).group_by(&:post_id)
   } do |preloaded|
     preloaded[id] || []
   end
 end
 
-class Comment < ActiveRecord::Base
+class Tree::Comment < Tree::BaseRecord
+  self.table_name = :comments
   belongs_to :user
   belongs_to :post
   has_many :stars, dependent: :destroy
@@ -45,12 +52,12 @@ class Comment < ActiveRecord::Base
     { name: user.name }
   end
   sync_has_data(:star_count, preload: lambda { |comments|
-    Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
+    Tree::Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   }) { |preload| preload[id] || 0 }
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
 
   define_preloader :my_stars_loader do |comments, user|
-    Star.where(user: user, comment_id: comments.map(&:id)).group_by(&:comment_id)
+    Tree::Star.where(user: user, comment_id: comments.map(&:id)).group_by(&:comment_id)
   end
 
   sync_has_one :my_star, preload: :my_stars_loader do |preloaded|
@@ -61,7 +68,8 @@ class Comment < ActiveRecord::Base
   end
 end
 
-class Star < ActiveRecord::Base
+class Tree::Star < Tree::BaseRecord
+  self.table_name = :stars
   belongs_to :user
   belongs_to :comment
   sync_has_data :id, :created_at
