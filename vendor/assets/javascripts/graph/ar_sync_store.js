@@ -75,7 +75,7 @@ class ArSyncContainerBase {
   static _load({ api, id, params, query }, root) {
     const parsedQuery = ArSyncRecord.parseQuery(query)
     if (id) {
-      return ArSyncAPI.syncFetch({ api, id, query }).then(data => new ArSyncRecord(parsedQuery, data, null, root))
+      return ArSyncAPI.syncFetch({ api, params: { ids: [id] }, query }).then(data => new ArSyncRecord(parsedQuery, data[0], null, root))
     } else {
       const request = { api, query, params }
       return ArSyncAPI.syncFetch(request).then(response => {
@@ -176,8 +176,8 @@ class ArSyncRecord extends ArSyncContainerBase {
     } else if (action === 'add') {
       if (this.data.id === id) return
       const query = this.query.attributes[path]
-      ArSyncAPI.syncFetch({ api: class_name, id, query }).then((data) => {
-        const model = new ArSyncRecord(query, data, null, this.root)
+      ArSyncAPI.syncFetch({ api: class_name, params: { ids: [id] }, query }).then(data => {
+        const model = new ArSyncRecord(query, data[0], null, this.root)
         if (this.children[path]) this.children[path].release()
         this.children[path] = model
         this.mark()
@@ -187,14 +187,16 @@ class ArSyncRecord extends ArSyncContainerBase {
         if (this.parentModel) this.parentModel.onChange([this.parentKey, path], model.data)
       })
     } else {
-      ArSyncAPI.syncFetch({ api: class_name, id, query: this.reloadQuery() }).then((data) => {
-        this.update(data)
+      ArSyncAPI.syncFetch({ api: class_name, params: { ids: [id] }, query: this.reloadQuery() }).then((data) => {
+        this.update(data[0])
       })
     }
   }
   subscribeAll() {
     const callback = data => this.onNotify(data)
-    for (const key of this.sync_keys) this.subscribe(key, callback)
+    for (const key of this.sync_keys) {
+      this.subscribe(key, callback)
+    }
     for (const path of this.paths) {
       const pathCallback = data => this.onNotify(data, path)
       for (const key of this.sync_keys) this.subscribe(key + path, pathCallback)
@@ -226,6 +228,9 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.data = { ...this.data, _marked: true }
     this.root.mark(this.data)
     if (this.parentModel) this.parentModel.mark().set(this.parentKey, this.data)
+  }
+  onChange(path, data) {
+    if (this.parentModel) this.parentModel.onChange([this.parentKey, ...path], data)
   }
 }
 class ArSyncCollection extends ArSyncContainerBase {
@@ -293,8 +298,8 @@ class ArSyncCollection extends ArSyncContainerBase {
         if (last && last.id > id) return
       }
     }
-    ArSyncAPI.syncFetch({ api: className, id, query: this.query }).then((data) => {
-      const model = new ArSyncRecord(this.query, data, null, this.root)
+    ArSyncAPI.syncFetch({ api: className, params: { ids: [id] }, query: this.query }).then((data) => {
+      const model = new ArSyncRecord(this.query, data[0], null, this.root)
       model.parent = this
       const overflow = this.order.limit && this.order.limit === this.data.length
       let rmodel
@@ -385,7 +390,7 @@ class ArSyncStore {
       }
       this.container = container
       this.data = container.data
-      this.freezeRecursive(this.data)
+      if (immutable) this.freezeRecursive(this.data)
       this.trigger('load')
       this.trigger('change', { path: [], value: this.data })
       container.onChange = (path, value) => {
