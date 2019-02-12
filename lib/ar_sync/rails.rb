@@ -55,6 +55,8 @@ module ArSync
           }
         when ArSync::Collection::Tree
           ArSync.sync_collection_api model, current_user, query
+        when ActiveRecord::Relation, Array
+          ArSync.serialize model.to_a, query, user: current_user
         when ActiveRecord::Base
           ArSync.sync_api model, current_user, query
         end
