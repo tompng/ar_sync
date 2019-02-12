@@ -223,10 +223,13 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.data[key] = data
   }
   mark() {
-    if (!this.root || !this.root.immutable || this.data._marked) return
-    this.data = { ...this.data, _marked: true }
+    if (!this.root || !this.root.immutable || this.data.__mark__) return
+    this.data = { ...this.data, __mark__: true }
     this.root.mark(this.data)
-    if (this.parentModel) this.parentModel.mark().set(this.parentKey, this.data)
+    if (this.parentModel) {
+      this.parentModel.mark()
+      this.parentModel.set(this.parentKey, this.data)
+    }
   }
   onChange(path, data) {
     if (this.parentModel) this.parentModel.onChange([this.parentKey, ...path], data)
@@ -272,7 +275,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       } else {
         model = new ArSyncRecord(this.query, subData, null, this.root)
         model.parentModel = this
-        model.parentKey = model.id
+        model.parentKey = subData.id
       }
       newChildren.push(model)
       newData.push(model.data)
@@ -299,7 +302,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
     ArSyncAPI.syncFetch({ api: className, params: { ids: [id] }, query: this.query }).then((data) => {
       const model = new ArSyncRecord(this.query, data[0], null, this.root)
-      model.parent = this
+      model.parentModel = this
+      model.parentKey = id
       const overflow = this.order.limit && this.order.limit === this.data.length
       let rmodel
       this.mark()
@@ -365,11 +369,14 @@ class ArSyncCollection extends ArSyncContainerBase {
     if (idx >= 0) this.data[idx] = data
   }
   mark() {
-    if (!this.root || !this.root.immutable || this.data._marked) return
+    if (!this.root || !this.root.immutable || this.data.__mark__) return
     this.data = [...this.data]
-    this.data._marked = true
+    this.data.__mark__ = true
     this.root.mark(this.data)
-    if (this.parentModel) this.parentModel.mark().set(this.parentKey, this.data)
+    if (this.parentModel) {
+      this.parentModel.mark()
+      this.parentModel.set(this.parentKey, this.data)
+    }
   }
 }
 
@@ -427,7 +434,7 @@ class ArSyncStore {
   }
   freezeRecursive(obj) {
     if (Object.isFrozen(obj)) return obj
-    if (obj._marked) delete obj.marked
+    if (obj.__mark__) delete obj.__mark__
     for (const key in obj) this.freezeRecursive(obj[key])
     Object.freeze(obj)
   }
