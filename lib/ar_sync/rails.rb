@@ -49,7 +49,7 @@ module ArSync
           serialized = ArSerializer.serialize model, query, context: current_user, include_id: true, use: :sync
           next serialized if model.is_a? ArSync::GraphSync
           {
-            sync_keys: ArSync.sync_keys(model, current_user),
+            sync_keys: ArSync.sync_graph_keys(model, current_user),
             order: { mode: model.order, limit: model.limit },
             collection: serialized
           }

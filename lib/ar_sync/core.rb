@@ -67,6 +67,10 @@ module ArSync
     sync_key model, :graph_sync, to_user
   end
 
+  def self.sync_graph_keys(model, user)
+    [sync_graph_key(model), sync_graph_key(model, user)]
+  end
+
   def self.sync_key(model, path, to_user = nil)
     if model.is_a? ArSync::Collection
       key = [to_user&.id, model.klass.name, model.name, path].join '/'

@@ -195,7 +195,7 @@ module ArSync::GraphSync::ClassMethods
     _sync_define :id
 
     sync_field :sync_keys do |current_user|
-      ArSync.sync_keys self, current_user
+      ArSync.sync_graph_keys self, current_user
     end
 
     before_destroy do
