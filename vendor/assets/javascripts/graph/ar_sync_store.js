@@ -1,10 +1,10 @@
 (function(){
-let arSyncApiFetch, ArSyncConnectionManager
+let ArSyncAPI, ArSyncConnectionManager
 try {
-  arSyncApiFetch = require('./ar_sync_api_fetch').syncFetch
+  ArSyncAPI = require('./ar_sync_api_fetch')
   ArSyncConnectionManager = require('./ar_sync_connection_manager')
 } catch(e) {
-  arSyncApiFetch = window.ArSyncAPI.syncFetch
+  ArSyncAPI = window.ArSyncAPI
   ArSyncConnectionManager = window.ArSyncConnectionManager
 }
 
@@ -15,7 +15,7 @@ class ArSyncContainerBase {
   initForReload(request) {
     this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork((state) => {
       if (state) {
-        fetchSyncAPI(request).then(data => {
+        ArSyncAPI.syncFetch(request).then(data => {
           if (this.data) {
             this.replaceData(data)
             if (this.onConnectionChange) this.onConnectionChange(true)
@@ -37,7 +37,7 @@ class ArSyncContainerBase {
     this.listeners.push(ArSyncStore.connectionManager.subscribe(key, listener))
   }
   unsubscribeAll() {
-    for (const l of this.listeners) l.release()
+    for (const l of this.listeners) l.unsubscribe()
     this.listeners = []
   }
   static parseQuery(query, attrsonly){
@@ -75,10 +75,10 @@ class ArSyncContainerBase {
   static _load({ api, id, params, query }, root) {
     const parsedQuery = ArSyncRecord.parseQuery(query)
     if (id) {
-      return fetchSyncAPI({ api, id, query }).then(data => new ArSyncRecord(parsedQuery, data, null, root))
+      return ArSyncAPI.syncFetch({ api, id, query }).then(data => new ArSyncRecord(parsedQuery, data, null, root))
     } else {
       const request = { api, query, params }
-      return fetchSyncAPI(request).then(response => {
+      return ArSyncAPI.syncFetch(request).then(response => {
         if (response.collection && response.order) {
           return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root)
         } else {
@@ -176,7 +176,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     } else if (action === 'add') {
       if (this.data.id === id) return
       const query = this.query.attributes[path]
-      fetchSyncAPI({ api: class_name, id, query }).then((data) => {
+      ArSyncAPI.syncFetch({ api: class_name, id, query }).then((data) => {
         const model = new ArSyncRecord(query, data, null, this.root)
         if (this.children[path]) this.children[path].release()
         this.children[path] = model
@@ -187,7 +187,7 @@ class ArSyncRecord extends ArSyncContainerBase {
         if (this.parentModel) this.parentModel.onChange([this.parentKey, path], model.data)
       })
     } else {
-      fetchSyncAPI({ api: class_name, id, query: this.reloadQuery() }).then((data) => {
+      ArSyncAPI.syncFetch({ api: class_name, id, query: this.reloadQuery() }).then((data) => {
         this.update(data)
       })
     }
@@ -293,7 +293,7 @@ class ArSyncCollection extends ArSyncContainerBase {
         if (last && last.id > id) return
       }
     }
-    fetchSyncAPI({ api: className, id, query: this.query }).then((data) => {
+    ArSyncAPI.syncFetch({ api: className, id, query: this.query }).then((data) => {
       const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parent = this
       const overflow = this.order.limit && this.order.limit === this.data.length
@@ -373,12 +373,12 @@ class ArSyncCollection extends ArSyncContainerBase {
 }
 
 class ArSyncStore {
-  constructor(request, { immutable }) {
+  constructor(request, { immutable } = {}) {
     this.immutable = immutable
     this.markedObjects = []
     this.changes = []
     this.eventListeners = { events: {}, serial: 0 }
-    ArSyncContainerBase.load(request, this).then(conainer => {
+    ArSyncContainerBase.load(request, this).then(container => {
       if (this.markForRelease) {
         container.release()
         return
@@ -424,7 +424,7 @@ class ArSyncStore {
   mark(object) {
     this.markedObjects.push(object)
   }
-  freezeRecursive(obj) => {
+  freezeRecursive(obj) {
     if (Object.isFrozen(obj)) return obj
     if (obj._marked) delete obj.marked
     for (const key in obj) this.freezeRecursive(obj[key])
@@ -447,7 +447,7 @@ class ArSyncStore {
 try {
   module.exports = { ArSyncRecord, ArSyncCollection, ArSyncStore }
 } catch (e) {
-  window.ArSyncContainer = ArSyncContainer
+  window.ArSyncCollection = ArSyncCollection
   window.ArSyncRecord = ArSyncRecord
   window.ArSyncStore = ArSyncStore
 }
