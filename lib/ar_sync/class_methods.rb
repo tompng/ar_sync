@@ -2,10 +2,6 @@ require_relative 'field'
 require_relative 'collection'
 
 module ArSync::ClassMethodsBase
-  def sync_collection(name)
-    ArSync::Collection.find self, name
-  end
-
   def _sync_self?
     instance_variable_defined? '@_sync_self'
   end
@@ -22,6 +18,10 @@ end
 
 module ArSync::TreeSync::ClassMethods
   include ArSync::ClassMethodsBase
+  def sync_collection(name)
+    ArSync::Collection::Tree.find self, name
+  end
+
   def sync_has_data(*names, user_specific: nil, **option, &original_data_block)
     @_sync_self = true
     option = option.dup
@@ -115,6 +115,9 @@ end
 
 module ArSync::GraphSync::ClassMethods
   include ArSync::ClassMethodsBase
+  def sync_collection(name)
+    ArSync::Collection::Graph.find self, name
+  end
   def sync_field(*names, **option, &data_block)
     @_sync_self = true
     names.each do |name|
