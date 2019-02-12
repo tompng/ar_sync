@@ -15,4 +15,21 @@ class SyncApiController < ApplicationController
   serializer_field :comment, type: Comment do |_user, id:|
     Comment.find id
   end
+
+  # fields for graph sync
+  serializer_field Follow.name, type: [Follow] do |_user, ids:|
+    Follow.where id: ids
+  end
+  serializer_field Reaction.name, type: [Reaction] do |_user, ids:|
+    Reaction.where id: ids
+  end
+  serializer_field User.name, type: [User] do |_user, ids:|
+    User.where id: ids
+  end
+  serializer_field Post.name, type: [Post] do |_user, ids:|
+    Post.where id: ids
+  end
+  serializer_field Comment.name do |_user, ids:|
+    Comment.where id: ids
+  end
 end
