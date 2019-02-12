@@ -68,7 +68,7 @@ class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
     @order = { mode: order, limit: limit }
   end
 
-  def build
+  def ar_serializer_build_sub_calls
     values = @records.map { {} }
     [{ order: @order, collection: values }, @records.zip(values)]
   end
