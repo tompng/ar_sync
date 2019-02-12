@@ -30,7 +30,9 @@ class ArSyncContainerBase {
   release() {
     if (this.networkSubscriber) this.networkSubscriber.unsubscribe()
     this.unsubscribeAll()
-    this.eachChild(child => child.release())
+    for (const child of Object.values(this.children)) {
+      if (child) child.release()
+    }
     this.data = null
   }
   subscribe(key, listener) {
@@ -161,9 +163,6 @@ class ArSyncRecord extends ArSyncContainerBase {
       }
     }
     this.subscribeAll()
-  }
-  eachChild(callback) {
-    for (const key in this.children) callback(this.children[key])
   }
   onNotify(notifyData, path) {
     const { action, class_name, id } = notifyData
@@ -356,9 +355,6 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
   onChange(path, data) {
     if (this.parentModel) this.parentModel.onChange([this.parentKey, ...path], data)
-  }
-  eachChild(callback) {
-    for (const child of this.children) callback(child)
   }
   subscribeAll() {
     const callback = data => this.onNotify(data)
