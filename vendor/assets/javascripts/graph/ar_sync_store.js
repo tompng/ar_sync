@@ -8,6 +8,43 @@ try {
   ArSyncConnectionManager = window.ArSyncConnectionManager
 }
 
+const ModelBatchRequest = {
+  timer: null,
+  apiRequests: {},
+  fetch(api, query, id) {
+    this.setTimer()
+    return new Promise((resolve, reject) => {
+      const queryJSON = JSON.stringify(query)
+      const apiRequest = this.apiRequests[api] = this.apiRequests[api] || {}
+      const queryRequests = apiRequest[queryJSON] = apiRequest[queryJSON] || { query, requests: {} }
+      const request = queryRequests.requests[id] = queryRequests.requests[id] || { id, callbacks: [] }
+      request.callbacks.push(resolve)
+    })
+  },
+  batchFetch() {
+    for (const api in this.apiRequests) {
+      const apiRequest = this.apiRequests[api]
+      for (const { query, requests } of Object.values(apiRequest)) {
+        const ids = Object.values(requests).map(({ id }) => id)
+        ArSyncAPI.syncFetch({ api, query, params: { ids } }).then(models => {
+          for (const model of models) requests[model.id].model = model
+          for (const { model, callbacks } of Object.values(requests)) {
+            for (const callback of callbacks) callback(model)
+          }
+        })
+      }
+    }
+    this.apiRequests = {}
+  },
+  setTimer() {
+    if (this.timer) return
+    this.timer = setTimeout(() => {
+      this.timer = null
+      this.batchFetch()
+    }, 20)
+  }
+}
+
 class ArSyncContainerBase {
   constructor() {
     this.listeners = []
@@ -77,7 +114,7 @@ class ArSyncContainerBase {
   static _load({ api, id, params, query }, root) {
     const parsedQuery = ArSyncRecord.parseQuery(query)
     if (id) {
-      return ArSyncAPI.syncFetch({ api, params: { ids: [id] }, query }).then(data => new ArSyncRecord(parsedQuery, data[0], null, root))
+      return ModelBatchRequest.fetch(api, query, id).then(data => new ArSyncRecord(parsedQuery, data[0], null, root))
     } else {
       const request = { api, query, params }
       return ArSyncAPI.syncFetch(request).then(response => {
@@ -186,8 +223,8 @@ class ArSyncRecord extends ArSyncContainerBase {
     } else if (action === 'add') {
       if (this.data.id === id) return
       const query = this.query.attributes[path]
-      ArSyncAPI.syncFetch({ api: class_name, params: { ids: [id] }, query }).then(data => {
-        const model = new ArSyncRecord(query, data[0], null, this.root)
+      ModelBatchRequest.fetch(class_name, query, id).then(data => {
+        const model = new ArSyncRecord(query, data, null, this.root)
         if (this.children[path]) this.children[path].release()
         this.children[path] = model
         this.mark()
@@ -197,8 +234,8 @@ class ArSyncRecord extends ArSyncContainerBase {
         if (this.parentModel) this.parentModel.onChange([this.parentKey, path], model.data)
       })
     } else {
-      ArSyncAPI.syncFetch({ api: class_name, params: { ids: [id] }, query: this.reloadQuery() }).then((data) => {
-        this.update(data[0])
+      ModelBatchRequest.fetch(class_name, this.reloadQuery(), id).then(data => {
+        this.update(data)
       })
     }
   }
@@ -310,8 +347,8 @@ class ArSyncCollection extends ArSyncContainerBase {
         if (last && last.id > id) return
       }
     }
-    ArSyncAPI.syncFetch({ api: className, params: { ids: [id] }, query: this.query }).then((data) => {
-      const model = new ArSyncRecord(this.query, data[0], null, this.root)
+    ModelBatchRequest.fetch(className, this.query, id).then((data) => {
+      const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parentModel = this
       model.parentKey = id
       const overflow = this.order.limit && this.order.limit === this.data.length
