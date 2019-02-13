@@ -122,7 +122,10 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
   replaceData(data) {
     this.unsubscribeAll()
-    this.data.id = data.id
+    if (this.data.id !== data.id) {
+      this.mark()
+      this.data.id = data.id
+    }
     this.paths = []
     for (const key in this.query.attributes) {
       const subQuery = this.query.attributes[key]
@@ -135,6 +138,7 @@ class ArSyncRecord extends ArSyncContainerBase {
             this.children[aliasName].replaceData(subData)
           } else {
             const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root)
+            this.mark()
             this.children[aliasName] = collection
             this.data[aliasName] = collection.data
             collection.parentModel = this
@@ -147,6 +151,7 @@ class ArSyncRecord extends ArSyncContainerBase {
               this.children[aliasName].replaceData(subData)
             } else {
               const model = new ArSyncRecord(subQuery, subData, null, this.root)
+              this.mark()
               this.children[aliasName] = model
               this.data[aliasName] = model.data
               model.parentModel = this
@@ -155,11 +160,17 @@ class ArSyncRecord extends ArSyncContainerBase {
           } else {
             if(this.children[aliasName]) this.children[aliasName].release()
             delete this.children[aliasName]
-            this.data[aliasName] = null
+            if (this.data[aliasName]) {
+              this.mark()
+              this.data[aliasName] = null
+            }
           }
         }
       } else {
-        this.data[aliasName] = subData
+        if (this.data[aliasName] !== subData) {
+          this.mark()
+          this.data[aliasName] = subData
+        }
       }
     }
     this.subscribeAll()
@@ -219,17 +230,15 @@ class ArSyncRecord extends ArSyncContainerBase {
       if (this.parentModel) this.parentModel.onChange([this.parentKey, key], data[key])
     }
   }
-  set(key, data) {
+  markAndSet(key, data) {
+    this.mark()
     this.data[key] = data
   }
   mark() {
     if (!this.root || !this.root.immutable || this.data.__mark__) return
     this.data = { ...this.data, __mark__: true }
     this.root.mark(this.data)
-    if (this.parentModel) {
-      this.parentModel.mark()
-      this.parentModel.set(this.parentKey, this.data)
-    }
+    if (this.parentModel) this.parentModel.markAndSet(this.parentKey, this.data)
   }
   onChange(path, data) {
     if (this.parentModel) this.parentModel.onChange([this.parentKey, ...path], data)
@@ -284,6 +293,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       const child = this.children.pop()
       if (!existings[child.data.id]) child.release()
     }
+    if (this.data.length || newChildren.length) this.mark()
     while (this.data.length) this.data.pop()
     for (const child of newChildren) this.children.push(child)
     for (const el of newData) this.data.push(el)
@@ -364,7 +374,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     const callback = data => this.onNotify(data)
     for (const key of this.sync_keys) this.subscribe(key, callback)
   }
-  set(id, data) {
+  markAndSet(id, data) {
+    this.mark()
     const idx = this.data.findIndex(a => a.id === id)
     if (idx >= 0) this.data[idx] = data
   }
@@ -373,10 +384,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.data = [...this.data]
     this.data.__mark__ = true
     this.root.mark(this.data)
-    if (this.parentModel) {
-      this.parentModel.mark()
-      this.parentModel.set(this.parentKey, this.data)
-    }
+    if (this.parentModel) this.parentModel.markAndSet(this.parentKey, this.data)
   }
 }
 
