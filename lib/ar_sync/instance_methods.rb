@@ -68,17 +68,18 @@ module ArSync::GraphSync::InstanceMethods
   end
 
   def _sync_current_parents_info
-    [].tap do |parents|
-      self.class._each_sync_parent do |parent, inverse_name:, only_to:, owned:|
-        parent = send parent if parent.is_a? Symbol
-        parent = instance_exec(&parent) if parent.is_a? Proc
-        if only_to
-          to_user = to_user = only_to.is_a?(Symbol) ? instance_eval(&only_to) : instance_exec(&only_to)
-          parent = nil unless to_user
-        end
-        parents << [parent, [inverse_name, to_user, owned]]
+    parents = []
+    self.class._each_sync_parent do |parent, inverse_name:, only_to:|
+      parent = send parent if parent.is_a? Symbol
+      parent = instance_exec(&parent) if parent.is_a? Proc
+      if only_to
+        to_user = only_to.is_a?(Symbol) ? instance_eval(&only_to) : instance_exec(&only_to)
+        parent = nil unless to_user
       end
+      owned = parent.class._sync_child_info(inverse_name).present? if parent
+      parents << [parent, [inverse_name, to_user, owned]]
     end
+    parents
   end
 
   def _sync_notify_parent(action)
