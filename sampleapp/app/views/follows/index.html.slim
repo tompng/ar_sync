@@ -1,13 +1,26 @@
-javascript:
-  const currentUserModel = new ArSyncModel({
-    api: 'profile',
-    query: [
+- if sampleapp_ar_sync_graph?
+  javascript:
+    const currentUserQuery = [
+      'sync_keys', 'name',
+      {
+        followeds: ['sync_keys', { from: ['sync_keys', 'name', { as: 'user' }] }],
+        followings: ['sync_keys', { to: ['sync_keys', 'name', { as: 'user' }] }]
+      }
+    ]
+- else
+  javascript:
+    const currentUserQuery = [
       'name',
       {
         followeds: { from: { as: 'user' } },
         followings: { to: { as: 'user' } }
       }
     ]
+
+javascript:
+  const currentUserModel = new ArSyncModel({
+    api: 'profile',
+    query: currentUserQuery
   })
   currentUserModel.onload(() => {
     new Vue({ el: '#syncbody', data: { currentUser: currentUserModel.data } })

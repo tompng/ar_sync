@@ -1,14 +1,20 @@
+- if sampleapp_ar_sync_graph?
+  javascript:
+    const currentUserQuery = ['sync_keys', 'name']
+    const commentQuery = [
+      'sync_keys', 'body', 'post_id', 'reaction_summary',
+      { user: ['sync_keys', 'name'], my_reaction: ['sync_keys', 'kind'] }
+    ]
+- else
+  javascript:
+    const currentUserQuery = ['id', 'name']
+    const commentQuery = ['body', 'post_id', 'reaction_summary', 'user', { my_reaction: 'kind' }]
 javascript:
-  const currentUserModel = new ArSyncModel({
-    api: 'profile',
-    query: ['id', 'name']
-  })
+  const currentUserModel = new ArSyncModel({ api: 'profile', query: currentUserQuery })
   const commentModel = new ArSyncModel({
     api: 'comment',
     params: { id: location.pathname.match(/\d+/)[0] },
-    query: [
-      'body', 'post_id', 'reaction_summary', 'user', { my_reaction: 'kind' }
-    ]
+    query: commentQuery
   })
   ArSyncModel.waitForLoad(currentUserModel, commentModel).then(() => {
     new Vue({ el: '#syncbody', data: { currentUser: currentUserModel.data, comment: commentModel.data } })

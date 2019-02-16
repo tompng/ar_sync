@@ -4,8 +4,10 @@ class Reaction < ApplicationRecord
   belongs_to :user
 
   sync_has_data :kind, :created_at
-  sync_has_data :user, includes: :user do
-    { name: user.name }
+  if sampleapp_ar_sync_graph?
+    sync_has_one :user
+  else
+    sync_has_data(:user, includes: :user) { { name: user.name } }
   end
   sync_parent :target, inverse_of: :reactions
   sync_parent :target, inverse_of: :reaction_summary

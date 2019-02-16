@@ -1,12 +1,19 @@
-javascript:
-  const currentUserModel = new ArSyncModel({
-    api: 'profile',
-    query: ['id', 'name']
-  })
-  const userModel = new ArSyncModel({
-    api: 'user',
-    params: { id: location.pathname.match(/\d+/)[0] },
-    query: [
+- if sampleapp_ar_sync_graph?
+  javascript:
+    const currentUserQuery = ['sync_keys', 'name']
+    const userQuery = [
+      'sync_keys', 'name', 'is_following', 'is_followed',
+      {
+        posts: [
+          'sync_keys', 'title', 'comments_count', 'created_at',
+          { comments_last5: ['sync_keys', 'body', { user: ['sync_keys', 'name'] }, { as: 'recent_comments', params: { limit: 3 }}] }
+        ]
+      }
+    ]
+- else
+  javascript:
+    const currentUserQuery = ['id', 'name']
+    const userQuery = [
       'name', 'is_following', 'is_followed',
       {
         posts: [
@@ -15,6 +22,12 @@ javascript:
         ]
       }
     ]
+javascript:
+  const currentUserModel = new ArSyncModel({ api: 'profile', query: currentUserQuery })
+  const userModel = new ArSyncModel({
+    api: 'user',
+    params: { id: location.pathname.match(/\d+/)[0] },
+    query: userQuery
   })
   ArSyncModel.waitForLoad(currentUserModel, userModel).then(() => {
     new Vue({ el: '#syncbody', data: { currentUser: currentUserModel.data, user: userModel.data } })
