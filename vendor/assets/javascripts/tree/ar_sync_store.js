@@ -3,7 +3,7 @@
 class Updator {
   constructor(immutable) {
     this.changes = []
-    this.markedObjects = []
+    this.markedForFreezeObjects = []
     this.immutable = immutable
   }
   static createFrozenObject(obj) {
@@ -69,16 +69,10 @@ class Updator {
   }
   mark(obj) {
     if (!this.immutable) return obj
-    if (obj.__mark__) return obj
-    let marked
-    if (obj.constructor === Array) {
-      marked = [].concat(obj)
-      marked.__mark__ = true
-    } else {
-      marked = Object.assign({ __mark__: true }, obj)
-    }
-    this.markedObjects.push(marked)
-    return marked
+    if (!Object.isFrozen(this.data)) return obj
+    const mobj = (obj.constructor === Array) ? [...obj] : { ...obj }
+    this.markedForFreezeObjects.push(mobj)
+    return mobj
   }
   trace(data, path) {
     path.forEach(key => {
@@ -165,10 +159,7 @@ class Updator {
     return root
   }
   cleanup() {
-    this.markedObjects.forEach(marked => {
-      delete marked.__mark__
-      Object.freeze(marked)
-    })
+    this.markedForFreezeObjects.forEach(mobj => Object.freeze(mobj))
   }
 }
 
