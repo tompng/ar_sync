@@ -1,11 +1,9 @@
 (function(){
-let ArSyncAPI, ArSyncConnectionManager
+let ArSyncAPI
 try {
-  ArSyncAPI = require('./ar_sync_api_fetch')
-  ArSyncConnectionManager = require('./ar_sync_connection_manager')
+  ArSyncAPI = require('../ar_sync_api_fetch')
 } catch(e) {
   ArSyncAPI = window.ArSyncAPI
-  ArSyncConnectionManager = window.ArSyncConnectionManager
 }
 
 const ModelBatchRequest = {

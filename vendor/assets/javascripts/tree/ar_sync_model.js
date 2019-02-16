@@ -2,8 +2,8 @@
 let ArSyncStore, arSyncApiFetch, ArSyncConnectionManager
 try {
   ArSyncStore = require('./ar_sync_store')
-  arSyncApiFetch = require('./ar_sync_api_fetch').syncFetch
-  ArSyncConnectionManager = require('./ar_sync_connection_manager')
+  arSyncApiFetch = require('../ar_sync_api_fetch').syncFetch
+  ArSyncConnectionManager = require('../ar_sync_connection_manager')
 } catch(e) {
   ArSyncStore = window.ArSyncStore
   arSyncApiFetch = window.ArSyncAPI.syncFetch

@@ -1,8 +1,8 @@
 (function(){
 let ArSyncStore, ArSyncConnectionManager
 try {
-  ArSyncStore = require('./ar_sync_container').ArSyncStore
-  ArSyncConnectionManager = require('./ar_sync_connection_manager')
+  ArSyncStore = require('./ar_sync_store').ArSyncStore
+  ArSyncConnectionManager = require('../ar_sync_connection_manager')
 } catch(e) {
   ArSyncStore = window.ArSyncStore
   ArSyncConnectionManager = window.ArSyncConnectionManager
