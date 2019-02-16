@@ -3,7 +3,8 @@
 require 'bundler/setup'
 require 'ar_sync'
 require 'pry'
-require_relative '../test/model'
+require_relative '../test/model_tree'
+require_relative '../test/model_graph'
 ArSync.on_notification do |events|
   puts "\e[1m#{events.inspect}\e[m"
 end
