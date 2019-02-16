@@ -12,7 +12,7 @@
 //
 //= require rails-ujs
 //= require action_cable
-//= require ar_sync
+//= require ar_sync_tree
 //= require_tree .
 //= require ar_sync_actioncable_adapter
 ArSyncModel.setConnectionAdapter(new ArSyncActionCableAdapter())

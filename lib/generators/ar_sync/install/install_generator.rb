@@ -41,7 +41,7 @@ module ArSync
       inject_into_file(
         'app/assets/javascripts/application.js',
         [
-          '//= require ar_sync',
+          '//= require ar_sync_tree',
           '//= require action_cable',
           'require ar_sync_actioncable_adapter',
           'ArSyncModel.setConnectionAdapter(new ArSyncActionCableAdapter())'
