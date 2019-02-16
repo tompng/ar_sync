@@ -29,6 +29,14 @@ module ArSync::ClassMethodsBase
     _sync_children_info.each(&block)
     superclass._each_sync_child(&block) if superclass < ActiveRecord::Base
   end
+
+  def sync_parent(parent, inverse_of:, only_to: nil)
+    _initialize_sync_callbacks
+    _sync_parents_info << [
+      parent,
+      { inverse_name: inverse_of, only_to: only_to }
+    ]
+  end
 end
 
 module ArSync::TreeSync::ClassMethods
@@ -48,10 +56,6 @@ module ArSync::TreeSync::ClassMethods
       type_override = reflect_on_association(name.to_s.underscore) ? { type: :any } : {}
       _sync_define ArSync::DataField.new(name, user_specific: user_specific), option.merge(type_override), &data_block
     end
-  end
-
-  def api_has_field(*args, &data_block)
-    serializer_field(*args, &data_block)
   end
 
   def sync_has_one(name, **option, &data_block)
@@ -92,14 +96,6 @@ module ArSync::TreeSync::ClassMethods
     sync_parent collection, inverse_of: [self, name]
   end
 
-  def sync_parent(parent, inverse_of:, only_to: nil)
-    _initialize_sync_callbacks
-    _sync_parents_info << [
-      parent,
-      { inverse_name: inverse_of, only_to: only_to }
-    ]
-  end
-
   def _initialize_sync_callbacks
     return if instance_variable_defined? '@_sync_callbacks_initialized'
     @_sync_callbacks_initialized = true
@@ -119,18 +115,6 @@ module ArSync::GraphSync::ClassMethods
     ArSync::Collection::Graph.find self, name
   end
 
-  # def sync_field(*names, **option, &data_block)
-  #   @_sync_self = true
-  #   names.each do |name|
-  #     reflection = reflect_on_association option[:association] || name
-  #     if reflection&.is_a? ActiveRecord::Reflection::HasManyReflection
-  #       _sync_has_many name, option, &data_block
-  #     else
-  #       _sync_define name, option, &data_block
-  #     end
-  #   end
-  # end
-
   def sync_has_data(*names, **option, &data_block)
     @_sync_self = true
     names.each do |name|
@@ -140,13 +124,11 @@ module ArSync::GraphSync::ClassMethods
   end
 
   def sync_has_many(name, **option, &data_block)
-    @_sync_self = true
     _sync_children_info[name] = :many
     _sync_has_many name, option, &data_block
   end
 
   def sync_has_one(name, **option, &data_block)
-    @_sync_self = true
     _sync_children_info[name] = :one
     _sync_define name, option, &data_block
   end
@@ -188,12 +170,6 @@ module ArSync::GraphSync::ClassMethods
     _initialize_sync_callbacks
     collection = ArSync::Collection::Graph.new self, name, limit: limit, order: order
     sync_parent collection, inverse_of: [self, name]
-  end
-
-  def sync_parent(parent, inverse_of: nil, only_to: nil)
-    raise ArgumentError unless inverse_of
-    _initialize_sync_callbacks
-    _sync_parents_info << [parent, { inverse_name: inverse_of, only_to: only_to }]
   end
 
   def _initialize_sync_callbacks
