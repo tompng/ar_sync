@@ -5,13 +5,16 @@ javascript:
       'name', 'followed_count', 'following_count',
       { posts: ['title', 'comments_count', 'created_at'] }
     ]
-  })
+  }, { immutable: true })
   const postsModel = new ArSyncModel({
     api: 'newposts',
     query: ['user', 'title', 'created_at', 'comments_count']
-  })
+  }, { immutable: true })
   ArSyncModel.waitForLoad(currentUserModel, postsModel).then(() => {
-    new Vue({ el: '#syncbody', data: { currentUser: currentUserModel.data, newPosts: postsModel.data } })
+    const data  = { currentUser: currentUserModel.data, newPosts: postsModel.data }
+    currentUserModel.subscribe('change', () => data.currentUser = currentUserModel.data)
+    postsModel.subscribe('change', () => data.newPosts = postsModel.data)
+    new Vue({ el: '#syncbody', data })
   })
 
 #syncbody [v-cloak]
