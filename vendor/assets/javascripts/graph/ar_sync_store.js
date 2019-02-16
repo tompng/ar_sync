@@ -272,8 +272,8 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.data[key] = data
   }
   mark() {
-    if (!this.root || !this.root.immutable || this.data.__mark__) return
-    this.data = { ...this.data, __mark__: true }
+    if (!this.root || !this.root.immutable || !Object.isFrozen(this.data)) return
+    this.data = { ...this.data }
     this.root.mark(this.data)
     if (this.parentModel) this.parentModel.markAndSet(this.parentKey, this.data)
   }
@@ -417,9 +417,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     if (idx >= 0) this.data[idx] = data
   }
   mark() {
-    if (!this.root || !this.root.immutable || this.data.__mark__) return
+    if (!this.root || !this.root.immutable || !Object.isFrozen(this.data)) return
     this.data = [...this.data]
-    this.data.__mark__ = true
     this.root.mark(this.data)
     if (this.parentModel) this.parentModel.markAndSet(this.parentKey, this.data)
   }
@@ -428,7 +427,7 @@ class ArSyncCollection extends ArSyncContainerBase {
 class ArSyncStore {
   constructor(request, { immutable } = {}) {
     this.immutable = immutable
-    this.markedObjects = []
+    this.markedForFreezeObjects = []
     this.changes = []
     this.eventListeners = { events: {}, serial: 0 }
     ArSyncContainerBase.load(request, this).then(container => {
@@ -475,17 +474,16 @@ class ArSyncStore {
     for (const id in listeners) listeners[id](arg)
   }
   mark(object) {
-    this.markedObjects.push(object)
+    this.markedForFreezeObjects.push(object)
   }
   freezeRecursive(obj) {
     if (Object.isFrozen(obj)) return obj
-    if (obj.__mark__) delete obj.__mark__
     for (const key in obj) this.freezeRecursive(obj[key])
     Object.freeze(obj)
   }
   freezeMarked() {
-    this.markedObjects.forEach(obj => this.freezeRecursive(obj))
-    this.markedObjects = []
+    this.markedForFreezeObjects.forEach(obj => this.freezeRecursive(obj))
+    this.markedForFreezeObjects = []
   }
   release() {
     if (this.changesBufferTimer) clearTimeout(this.changesBufferTimer)
