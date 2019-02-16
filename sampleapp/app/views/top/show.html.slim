@@ -1,15 +1,21 @@
-javascript:
-  const currentUserModel = new ArSyncModel({
-    api: 'profile',
-    query: [
+- if sampleapp_ar_sync_graph?
+  javascript:
+    const currentUserQuery = [
+      'sync_keys', 'name', 'followed_count', 'following_count',
+      { posts: ['sync_keys', 'title', 'comments_count', 'created_at'] }
+    ]
+    const postsQuery = ['sync_keys', 'title', 'created_at', 'comments_count', { user: ['sync_keys', 'name']}]
+- else
+  javascript:
+    const currentUserQuery = [
       'name', 'followed_count', 'following_count',
       { posts: ['title', 'comments_count', 'created_at'] }
     ]
-  }, { immutable: true })
-  const postsModel = new ArSyncModel({
-    api: 'newposts',
-    query: ['user', 'title', 'created_at', 'comments_count']
-  }, { immutable: true })
+    const postsQuery = ['user', 'title', 'created_at', 'comments_count']
+
+javascript:
+  const currentUserModel = new ArSyncModel({ api: 'profile', query: currentUserQuery }, { immutable: true })
+  const postsModel = new ArSyncModel({ api: 'newposts', query: postsQuery }, { immutable: true })
   ArSyncModel.waitForLoad(currentUserModel, postsModel).then(() => {
     const data  = { currentUser: currentUserModel.data, newPosts: postsModel.data }
     currentUserModel.subscribe('change', () => data.currentUser = currentUserModel.data)

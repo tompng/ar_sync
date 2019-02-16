@@ -9,7 +9,11 @@ class Post < ApplicationRecord
   sync_has_many :comments
   sync_has_many :comments_last5, association: :comments, order: :desc, limit: 5
   sync_has_data :comments_count, count_of: :comments
-  serializer_field :user
-  sync_has_data(:user, includes: :user) { user.as_json(only: [:id, :name]) }
+  if sampleapp_ar_sync_graph?
+    sync_has_one :user
+  else
+    serializer_field :user
+    sync_has_data(:user, includes: :user) { user.as_json(only: [:id, :name]) }
+  end
   include SyncReactionConcern
 end

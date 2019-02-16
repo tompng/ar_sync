@@ -1,23 +1,41 @@
-javascript:
-  const currentUserModel = new ArSyncModel({
-    api: 'profile',
-    query: ['id', 'name']
-  }, { immutable: true })
-  const postModel = new ArSyncModel({
-    api: 'post',
-    params: { id: location.pathname.match(/\d+/)[0] },
-    query: [
+- if sampleapp_ar_sync_graph?
+  javascript:
+    const currentUserQuery = ['sync_keys', 'name']
+    const postQuery = [
+      'sync_keys', 'title', 'body', 'reaction_summary', 'created_at',
+      {
+        user: ['sync_keys', 'name'],
+        my_reaction: ['sync_keys', 'kind'],
+        comments: [
+          'sync_keys', 'body', 'reaction_summary',
+          { user: ['sync_keys', 'name'], my_reaction: ['sync_keys', 'kind'] }
+        ]
+      }
+    ]
+- else
+  javascript:
+    const currentUserQuery = ['id', 'name']
+    const postQuery = [
       'title', 'body', 'reaction_summary', 'user', 'created_at',
       {
         my_reaction: 'kind',
         comments: ['body', 'reaction_summary', 'user', { my_reaction: 'kind' }]
       }
     ]
-  }, { immutable: true })
+javascript:
+  const currentUserModel = new ArSyncModel({ api: 'profile', query: currentUserQuery }, { immutable: true })
+  const postModel = new ArSyncModel(
+    {
+      api: 'post',
+      params: { id: location.pathname.match(/\d+/)[0] },
+      query: postQuery
+    },
+    { immutable: true }
+  )
   ArSyncModel.waitForLoad(currentUserModel, postModel).then(() => {
-    const data  = { currentUser: currentUserModel.data, post: postModel.data }
-    currentUserModel.subscribe('change', () => data.currentUser = currentUserModel.data)
-    postModel.subscribe('change', () => data.post = postModel.data)
+    const data  = { currentUser: currentUserModel.data || {}, post: postModel.data || {} }
+    currentUserModel.subscribe('change', () => data.currentUser = currentUserModel.data || {})
+    postModel.subscribe('change', () => data.post = postModel.data || {})
     new Vue({ el: '#syncbody', data })
   })
 
