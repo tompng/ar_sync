@@ -224,6 +224,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       if (this.data.id === id) return
       const query = this.query.attributes[path]
       ModelBatchRequest.fetch(class_name, query, id).then(data => {
+        if (!data) return
         const model = new ArSyncRecord(query, data, null, this.root)
         if (this.children[path]) this.children[path].release()
         this.children[path] = model
@@ -348,6 +349,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       }
     }
     ModelBatchRequest.fetch(className, this.query, id).then((data) => {
+      if (!data) return
       const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parentModel = this
       model.parentKey = id
