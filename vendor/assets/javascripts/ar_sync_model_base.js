@@ -27,12 +27,14 @@ class ArSyncModelBase {
     const id = this._listenerSerial++
     const subscription = this._ref.model.subscribe(event, callback)
     const unsubscribe = () => {
+      callback = null
       subscription.unsubscribe()
       delete this._listeners[id]
     }
     if (this.loaded) {
-      if (event === 'load') setTimeout(callback, 0)
-      if (event === 'change') setTimeout(() => callback({ path: [], value: this.data }), 0)
+      const cb = () => { if (callback) callback({ path: [], value: this.data }) }
+      if (event === 'load') setTimeout(cb, 0)
+      if (event === 'change') setTimeout(cb, 0)
     }
     return this._listeners[id] = { unsubscribe }
   }
