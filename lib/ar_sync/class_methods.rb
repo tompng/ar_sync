@@ -75,7 +75,7 @@ module ArSync::TreeSync::ClassMethods
       data_block = lambda do |preloaded, _context, _params|
         preloaded ? preloaded[id] || [] : send(name)
       end
-      params_type = { limit: :int, order: :any }
+      params_type = { limit?: :int, order?: [{ :* => %w[asc desc] }, 'asc', 'desc'] }
     else
       params_type = {}
     end
@@ -153,7 +153,7 @@ module ArSync::GraphSync::ClassMethods
           limit: [params && params[:limit]&.to_i, limit].compact.min
         )
       end
-      params_type = { limit: :int, order: :any }
+      params_type = { limit?: :int, order?: [{ :* => %w[asc desc] }, 'asc', 'desc'] }
     else
       params_type = {}
     end
