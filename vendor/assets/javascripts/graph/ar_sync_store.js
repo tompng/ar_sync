@@ -496,10 +496,9 @@ class ArSyncStore {
 }
 
 try {
-  module.exports = { ArSyncRecord, ArSyncCollection, ArSyncStore }
+  module.exports = { ArSyncCollection, ArSyncStore }
 } catch (e) {
   window.ArSyncCollection = ArSyncCollection
-  window.ArSyncRecord = ArSyncRecord
   window.ArSyncStore = ArSyncStore
 }
 })()
