@@ -188,7 +188,7 @@ module ArSync::GraphSync::ClassMethods
 
     _sync_define :id
 
-    _sync_define :sync_keys do |current_user|
+    _sync_define :sync_keys, type: [:string] do |current_user|
       ArSync.sync_graph_keys self, current_user
     end
 
