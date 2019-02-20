@@ -28,7 +28,7 @@ class Graph::Post < Graph::BaseRecord
   sync_parent :user, inverse_of: :do_not_call_after_destroyed
   sync_parent :user, inverse_of: :posts
   sync_has_data :id, :title, :body
-  sync_has_one :user
+  sync_has_one :user, only: [:id, :name]
   sync_has_many :comments
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
   sync_has_many :my_comments, preload: lambda { |posts, user|
@@ -47,7 +47,7 @@ class Graph::Comment < Graph::BaseRecord
   sync_parent :post, inverse_of: :comments
   sync_parent :post, inverse_of: :my_comments, only_to: :user
   sync_has_data :id, :body
-  sync_has_one :user
+  sync_has_one :user, only: [:id, :name]
   sync_has_data(:star_count, preload: lambda { |comments|
     Graph::Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   }) { |preload| preload[id] || 0 }
@@ -70,7 +70,7 @@ class Graph::Star < Graph::BaseRecord
   belongs_to :user
   belongs_to :comment
   sync_has_data :id, :created_at
-  sync_has_one :user
+  sync_has_one :user, only: [:id, :name]
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
   sync_parent :comment, inverse_of: :do_not_call_after_destroyed
   sync_parent :comment, inverse_of: :star_count

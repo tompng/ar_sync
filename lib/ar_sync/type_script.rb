@@ -11,7 +11,8 @@ module ArSync::TypeScript
   end
 
   def self.api_related_classes(api_class)
-    ArSerializer::TypeScript.all_related_classes([api_class]) - [api_class]
+    classes = ArSerializer::TypeScript.related_serializer_types([api_class]).map(&:type)
+    classes - [api_class]
   end
 
   def self.request_type_definition(api_class)
