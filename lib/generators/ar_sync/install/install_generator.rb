@@ -23,6 +23,7 @@ module ArSync
           # config.current_user_method = :current_user
           # config.key_prefix = 'ar_sync_'
           # config.key_secret = '#{SecureRandom.hex}'
+          # config.config.key_expires_in = 1.day
         end
       CODE
     end
