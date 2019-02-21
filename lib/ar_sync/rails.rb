@@ -11,8 +11,6 @@ module ArSync
     end
   end
 
-  config.current_user_method = :current_user
-
   module StaticJsonConcern
     def ar_sync_static_json(record_or_records, query)
       if respond_to?(ArSync.config.current_user_method)

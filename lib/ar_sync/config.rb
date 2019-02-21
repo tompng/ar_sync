@@ -1,14 +1,14 @@
 require 'ostruct'
 module ArSync
   config_keys = %i[
+    current_user_method
     key_secret
     key_prefix
-    current_user_method
   ]
-  class Config < Struct.new(*config_keys); end
+  Config = Struct.new(*config_keys)
 
   def self.config
-    @config ||= Config.new current_user_method: :current_user
+    @config ||= Config.new :current_user, nil, nil
   end
 
   def self.configure
