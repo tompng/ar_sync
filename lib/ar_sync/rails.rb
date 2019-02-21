@@ -11,7 +11,6 @@ module ArSync
     end
   end
 
-  config.key_prefix = 'ar_sync_'
   config.current_user_method = :current_user
 
   module StaticJsonConcern
