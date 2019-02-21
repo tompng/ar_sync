@@ -4,14 +4,25 @@ module ArSync
       create_file 'app/controllers/sync_api_controller.rb', <<~CODE
         class SyncApiController < ApplicationController
           include ArSync::ApiControllerConcern
-          # serializer_field :my_data do |_user|
-          #   current_user
-          # end
+            # serializer_field :my_data do |_user|
+            #   current_user
+            # end
 
-          # serializer_field :comment do |_user, id:|
-          #   Comment.where(current_user_can_access).find id
-          # end
+            # serializer_field :comment do |_user, id:|
+            #   Comment.where(current_user_can_access).find id
+            # end
           end
+        end
+      CODE
+    end
+
+    def create_config
+      create_file 'config/initializers/ar_sync.rb', <<~CODE
+        ArSync.use :tree
+        ArSync.configure do |config|
+          # config.current_user_method = :current_user
+          # config.key_prefix = 'ar_sync_'
+          # config.key_secret = '#{SecureRandom.hex}'
         end
       CODE
     end

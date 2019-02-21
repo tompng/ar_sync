@@ -8,7 +8,7 @@ module ArSync
   class Config < Struct.new(*config_keys); end
 
   def self.config
-    @config ||= Config.new
+    @config ||= Config.new current_user_method: :current_user
   end
 
   def self.configure

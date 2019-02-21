@@ -43,7 +43,7 @@ end
 # app/controllers/sync_api_controller.rb
 class SyncApiController < ApplicationController
   include ArSync::ApiControllerConcern
-  api :my_simple_user_api do |params|
+  serializer_field :my_simple_user_api do |current_user, params|
     User.where(condition).find params[:id]
   end
 end
@@ -72,12 +72,12 @@ end
       <small>date: {{post.created_at}}</small>
     </li>
   </ul>
-  <a :href="'/posts/create_random_post?user_id=' + user.id" data-remote=true data-method=post>
-    Click Here
-  </a> to create a new post with random title and body
+  <form action='/post' data-remote=true data-method=post>
+    <input name='title'>
+    <textarea name=body></textarea>
+    <input type=submit>
+  </form>
 </div>
 ```
 
 Now, your view and ActiveRecord are synchronized.
-
-In the sample above, clicking `Create Here` will add a new link to the created post immediately.
