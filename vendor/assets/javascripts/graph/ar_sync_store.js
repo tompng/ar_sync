@@ -70,6 +70,9 @@ class ArSyncContainerBase {
     }
     this.data = null
   }
+  onChange(path, data) {
+    if (this.parentModel) this.parentModel.onChange([this.parentKey, ...path], data)
+  }
   subscribe(key, listener) {
     this.listeners.push(ArSyncStore.connectionManager.subscribe(key, listener))
   }
@@ -217,7 +220,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.children[path] = null
       this.mark()
       this.data[path] = null
-      if (this.parentModel) this.parentModel.onChange([this.parentKey, path], null)
+      this.onChange([path], null)
     } else if (action === 'add') {
       if (this.data.id === id) return
       const query = this.query.attributes[path]
@@ -230,7 +233,7 @@ class ArSyncRecord extends ArSyncContainerBase {
         this.data[path] = model.data
         model.parentModel = this
         model.parentKey = path
-        if (this.parentModel) this.parentModel.onChange([this.parentKey, path], model.data)
+        this.onChange([path], model.data)
       })
     } else {
       ModelBatchRequest.fetch(class_name, this.reloadQuery(), id).then(data => {
@@ -263,7 +266,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       if (this.data[key] === data[key]) continue
       this.mark()
       this.data[key] = data[key]
-      if (this.parentModel) this.parentModel.onChange([this.parentKey, key], data[key])
+      this.onChange([key], data[key])
     }
   }
   markAndSet(key, data) {
@@ -362,7 +365,6 @@ class ArSyncCollection extends ArSyncContainerBase {
           this.children.sort((a, b) => a.data.id < b.data.id ? -1 : +1)
           this.data.sort((a, b) => a.id < b.id ? -1 : +1)
         }
-        if (this.parentModel) this.parentModel.onChange([this.parentKey, id], model.data)
         if (overflow) {
           rmodel = this.children.shift()
           rmodel.release()
@@ -382,10 +384,8 @@ class ArSyncCollection extends ArSyncContainerBase {
           this.data.pop()
         }
       }
-      if (this.parentModel) {
-        this.parentModel.onChange([this.parentKey, model.id], model.data)
-        if (rmodel) this.parentModel.onChange([this.parentKey, rmodel.id], null)
-      }
+      this.onChange([model.id], model.data)
+      if (rmodel) this.onChange([rmodel.id], null)
     })
   }
   consumeRemove(id) {
@@ -395,7 +395,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.children[idx].release()
     this.children.splice(idx, 1)
     this.data.splice(idx, 1)
-    if (this.parentModel) this.parentModel.onChange([this.parentKey, id], null)
+    this.onChange([id], null)
   }
   onNotify(notifyData) {
     if (notifyData.action === 'add') {
@@ -403,9 +403,6 @@ class ArSyncCollection extends ArSyncContainerBase {
     } else if (notifyData.action === 'remove') {
       this.consumeRemove(notifyData.id)
     }
-  }
-  onChange(path, data) {
-    if (this.parentModel) this.parentModel.onChange([this.parentKey, ...path], data)
   }
   subscribeAll() {
     const callback = data => this.onNotify(data)
