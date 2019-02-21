@@ -60,6 +60,14 @@ class ArSync::Collection::Graph < ArSync::Collection
   def _sync_notify_child_removed(child, _name, to_user, _owned)
     ArSync.sync_graph_send to: self, action: :remove, model: child, path: :collection, to_user: to_user
   end
+
+  def self._sync_children_info
+    @sync_children_info ||= {}
+  end
+
+  def self._sync_child_info(key)
+    _sync_children_info[key]
+  end
 end
 
 class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
