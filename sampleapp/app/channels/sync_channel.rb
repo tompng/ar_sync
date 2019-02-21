@@ -1,5 +1,6 @@
 class SyncChannel < ApplicationCable::Channel
   def subscribed
-    stream_from params[:key]
+    key = ArSync.validate_expiration params[:key]
+    stream_from key if key
   end
 end

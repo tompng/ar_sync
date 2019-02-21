@@ -32,6 +32,8 @@ module ArSync
       create_file 'app/channels/sync_channel.rb', <<~CODE
         class SyncChannel < ApplicationCable::Channel
           def subscribed
+            key = ArSync.validate_expiration params[:key]
+            stream_from key if key
             stream_from params[:key]
           end
         end
