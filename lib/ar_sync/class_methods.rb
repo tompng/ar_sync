@@ -53,7 +53,7 @@ module ArSync::TreeSync::ClassMethods
     end
     option[:params_type] = {}
     names.each do |name|
-      type_override = reflect_on_association(name.to_s.underscore) ? { type: :any } : {}
+      type_override = data_block.nil? && reflect_on_association(name.to_s.underscore) ? { type: :any } : {}
       _sync_define ArSync::DataField.new(name, user_specific: user_specific), option.merge(type_override), &data_block
     end
   end
