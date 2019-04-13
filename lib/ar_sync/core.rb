@@ -83,6 +83,7 @@ module ArSync
   end
 
   def self.validate_expiration(signed_key)
+    signed_key = signed_key.to_s
     return signed_key unless config.key_expires_in
     key, time, signature, other = signed_key.split ';', 4
     return unless signed_key(key, time) == [key, time, signature].join(';')
