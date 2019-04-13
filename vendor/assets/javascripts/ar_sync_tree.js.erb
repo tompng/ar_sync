@@ -1,0 +1,17 @@
+(function (){
+  var exports = {}
+  var modules = {}
+  function require(name) { return modules[name] }
+  <% require = -> (path) { File.read File.dirname(__FILE__) + "/../../../dist/#{path}" } %>
+  <%= require.call 'ar_sync_api_fetch.js' %>
+  window.ArSyncAPI = exports.default
+  modules['../ar_sync_api_fetch'] = { default: exports.default }
+  <%= require.call 'connection_manager.js' %>
+  modules['../connection_manager'] = { default: exports.default }
+  <%= require.call 'ar_sync_model_base.js' %>
+  modules['../ar_sync_model_base'] = { default: exports.default }
+  <%= require.call 'tree/ar_sync_store.js' %>
+  modules['./ar_sync_store'] = { default: exports.default }
+  <%= require.call 'tree/ar_sync_model.js' %>
+  window.ArSyncModel = ArSyncModel
+}())

@@ -1,0 +1,7 @@
+(function (){
+  var modules = { actioncable: { default: ActionCable } }
+  var exports = {}
+  function require(name) { return modules[name] }
+  <%= File.read File.dirname(__FILE__) + '/../../../dist/actioncable_adapter.js' %>
+  window.ArSyncActionCableAdapter = ArSyncActionCableAdapter
+}())
