@@ -1,11 +1,10 @@
-(function(){
 function apiBatchFetch(endpoint, requests) {
   const headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
   }
   const body = JSON.stringify({ requests })
-  const option = { credentials: 'include', method: 'POST', headers, body }
+  const option = { credentials: 'include', method: 'POST', headers, body } as const
   return fetch(endpoint, option).then(res => {
     if (res.status === 200) return res.json()
     throw new Error(res.statusText)
@@ -13,7 +12,10 @@ function apiBatchFetch(endpoint, requests) {
 }
 
 class ApiFetcher {
-  constructor(endpoint) {
+  endpoint: string
+  batches
+  batchFetchTimer
+  constructor(endpoint: string) {
     this.endpoint = endpoint
     this.batches = []
     this.batchFetchTimer = null
@@ -65,13 +67,7 @@ class ApiFetcher {
 
 const staticFetcher = new ApiFetcher('/static_api')
 const syncFetcher = new ApiFetcher('/sync_api')
-const ArSyncAPI = {
+export default {
   fetch: request => staticFetcher.fetch(request),
   syncFetch: request => syncFetcher.fetch(request),
 }
-try {
-  module.exports = ArSyncAPI
-} catch (e) {
-  window.ArSyncAPI = ArSyncAPI
-}
-})()

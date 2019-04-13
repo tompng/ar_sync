@@ -1,6 +1,8 @@
-(function(){
-
 class Updator {
+  changes
+  markedForFreezeObjects
+  immutable
+  data
   constructor(immutable) {
     this.changes = []
     this.markedForFreezeObjects = []
@@ -163,8 +165,11 @@ class Updator {
   }
 }
 
-class ArSyncStore {
-  constructor(query, data, option = {}) {
+export default class ArSyncStore {
+  data
+  query
+  immutable
+  constructor(query, data, option = {} as { immutable?: boolean }) {
     this.data = option.immutable ? Updator.createFrozenObject(data) : data
     this.query = ArSyncStore.parseQuery(query)
     this.immutable = option.immutable
@@ -299,7 +304,7 @@ class ArSyncStore {
     }
   }
 
-  static parseQuery(query, attrsonly){
+  static parseQuery(query, attrsonly?){
     const attributes = {}
     let column = null
     let params = null
@@ -331,10 +336,3 @@ class ArSyncStore {
     return { attributes, column, params }
   }
 }
-
-try {
-  module.exports = ArSyncStore
-} catch (e) {
-  window.ArSyncStore = ArSyncStore
-}
-})()

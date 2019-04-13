@@ -1,11 +1,8 @@
-(function(){
-let ActionCable
-try {
-  ActionCable = require('actioncable')
-} catch(e) {
-  ActionCable = window.ActionCable
-}
-class ArSyncActionCableAdapter {
+import ActionCable from 'actioncable'
+
+export default class ArSyncActionCableAdapter {
+  connected
+  _cable
   constructor() {
     this.connected = true
     this.subscribe(Math.random(), () => {})
@@ -30,9 +27,3 @@ class ArSyncActionCableAdapter {
   ondisconnect() {}
   onreconnect() {}
 }
-try {
-  module.exports = ArSyncActionCableAdapter
-} catch (e) {
-  window.ArSyncActionCableAdapter = ArSyncActionCableAdapter
-}
-})()

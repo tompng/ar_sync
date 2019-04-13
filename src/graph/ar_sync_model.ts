@@ -1,14 +1,6 @@
-(function(){
-let ArSyncStore, ArSyncConnectionManager, ArSyncModelBase
-try {
-  ArSyncStore = require('./ar_sync_store').ArSyncStore
-  ArSyncConnectionManager = require('../ar_sync_connection_manager')
-  ArSyncModelBase = require('../ar_sync_model_base')
-} catch(e) {
-  ArSyncStore = window.ArSyncStore
-  ArSyncConnectionManager = window.ArSyncConnectionManager
-  ArSyncModelBase = window.ArSyncModelBase
-}
+import ArSyncStore from './ar_sync_store'
+import ArSyncConnectionManager from '../connection_manager'
+import ArSyncModelBase from '../ar_sync_model_base'
 
 class ArSyncModel extends ArSyncModelBase {
   static setConnectionAdapter(adapter) {
@@ -24,10 +16,4 @@ class ArSyncModel extends ArSyncModelBase {
 ArSyncModel._cache = {}
 ArSyncModel.cacheTimeout = 10 * 1000
 
-try {
-  module.exports = { ArSyncModel, ArSyncStore }
-} catch (e) {
-  window.ArSyncModel = ArSyncModel
-  window.ArSyncStore = ArSyncStore
-}
-})()
+export default ArSyncModel

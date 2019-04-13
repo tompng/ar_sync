@@ -1,6 +1,11 @@
-(function(){
-
-class ArSyncModelBase {
+export default class ArSyncModelBase {
+  _ref
+  _listenerSerial
+  _listeners
+  data
+  loaded
+  static _cache
+  static cacheTimeout
   constructor(request, option) {
     this._ref = this.refManagerClass().retrieveRef(request, option)
     this._listenerSerial = 0
@@ -16,8 +21,9 @@ class ArSyncModelBase {
   onload(callback) {
     this.subscribeOnce('load', callback)
   }
+  refManagerClass() { return null as any }
   subscribeOnce(event, callback) {
-    const subscription = this.subscribe('load', () => {
+    const subscription = this.subscribe(event, () => {
       callback()
       subscription.unsubscribe()
     })
@@ -57,6 +63,9 @@ class ArSyncModelBase {
     this._attach(ref)
     return ref
   }
+  static createRefModel(_request, _option): any {
+    throw 'abstract method'
+  }
   static _detach(ref) {
     ref.count--
     const timeout = this.cacheTimeout
@@ -87,10 +96,3 @@ class ArSyncModelBase {
     })
   }
 }
-
-try {
-  module.exports = ArSyncModelBase
-} catch (e) {
-  window.ArSyncModelBase = ArSyncModelBase
-}
-})()

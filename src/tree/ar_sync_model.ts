@@ -1,19 +1,22 @@
-(function(){
-let ArSyncStore, arSyncApiFetch, ArSyncConnectionManager, ArSyncModelBase
-try {
-  ArSyncStore = require('./ar_sync_store')
-  arSyncApiFetch = require('../ar_sync_api_fetch').syncFetch
-  ArSyncConnectionManager = require('../ar_sync_connection_manager')
-  ArSyncModelBase = require('../ar_sync_model_base')
-} catch(e) {
-  ArSyncStore = window.ArSyncStore
-  arSyncApiFetch = window.ArSyncAPI.syncFetch
-  ArSyncConnectionManager = window.ArSyncConnectionManager
-  ArSyncModelBase = window.ArSyncModelBase
-}
+import ArSyncStore from './ar_sync_store'
+import ArSyncAPI from '../ar_sync_api_fetch'
+import ArSyncConnectionManager from '../connection_manager'
+import ArSyncModelBase from '../ar_sync_model_base'
 
 class ArSyncRecord {
-  constructor(request, option = {}) {
+  immutable
+  request
+  subscriptions
+  store
+  loaded
+  retryLoadTimer
+  data
+  bufferTimer
+  bufferedPatches
+  eventListeners
+  networkSubscription
+  static connectionManager
+  constructor(request, option = {} as { immutable?: boolean }) {
     this.immutable = option.immutable ? true : false
     this.request = request
     this.subscriptions = []
@@ -48,8 +51,8 @@ class ArSyncRecord {
     this.subscriptions = []
   }
   load(callback, retryCount = 0) {
-    arSyncApiFetch(this.request).then(syncData => {
-      const { keys, data, limit, order } = syncData
+    ArSyncAPI.syncFetch(this.request).then(syncData => {
+      const { keys, data, limit, order } = syncData as any
       this.initializeStore(keys, data, { limit, order, immutable: this.immutable })
       if (callback) callback(this.data)
     }).catch(e => {
@@ -93,14 +96,13 @@ class ArSyncRecord {
     listeners[id] = callback
     return { unsubscribe: () => { delete listeners[id] } }
   }
-  trigger(event, arg) {
+  trigger(event, arg?) {
     const listeners = this.eventListeners.events[event]
     if (!listeners) return
     for (const id in listeners) listeners[id](arg)
   }
   initializeStore(keys, data, option) {
     const query = this.request.query
-    const prevStore = this.store
     if (this.store) {
       this.store.replaceData(data)
     } else {
@@ -113,7 +115,7 @@ class ArSyncRecord {
   }
 }
 
-class ArSyncModel extends ArSyncModelBase {
+export default class ArSyncModel extends ArSyncModelBase {
   static setConnectionAdapter(adapter) {
     ArSyncRecord.connectionManager = new ArSyncConnectionManager(adapter)
   }
@@ -126,10 +128,3 @@ class ArSyncModel extends ArSyncModelBase {
 }
 ArSyncModel._cache = {}
 ArSyncModel.cacheTimeout = 10 * 1000
-
-try {
-  module.exports = { ArSyncModel }
-} catch (e) {
-  window.ArSyncModel = ArSyncModel
-}
-})()
