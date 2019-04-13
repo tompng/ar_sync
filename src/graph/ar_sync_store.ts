@@ -146,7 +146,7 @@ class ArSyncContainerBase {
   static load(apiParams, root) {
     if (!(apiParams instanceof Array)) return this._load(apiParams, root)
     return new Promise((resolve, _reject) => {
-      const resultModels = []
+      const resultModels: any[] = []
       let countdown = apiParams.length
       apiParams.forEach((param, i) => {
         this._load(param, root).then(model => {
@@ -280,7 +280,7 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
   reloadQuery() {
     if (this.reloadQueryCache) return this.reloadQueryCache
-    const reloadQuery = this.reloadQueryCache = { attributes: [] }
+    const reloadQuery = this.reloadQueryCache = { attributes: [] as any[] }
     for (const key in this.query.attributes) {
       if (key === 'sync_keys') continue
       const val = this.query.attributes[key]
@@ -352,8 +352,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     } else {
       collection = data
     }
-    const newChildren = []
-    const newData = []
+    const newChildren: any[] = []
+    const newData: any[] = []
     for (const subData of collection) {
       let model = existings[subData.id]
       if (model) {

@@ -27,8 +27,8 @@ class ApiFetcher {
       this.batchFetchTimer = setTimeout(()=>{
         this.batchFetchTimer = null
         const compacts = {}
-        const requests = []
-        const callbacksList = []
+        const requests: any[] = []
+        const callbacksList: any[] = []
         for (const batch of this.batches) {
           const request = batch[0]
           const callback = batch[1]

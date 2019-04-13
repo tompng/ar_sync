@@ -115,7 +115,7 @@ class ArSyncRecord {
   }
 }
 
-export default class ArSyncModel extends ArSyncModelBase {
+export default class ArSyncModel<T> extends ArSyncModelBase<T> {
   static setConnectionAdapter(adapter) {
     ArSyncRecord.connectionManager = new ArSyncConnectionManager(adapter)
   }
@@ -125,6 +125,6 @@ export default class ArSyncModel extends ArSyncModelBase {
   refManagerClass() {
     return ArSyncModel
   }
+  static _cache = {}
+  static cacheTimeout = 10 * 1000
 }
-ArSyncModel._cache = {}
-ArSyncModel.cacheTimeout = 10 * 1000

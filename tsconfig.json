@@ -5,6 +5,7 @@
     "rootDir": "./src",
     "module": "commonjs",
     "target": "es2017",
+    "strictNullChecks": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "declaration": true

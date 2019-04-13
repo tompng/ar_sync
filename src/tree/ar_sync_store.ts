@@ -94,7 +94,7 @@ class Updator {
         value
       })
       const limitReached = orderParam && orderParam.limit != null && el.length === orderParam.limit
-      let removed = null
+      let removed
       if (orderParam && orderParam.order == 'desc') {
         el.unshift(value)
         if (limitReached) removed = el.pop()
@@ -187,21 +187,6 @@ export default class ArSyncStore {
   update(patch) {
     return this.batchUpdate([patch])
   }
-  dig(data, path) {
-    if (path === undefined) {
-      path = data
-      data = this.data
-    }
-    path.forEach(key => {
-      if (!data) return null
-      if (data instanceof Array) {
-        data = data.find(el => el.id === key)
-      } else {
-        data = data[key]
-      }
-    })
-    return data
-  }
   _slicePatch(patchData, query) {
     const obj = {}
     for (const key in patchData) {
@@ -233,8 +218,8 @@ export default class ArSyncStore {
     const patchData = patch.data
     let query = this.query
     let data = this.data
-    const actualPath = []
-    const accessKeys = []
+    const actualPath: (string | number)[] = []
+    const accessKeys: (string | number)[] = []
     for (let i = 0; i < path.length - 1; i++) {
       const nameOrId = path[i]
       if (typeof(nameOrId) === 'number') {
