@@ -1,4 +1,4 @@
-import ActionCable from 'actioncable'
+import * as ActionCable from 'actioncable'
 
 export default class ArSyncActionCableAdapter {
   connected

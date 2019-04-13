@@ -8,7 +8,8 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "actioncable": "^5.2.3",
+    "actioncable": "^5.2.0",
+    "@types/actioncable": "^5.2.0",
     "eslint": "^5.16.0",
     "typescript": "^3.4.3",
     "@typescript-eslint/eslint-plugin": "^1.6.0",
