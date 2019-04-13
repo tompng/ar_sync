@@ -151,14 +151,17 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.query = query
     this.data = {}
     this.children = {}
-    this.sync_keys = data.sync_keys
+    this.replaceData(data)
+  }
+  setSyncKeys(sync_keys) {
+    this.sync_keys = sync_keys
     if (!this.sync_keys) {
       this.sync_keys = []
       console.error('warning: no sync_keys')
     }
-    this.replaceData(data)
   }
   replaceData(data) {
+    this.setSyncKeys(data.sync_keys)
     this.unsubscribeAll()
     if (this.data.id !== data.id) {
       this.mark()
@@ -173,7 +176,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       if (subQuery.attributes && subQuery.attributes.sync_keys) {
         if (subData instanceof Array || (subData && subData.collection && subData.order)) {
           if (this.children[aliasName]) {
-            this.children[aliasName].replaceData(subData)
+            this.children[aliasName].replaceData(subData, this.sync_keys)
           } else {
             const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root)
             this.mark()
@@ -287,13 +290,8 @@ class ArSyncCollection extends ArSyncContainerBase {
   constructor(sync_keys, path, query, data, request, root){
     super()
     this.root = root
+    this.path = path
     if (request) this.initForReload(request)
-    if (sync_keys) {
-      this.sync_keys = sync_keys.map(key => key + path)
-    } else {
-      console.error('warning: no sync_keys')
-      this.sync_keys = []
-    }
     if (query.params && (query.params.order || query.params.limit)) {
       this.order = { limit: query.params.limit, mode: query.params.order || 'asc' }
     } else {
@@ -302,9 +300,18 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.query = query
     this.data = []
     this.children = []
-    this.replaceData(data)
+    this.replaceData(data, sync_keys)
   }
-  replaceData(data) {
+  setSyncKeys(sync_keys) {
+    if (sync_keys) {
+      this.sync_keys = sync_keys.map(key => key + this.path)
+    } else {
+      console.error('warning: no sync_keys')
+      this.sync_keys = []
+    }
+  }
+  replaceData(data, sync_keys) {
+    this.setSyncKeys(sync_keys)
     const existings = {}
     for (const child of this.children) existings[child.data.id] = child
     let collection

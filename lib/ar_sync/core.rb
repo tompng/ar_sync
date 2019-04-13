@@ -42,7 +42,7 @@ module ArSync
   end
 
   def self.sync_tree_send(to:, action:, path:, data:, to_user: nil, ordering: nil)
-    key = sync_key to, path.grep(Symbol), to_user
+    key = sync_key to, path.grep(Symbol), to_user, signature: false
     event = [key, action: action, path: path, data: data, ordering: ordering]
     buffer = Thread.current[:ar_sync_compact_notifications]
     if buffer
@@ -53,7 +53,7 @@ module ArSync
   end
 
   def self.sync_graph_send(to:, action:, model:, path: nil, to_user: nil)
-    key = sync_graph_key to, to_user
+    key = sync_graph_key to, to_user, signature: false
     event = ["#{key}#{path}", action: action, class_name: model.class.base_class.name, id: model.id]
     buffer = Thread.current[:ar_sync_compact_notifications]
     if buffer
@@ -63,22 +63,35 @@ module ArSync
     end
   end
 
-  def self.sync_graph_key(model, to_user = nil)
-    sync_key(model, :graph_sync, to_user) + '/'
+  def self.sync_graph_key(model, to_user = nil, signature: true)
+    sync_key(model, :graph_sync, to_user, signature: signature) + ';/'
   end
 
   def self.sync_graph_keys(model, user)
     [sync_graph_key(model), sync_graph_key(model, user)]
   end
 
-  def self.sync_key(model, path, to_user = nil)
+  def self.sync_key(model, path, to_user = nil, signature: true)
     if model.is_a? ArSync::Collection
       key = [to_user&.id, model.klass.name, model.name, path].join '/'
     else
       key = [to_user&.id, model.class.name, model.id, path].join '/'
     end
-    key = Digest::SHA256.hexdigest "#{config.key_secret}#{key}" if config.key_secret
-    "#{config.key_prefix}#{key}"
+    key = Digest::SHA256.hexdigest("#{config.key_secret}#{key}")[0, 32] if config.key_secret
+    key = "#{config.key_prefix}#{key}" if config.key_prefix
+    signature && config.key_expires_in ? signed_key(key, Time.now.to_i.to_s) : key
+  end
+
+  def self.validate_expiration(signed_key)
+    signed_key = signed_key.to_s
+    return signed_key unless config.key_expires_in
+    key, time, signature, other = signed_key.split ';', 4
+    return unless signed_key(key, time) == [key, time, signature].join(';')
+    [key, other].compact.join ';' if Time.now.to_i - time.to_i < config.key_expires_in
+  end
+
+  def self.signed_key(key, time)
+    "#{key};#{time};#{Digest::SHA256.hexdigest("#{config.key_secret}#{key};#{time}")[0, 16]}"
   end
 
   def self.sync_collection_api(collection, current_user, args)

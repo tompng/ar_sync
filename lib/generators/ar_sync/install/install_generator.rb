@@ -20,9 +20,10 @@ module ArSync
       create_file 'config/initializers/ar_sync.rb', <<~CODE
         ArSync.use :tree
         ArSync.configure do |config|
-          # config.current_user_method = :current_user
-          # config.key_prefix = 'ar_sync_'
-          # config.key_secret = '#{SecureRandom.hex}'
+          config.current_user_method = :current_user
+          config.key_prefix = 'ar_sync_'
+          config.key_secret = '#{SecureRandom.hex}'
+          config.key_expires_in = 30.seconds
         end
       CODE
     end
@@ -31,6 +32,8 @@ module ArSync
       create_file 'app/channels/sync_channel.rb', <<~CODE
         class SyncChannel < ApplicationCable::Channel
           def subscribed
+            key = ArSync.validate_expiration params[:key]
+            stream_from key if key
             stream_from params[:key]
           end
         end

@@ -4,6 +4,7 @@ module ArSync
     current_user_method
     key_secret
     key_prefix
+    key_expires_in
   ]
   Config = Struct.new(*config_keys)
 
