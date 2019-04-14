@@ -1,7 +1,7 @@
-import ArSyncStore from './ar_sync_store'
-import ArSyncAPI from '../ar_sync_api_fetch'
-import ArSyncConnectionManager from '../connection_manager'
-import ArSyncModelBase from '../ar_sync_model_base'
+import ArSyncStore from './ArSyncStore'
+import ArSyncAPI from '../ArSyncApi'
+import ArSyncConnectionManager from '../ConnectionManager'
+import ArSyncModelBase from '../ArSyncModelBase'
 
 class ArSyncRecord {
   immutable

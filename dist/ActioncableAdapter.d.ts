@@ -1,4 +1,4 @@
-export default class ArSyncActionCableAdapter {
+export default class ActionCableAdapter {
     connected: any;
     _cable: any;
     constructor();

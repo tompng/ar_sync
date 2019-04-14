@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-class ArSyncConnectionManager {
+class ConnectionManager {
     constructor(adapter) {
         this.subscriptions = {};
         this.adapter = adapter;
@@ -72,4 +72,4 @@ class ArSyncConnectionManager {
             subscription.listeners[id](data);
     }
 }
-exports.default = ArSyncConnectionManager;
+exports.default = ConnectionManager;

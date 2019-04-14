@@ -1,4 +1,4 @@
-export default class ArSyncConnectionManager {
+export default class ConnectionManager {
   subscriptions
   adapter
   networkListeners

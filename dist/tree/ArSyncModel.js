@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const ar_sync_store_1 = require("./ar_sync_store");
-const ar_sync_api_fetch_1 = require("../ar_sync_api_fetch");
-const connection_manager_1 = require("../connection_manager");
-const ar_sync_model_base_1 = require("../ar_sync_model_base");
+const ArSyncStore_1 = require("./ArSyncStore");
+const ArSyncApi_1 = require("../ArSyncApi");
+const ConnectionManager_1 = require("../ConnectionManager");
+const ArSyncModelBase_1 = require("../ArSyncModelBase");
 class ArSyncRecord {
     constructor(request, option = {}) {
         this.immutable = option.immutable ? true : false;
@@ -43,7 +43,7 @@ class ArSyncRecord {
         this.subscriptions = [];
     }
     load(callback, retryCount = 0) {
-        ar_sync_api_fetch_1.default.syncFetch(this.request).then(syncData => {
+        ArSyncApi_1.default.syncFetch(this.request).then(syncData => {
             const { keys, data, limit, order } = syncData;
             this.initializeStore(keys, data, { limit, order, immutable: this.immutable });
             if (callback)
@@ -106,7 +106,7 @@ class ArSyncRecord {
             this.store.replaceData(data);
         }
         else {
-            this.store = new ar_sync_store_1.default(query, data, option);
+            this.store = new ArSyncStore_1.default(query, data, option);
             this.data = this.store.data;
         }
         this.subscriptions = keys.map(key => {
@@ -114,9 +114,9 @@ class ArSyncRecord {
         });
     }
 }
-class ArSyncModel extends ar_sync_model_base_1.default {
+class ArSyncModel extends ArSyncModelBase_1.default {
     static setConnectionAdapter(adapter) {
-        ArSyncRecord.connectionManager = new connection_manager_1.default(adapter);
+        ArSyncRecord.connectionManager = new ConnectionManager_1.default(adapter);
     }
     static createRefModel(request, option) {
         return new ArSyncRecord(request, option);

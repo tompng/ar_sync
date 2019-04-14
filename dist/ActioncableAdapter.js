@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const ActionCable = require("actioncable");
-class ArSyncActionCableAdapter {
+class ActionCableAdapter {
     constructor() {
         this.connected = true;
         this.subscribe(Math.random(), () => { });
@@ -26,4 +26,4 @@ class ArSyncActionCableAdapter {
     ondisconnect() { }
     onreconnect() { }
 }
-exports.default = ArSyncActionCableAdapter;
+exports.default = ActionCableAdapter;

@@ -1,6 +1,6 @@
 import * as ActionCable from 'actioncable'
 
-export default class ArSyncActionCableAdapter {
+export default class ActionCableAdapter {
   connected
   _cable
   constructor() {

@@ -3,15 +3,15 @@
   var modules = {}
   function require(name) { return modules[name] }
   <% require = -> (path) { File.read File.dirname(__FILE__) + "/../../../dist/#{path}" } %>
-  <%= require.call 'ar_sync_api_fetch.js' %>
+  <%= require.call 'ArSyncApi.js' %>
   window.ArSyncAPI = exports.default
-  modules['../ar_sync_api_fetch'] = { default: exports.default }
-  <%= require.call 'connection_manager.js' %>
-  modules['../connection_manager'] = { default: exports.default }
-  <%= require.call 'ar_sync_model_base.js' %>
-  modules['../ar_sync_model_base'] = { default: exports.default }
-  <%= require.call 'graph/ar_sync_store.js' %>
-  modules['./ar_sync_store'] = { default: exports.default }
-  <%= require.call 'graph/ar_sync_model.js' %>
+  modules['../ArSyncApi'] = { default: exports.default }
+  <%= require.call 'ConnectionManager.js' %>
+  modules['../ConnectionManager'] = { default: exports.default }
+  <%= require.call 'ArSyncModelBase.js' %>
+  modules['../ArSyncModelBase'] = { default: exports.default }
+  <%= require.call 'graph/ArSyncStore.js' %>
+  modules['./ArSyncStore'] = { default: exports.default }
+  <%= require.call 'graph/ArSyncModel.js' %>
   window.ArSyncModel = ArSyncModel
 }())

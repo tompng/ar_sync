@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const ar_sync_api_fetch_1 = require("../ar_sync_api_fetch");
+const ArSyncApi_1 = require("../ArSyncApi");
 const ModelBatchRequest = {
     timer: null,
     apiRequests: {},
@@ -20,7 +20,7 @@ const ModelBatchRequest = {
             const apiRequest = apiRequests[api];
             for (const { query, requests } of Object.values(apiRequest)) {
                 const ids = Object.values(requests).map(({ id }) => id);
-                ar_sync_api_fetch_1.default.syncFetch({ api, query, params: { ids } }).then((models) => {
+                ArSyncApi_1.default.syncFetch({ api, query, params: { ids } }).then((models) => {
                     for (const model of models)
                         requests[model.id].model = model;
                     for (const { model, callbacks } of Object.values(requests)) {
@@ -49,7 +49,7 @@ class ArSyncContainerBase {
     initForReload(request) {
         this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork((state) => {
             if (state) {
-                ar_sync_api_fetch_1.default.syncFetch(request).then(data => {
+                ArSyncApi_1.default.syncFetch(request).then(data => {
                     if (this.data) {
                         this.replaceData(data);
                         if (this.onConnectionChange)
@@ -134,7 +134,7 @@ class ArSyncContainerBase {
         }
         else {
             const request = { api, query, params };
-            return ar_sync_api_fetch_1.default.syncFetch(request).then((response) => {
+            return ArSyncApi_1.default.syncFetch(request).then((response) => {
                 if (response.collection && response.order) {
                     return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root);
                 }

@@ -1,2 +1,2 @@
-import ArSyncModel from './ar_sync_model'
+import ArSyncModel from './ArSyncModel'
 export default ArSyncModel
