@@ -1,5 +1,18 @@
 {
   "name": "ar_sync",
   "version": "0.0.1",
-  "main": "index.js"
+  "main": "dist/index.js",
+  "scripts": {
+    "prepare": "tsc",
+    "build": "tsc"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "actioncable": "^5.2.0",
+    "@types/actioncable": "^5.2.0",
+    "eslint": "^5.16.0",
+    "typescript": "^3.4.3",
+    "@typescript-eslint/eslint-plugin": "^1.6.0",
+    "@typescript-eslint/parser": "^1.6.0"
+  }
 }

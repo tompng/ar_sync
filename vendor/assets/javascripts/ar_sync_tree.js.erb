@@ -1,0 +1,17 @@
+(function (){
+  var exports = {}
+  var modules = {}
+  function require(name) { return modules[name] }
+  <% require = -> (path) { File.read File.dirname(__FILE__) + "/../../../dist/#{path}" } %>
+  <%= require.call 'ArSyncApi.js' %>
+  window.ArSyncAPI = exports.default
+  modules['../ArSyncApi'] = { default: exports.default }
+  <%= require.call 'ConnectionManager.js' %>
+  modules['../ConnectionManager'] = { default: exports.default }
+  <%= require.call 'ArSyncModelBase.js' %>
+  modules['../ArSyncModelBase'] = { default: exports.default }
+  <%= require.call 'tree/ArSyncStore.js' %>
+  modules['./ArSyncStore'] = { default: exports.default }
+  <%= require.call 'tree/ArSyncModel.js' %>
+  window.ArSyncModel = ArSyncModel
+}())

@@ -1,17 +1,24 @@
-(function(){
-let ArSyncAPI
-try {
-  ArSyncAPI = require('../ar_sync_api_fetch')
-} catch(e) {
-  ArSyncAPI = window.ArSyncAPI
-}
+import ArSyncAPI from '../ArSyncApi'
 
 const ModelBatchRequest = {
   timer: null,
-  apiRequests: {},
+  apiRequests: {} as {
+    [api: string]: {
+      [queryJSON: string]: {
+        query
+        requests: {
+          [id: number]: {
+            id: number
+            model?
+            callbacks: ((model) => void)[]
+          }
+        }
+      }
+    }
+  },
   fetch(api, query, id) {
     this.setTimer()
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       const queryJSON = JSON.stringify(query)
       const apiRequest = this.apiRequests[api] = this.apiRequests[api] || {}
       const queryRequests = apiRequest[queryJSON] = apiRequest[queryJSON] || { query, requests: {} }
@@ -20,11 +27,12 @@ const ModelBatchRequest = {
     })
   },
   batchFetch() {
-    for (const api in this.apiRequests) {
-      const apiRequest = this.apiRequests[api]
+    const { apiRequests } = this as typeof ModelBatchRequest
+    for (const api in apiRequests) {
+      const apiRequest = apiRequests[api]
       for (const { query, requests } of Object.values(apiRequest)) {
         const ids = Object.values(requests).map(({ id }) => id)
-        ArSyncAPI.syncFetch({ api, query, params: { ids } }).then(models => {
+        ArSyncAPI.syncFetch({ api, query, params: { ids } }).then((models: any[]) => {
           for (const model of models) requests[model.id].model = model
           for (const { model, callbacks } of Object.values(requests)) {
             for (const callback of callbacks) callback(model)
@@ -44,9 +52,17 @@ const ModelBatchRequest = {
 }
 
 class ArSyncContainerBase {
+  data
+  listeners
+  networkSubscriber
+  parentModel
+  parentKey
+  children: ArSyncContainerBase[]
+  onConnectionChange
   constructor() {
     this.listeners = []
   }
+  replaceData(_data, _sync_keys?) {}
   initForReload(request) {
     this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork((state) => {
       if (state) {
@@ -54,7 +70,7 @@ class ArSyncContainerBase {
           if (this.data) {
             this.replaceData(data)
             if (this.onConnectionChange) this.onConnectionChange(true)
-            if (this.onChange) this.onChange({ path: [], value: this.data })
+            if (this.onChange) this.onChange([], this.data)
           }
         })
       } else {
@@ -80,7 +96,7 @@ class ArSyncContainerBase {
     for (const l of this.listeners) l.unsubscribe()
     this.listeners = []
   }
-  static parseQuery(query, attrsonly){
+  static parseQuery(query, attrsonly = false){
     const attributes = {}
     let column = null
     let params = null
@@ -118,7 +134,7 @@ class ArSyncContainerBase {
       return ModelBatchRequest.fetch(api, query, id).then(data => new ArSyncRecord(parsedQuery, data[0], null, root))
     } else {
       const request = { api, query, params }
-      return ArSyncAPI.syncFetch(request).then(response => {
+      return ArSyncAPI.syncFetch(request).then((response: any) => {
         if (response.collection && response.order) {
           return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root)
         } else {
@@ -130,7 +146,7 @@ class ArSyncContainerBase {
   static load(apiParams, root) {
     if (!(apiParams instanceof Array)) return this._load(apiParams, root)
     return new Promise((resolve, _reject) => {
-      const resultModels = []
+      const resultModels: any[] = []
       let countdown = apiParams.length
       apiParams.forEach((param, i) => {
         this._load(param, root).then(model => {
@@ -144,6 +160,14 @@ class ArSyncContainerBase {
 }
 
 class ArSyncRecord extends ArSyncContainerBase {
+  id
+  root
+  query
+  data
+  children
+  sync_keys
+  paths
+  reloadQueryCache
   constructor(query, data, request, root) {
     super()
     this.root = root
@@ -216,7 +240,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     }
     this.subscribeAll()
   }
-  onNotify(notifyData, path) {
+  onNotify(notifyData, path?) {
     const { action, class_name, id } = notifyData
     if (action === 'remove') {
       this.children[path].release()
@@ -256,7 +280,7 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
   reloadQuery() {
     if (this.reloadQueryCache) return this.reloadQueryCache
-    const reloadQuery = this.reloadQueryCache = { attributes: [] }
+    const reloadQuery = this.reloadQueryCache = { attributes: [] as any[] }
     for (const key in this.query.attributes) {
       if (key === 'sync_keys') continue
       const val = this.query.attributes[key]
@@ -287,6 +311,13 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
 }
 class ArSyncCollection extends ArSyncContainerBase {
+  root
+  path
+  order
+  query
+  data
+  children
+  sync_keys
   constructor(sync_keys, path, query, data, request, root){
     super()
     this.root = root
@@ -321,8 +352,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     } else {
       collection = data
     }
-    const newChildren = []
-    const newData = []
+    const newChildren: any[] = []
+    const newData: any[] = []
     for (const subData of collection) {
       let model = existings[subData.id]
       if (model) {
@@ -428,13 +459,23 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
 }
 
-class ArSyncStore {
-  constructor(request, { immutable } = {}) {
+export default class ArSyncStore {
+  immutable
+  markedForFreezeObjects
+  changes
+  eventListeners
+  markForRelease
+  container
+  data
+  loaded
+  changesBufferTimer
+  static connectionManager
+  constructor(request, { immutable } = {} as { immutable?: boolean }) {
     this.immutable = immutable
     this.markedForFreezeObjects = []
     this.changes = []
     this.eventListeners = { events: {}, serial: 0 }
-    ArSyncContainerBase.load(request, this).then(container => {
+    ArSyncContainerBase.load(request, this).then((container: ArSyncContainerBase) => {
       if (this.markForRelease) {
         container.release()
         return
@@ -472,7 +513,7 @@ class ArSyncStore {
     listeners[id] = callback
     return { unsubscribe: () => { delete listeners[id] } }
   }
-  trigger(event, arg) {
+  trigger(event, arg?) {
     const listeners = this.eventListeners.events[event]
     if (!listeners) return
     for (const id in listeners) listeners[id](arg)
@@ -498,11 +539,3 @@ class ArSyncStore {
     }
   }
 }
-
-try {
-  module.exports = { ArSyncCollection, ArSyncStore }
-} catch (e) {
-  window.ArSyncCollection = ArSyncCollection
-  window.ArSyncStore = ArSyncStore
-}
-})()

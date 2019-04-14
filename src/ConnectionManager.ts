@@ -1,5 +1,9 @@
-(function(){
-class ArSyncConnectionManager {
+export default class ConnectionManager {
+  subscriptions
+  adapter
+  networkListeners
+  networkListenerSerial
+  networkStatus
   constructor(adapter) {
     this.subscriptions = {}
     this.adapter = adapter
@@ -63,10 +67,3 @@ class ArSyncConnectionManager {
     for (const id in subscription.listeners) subscription.listeners[id](data)
   }
 }
-
-try {
-  module.exports = ArSyncConnectionManager
-} catch (e) {
-  window.ArSyncConnectionManager = ArSyncConnectionManager
-}
-})()
