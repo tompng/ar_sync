@@ -34,36 +34,30 @@ export type DataTypeFromQuery<BaseType, QueryType> = BaseType extends any[]
   ? _DataTypeFromQuery<BaseType & {}, QueryType> | null
   : _DataTypeFromQuery<BaseType & {}, QueryType>
 
-type SelectNonOptionalQueryHash<T> = T extends string | true | string[]
-  ? never
-  : T extends { params: any }
-  ? never
-  : NonOptionalType<T & object>
-type _ValidateNoExtraField<QueryType, Type> = Type extends boolean
-  ? true
+type Cons<X, XS extends any[]> = ((h: X, ...args: XS) => void) extends ((...args: infer R)=> void) ? R : []
+type SelectNonOptionalQueryHash<T> = Exclude<NonOptionalType<T>, undefined | true | string | string[] | { attributes: any }>
+type _CollectQueryExtraField<QueryHashType, Type, Path extends any[]> = Type extends boolean
+  ? null
   : Type extends string
-  ? (Type extends QueryType ? true : false)
+  ? (Type extends keyof QueryHashType ? null : Cons<Exclude<Type, keyof QueryHashType>, Path>)
   : Type extends Readonly<string[]>
-  ? (Unpacked<Type> extends QueryType ? true : false)
-  : keyof (Type) extends (keyof SelectNonOptionalQueryHash<QueryType & object>)
-  ? (false extends Unpacked<
+  ? (Unpacked<Type> extends keyof QueryHashType ? null : Cons<Exclude<Unpacked<Type>, keyof QueryHashType>, Path>)
+  : (keyof Type) extends (keyof QueryHashType)
+  ? Unpacked<
       {
-        [key in (keyof SelectNonOptionalQueryHash<QueryType & object>) & (keyof Type)]: (ValidateNoExtraField<
-          SelectNonOptionalQueryHash<QueryType & object>[key],
-          Type[key]
-        >)
+        [key in (keyof QueryHashType) & (keyof Type)]:
+          CollectQueryExtraField<QueryHashType[key], Type[key], Cons<key, Path>>
       }
     >
-      ? false
-      : true)
-  : false
-export type ValidateNoExtraField<QueryType, Type> = Type extends { attributes: string | string[] | {} }
-  ? _ValidateNoExtraField<QueryType, Type['attributes']>
-  : _ValidateNoExtraField<QueryType, Type>
+  : Cons<Exclude<keyof Type, keyof QueryHashType>, Path>
+
+export type CollectQueryExtraField<QueryType, Type, Path extends any[]> = Type extends { attributes: string | string[] | {} }
+  ? _CollectQueryExtraField<SelectNonOptionalQueryHash<QueryType>, Type['attributes'], Cons<'attributes', Path>>
+  : _CollectQueryExtraField<SelectNonOptionalQueryHash<QueryType>, Type, Path>
 
 type RequestBase = { api: string; query: any; params?: any; _meta?: { data: any } }
 type DataTypeBaseFromRequestType<R> = R extends { _meta?: { data: infer DataType } } ? DataType : never
 export type DataTypeFromRequest<Req extends RequestBase, R extends RequestBase> =
-  true extends ValidateNoExtraField<Req['query'], R['query']>
+  CollectQueryExtraField<Req['query'], R['query'], []> extends null
     ? DataTypeFromQuery<DataTypeBaseFromRequestType<Req>, R['query']>
-    : never
+    : { error: { extraField: Exclude<CollectQueryExtraField<Req['query'], R['query'], []>, null> } }
