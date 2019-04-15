@@ -34,36 +34,30 @@ export type DataTypeFromQuery<BaseType, QueryType> = BaseType extends any[]
   ? _DataTypeFromQuery<BaseType & {}, QueryType> | null
   : _DataTypeFromQuery<BaseType & {}, QueryType>
 
-type SelectNonOptionalQueryHash<T> = T extends string | true | string[]
-  ? never
-  : T extends { params: any }
-  ? never
-  : NonOptionalType<T & object>
-type _ValidateNoExtraField<QueryType, Type> = Type extends boolean
-  ? true
+type HashPresence<T> = Unpacked<T> extends null ? null : T
+type SelectNonOptionalQueryHash<T> = Exclude<NonOptionalType<T>, undefined | true | string | string[] | { attributes: any }>
+type _CollectQueryExtraField<QueryHashType, Type> = Type extends boolean
+  ? null
   : Type extends string
-  ? (Type extends QueryType ? true : false)
+  ? (Type extends keyof QueryHashType ? null : Exclude<Type, keyof QueryHashType>)
   : Type extends Readonly<string[]>
-  ? (Unpacked<Type> extends QueryType ? true : false)
-  : keyof (Type) extends (keyof SelectNonOptionalQueryHash<QueryType & object>)
-  ? (false extends Unpacked<
+  ? (Unpacked<Type> extends keyof QueryHashType ? null : Exclude<Unpacked<Type>, keyof QueryHashType>)
+  : (keyof Type) extends (keyof QueryHashType)
+  ? HashPresence<
       {
-        [key in (keyof SelectNonOptionalQueryHash<QueryType & object>) & (keyof Type)]: (ValidateNoExtraField<
-          SelectNonOptionalQueryHash<QueryType & object>[key],
-          Type[key]
-        >)
+        [key in (keyof QueryHashType) & (keyof Type)]:
+          CollectQueryExtraField<QueryHashType[key], Type[key]>
       }
     >
-      ? false
-      : true)
-  : false
-export type ValidateNoExtraField<QueryType, Type> = Type extends { attributes: string | string[] | {} }
-  ? _ValidateNoExtraField<QueryType, Type['attributes']>
-  : _ValidateNoExtraField<QueryType, Type>
+  : Exclude<keyof Type, keyof QueryHashType>
+
+export type CollectQueryExtraField<QueryType, Type> = Type extends { attributes: string | string[] | {} }
+  ? _CollectQueryExtraField<SelectNonOptionalQueryHash<QueryType>, Type['attributes']>
+  : _CollectQueryExtraField<SelectNonOptionalQueryHash<QueryType>, Type>
 
 type RequestBase = { api: string; query: any; params?: any; _meta?: { data: any } }
 type DataTypeBaseFromRequestType<R> = R extends { _meta?: { data: infer DataType } } ? DataType : never
 export type DataTypeFromRequest<Req extends RequestBase, R extends RequestBase> =
-  true extends ValidateNoExtraField<Req['query'], R['query']>
+  null extends CollectQueryExtraField<Req['query'], R['query']>
     ? DataTypeFromQuery<DataTypeBaseFromRequestType<Req>, R['query']>
-    : never
+    : { error: { extraField: CollectQueryExtraField<Req['query'], R['query']> } }
