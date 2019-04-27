@@ -48,25 +48,24 @@ export type DataTypeFromQuery<BaseType, QueryType> = BaseType extends any[]
   ? _DataTypeFromQuery<BaseType & {}, QueryType> | null
   : _DataTypeFromQuery<BaseType & {}, QueryType>
 
-type Cons<X, XS extends any[]> = ((h: X, ...args: XS) => void) extends ((...args: infer R) => void) ? R : []
 type IsAnyCompareLeftType = { __any: never }
 
-type CollectExtraFields<Type, Path extends any[]> = IsAnyCompareLeftType extends Type
+export type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type
   ? null
   : Type extends ExtraFieldErrorType
   ? Path
   : Type extends (infer R)[]
-  ? _CollectExtraFields<R, Path>
+  ? _CollectExtraFields<R>
   : Type extends object
-  ? _CollectExtraFields<Type, Path>
+  ? _CollectExtraFields<Type>
   : null
-type _CollectExtraFields<Type, Path extends any[]> = keyof (Type) extends never
+type _CollectExtraFields<Type> = keyof (Type) extends never
   ? null
-  : Unpacked<{ [key in keyof Type]: CollectExtraFields<Type[key], Cons<key, Path>> }>
+  : Unpacked<{ [key in keyof Type]: CollectExtraFields<Type[key], [key]>}>
 
-type _ValidateDataTypeExtraFileds<Extra, Type> = Exclude<Extra, null> extends never
-  ? Type
-  : { error: { extraFields: Exclude<Extra, null> } }
+type _ValidateDataTypeExtraFileds<Extra, Type> = Unpacked<Extra> extends string
+  ? { error: { extraFields: Unpacked<Extra> } }
+  : Type
 type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>
 
 type RequestBase = { api: string; query: any; params?: any; _meta?: { data: any } }
