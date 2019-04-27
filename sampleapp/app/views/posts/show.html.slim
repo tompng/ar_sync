@@ -33,7 +33,7 @@ javascript:
     { immutable: true }
   )
   ArSyncModel.waitForLoad(currentUserModel, postModel).then(() => {
-    const data  = { currentUser: currentUserModel.data || {}, post: postModel.data || {} }
+    const data = { currentUser: currentUserModel.data || {}, post: postModel.data || {} }
     currentUserModel.subscribe('change', () => data.currentUser = currentUserModel.data || {})
     postModel.subscribe('change', () => data.post = postModel.data || {})
     new Vue({ el: '#syncbody', data })
