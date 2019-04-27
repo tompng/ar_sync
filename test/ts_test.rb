@@ -35,11 +35,16 @@ class TsTest < Minitest::Test
       const data6 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { posts: { '*': true, comments: 'user' } } }>)
       data6.posts[0].id; data6.posts[0].user; data6.posts[0].comments[0].user
       const data7 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { name: true, poosts: true } }>)
-      data7.error.extraFields
+      data7.error.extraFields = 'poosts'
       const data8 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { posts: { id: true, commmments: true, titllle: true } } }>)
-      data8.error.extraFields
+      data8.error.extraFields = 'commmments'
+      data8.error.extraFields = 'titllle'
       const data9 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { '*': true, posts: { id: true, commmments: true } } }>)
-      data9.error.extraFields
+      data9.error.extraFields = 'commmments'
+      const data10 = ({} as DataTypeFromRequestInstance<{ api: 'users'; query: { '*': true, posts: { id: true, comments: '*' } } }>)
+      data10[0].posts[0].comments[0].id
+      const data11 = ({} as DataTypeFromRequestInstance<{ api: 'users'; query: { '*': true, posts: { id: true, comments: '*', commmments: true } } }>)
+      data11.error.extraFields = 'commmments'
     TYPESCRIPT
     File.write 'test/generated_type_test.ts', [
       ArSync::TypeScript.generate_type_definition(Schema),
