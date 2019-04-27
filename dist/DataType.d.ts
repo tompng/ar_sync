@@ -34,7 +34,7 @@ export declare type DataTypeFromQuery<BaseType, QueryType> = BaseType extends an
 declare type IsAnyCompareLeftType = {
     __any: never;
 };
-export declare type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : Type extends object ? _CollectExtraFields<Type> : null;
+declare type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : Type extends object ? _CollectExtraFields<Type> : null;
 declare type _CollectExtraFields<Type> = keyof (Type) extends never ? null : Unpacked<{
     [key in keyof Type]: CollectExtraFields<Type[key], [key]>;
 }>;

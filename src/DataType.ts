@@ -50,7 +50,7 @@ export type DataTypeFromQuery<BaseType, QueryType> = BaseType extends any[]
 
 type IsAnyCompareLeftType = { __any: never }
 
-export type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type
+type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type
   ? null
   : Type extends ExtraFieldErrorType
   ? Path
