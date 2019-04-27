@@ -13,8 +13,9 @@ export default abstract class ArSyncModelBase<T> {
   private _ref
   private _listenerSerial: number
   private _listeners
-  data: T | {} | undefined
-  loaded: boolean | undefined
+  complete: boolean
+  notfound?: boolean
+  data: T | null
   static _cache: { [key: string]: { key: string; count: number; timer: number | null; model } }
   static cacheTimeout: number
   abstract refManagerClass(): any
@@ -22,9 +23,11 @@ export default abstract class ArSyncModelBase<T> {
     this._ref = this.refManagerClass().retrieveRef(request, option)
     this._listenerSerial = 0
     this._listeners = {}
+    this.complete = false
     const setData = () => {
       this.data = this._ref.model.data
-      this.loaded = this._ref.model.loaded
+      this.complete = this._ref.model.complete
+      this.notfound = this._ref.model.notfound
     }
     setData()
     this.subscribe('load', setData)
@@ -49,7 +52,7 @@ export default abstract class ArSyncModelBase<T> {
       subscription.unsubscribe()
       delete this._listeners[id]
     }
-    if (this.loaded) {
+    if (this.complete) {
       const cb = () => { if (!unsubscribed) callback({ path: [], value: this.data }) }
       if (event === 'load') setTimeout(cb, 0)
       if (event === 'change') setTimeout(cb, 0)

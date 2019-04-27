@@ -466,23 +466,34 @@ export default class ArSyncStore {
   eventListeners
   markForRelease
   container
+  request
+  complete: boolean
+  notfound?: boolean
   data
-  loaded
-  changesBufferTimer
+  changesBufferTimer: number | undefined | null
+  retryLoadTimer: number | undefined | null
   static connectionManager
   constructor(request, { immutable } = {} as { immutable?: boolean }) {
     this.immutable = immutable
     this.markedForFreezeObjects = []
     this.changes = []
     this.eventListeners = { events: {}, serial: 0 }
-    ArSyncContainerBase.load(request, this).then((container: ArSyncContainerBase) => {
+    this.request = request
+    this.complete = false
+    this.data = null
+    this.load(0)
+  }
+  load(retryCount: number) {
+    ArSyncContainerBase.load(this.request, this).then((container: ArSyncContainerBase) => {
       if (this.markForRelease) {
         container.release()
         return
       }
       this.container = container
       this.data = container.data
-      if (immutable) this.freezeRecursive(this.data)
+      if (this.immutable) this.freezeRecursive(this.data)
+      this.complete = true
+      this.notfound = false
       this.trigger('load')
       this.trigger('change', { path: [], value: this.data })
       container.onChange = (path, value) => {
@@ -490,9 +501,24 @@ export default class ArSyncStore {
         this.setChangesBufferTimer()
       }
       container.onConnectionChange = state => {
-        this.trigger(state ? 'reconnect' : 'disconnect')
+        this.trigger('connection', state)
       }
-      this.loaded = true
+    }).catch(e => {
+      if (this.markForRelease) return
+      if (!e.retry) {
+        this.complete = true
+        this.notfound = true
+        this.trigger('load')
+        return
+      }
+      const sleepSeconds = Math.min(Math.pow(2, retryCount), 30)
+      this.retryLoadTimer = setTimeout(
+        () => {
+          this.retryLoadTimer = null
+          this.load(retryCount + 1)
+        },
+        sleepSeconds * 1000
+      )
     })
   }
   setChangesBufferTimer() {
@@ -531,6 +557,7 @@ export default class ArSyncStore {
     this.markedForFreezeObjects = []
   }
   release() {
+    if (this.retryLoadTimer) clearTimeout(this.retryLoadTimer)
     if (this.changesBufferTimer) clearTimeout(this.changesBufferTimer)
     if (this.container) {
       this.container.release()
