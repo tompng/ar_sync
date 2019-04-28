@@ -57,7 +57,7 @@ module ArSync::TypeScript
       import ArSyncModelBase from 'ar_sync/#{mode}'
       export default class ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<{}> {
         constructor(r: R) { super(r) }
-        data: DataTypeFromRequest<ApiNameRequests[R['api']], R> | {} | null
+        data: DataTypeFromRequest<ApiNameRequests[R['api']], R> | null
       }
     CODE
   end
