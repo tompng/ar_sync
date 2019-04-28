@@ -496,15 +496,23 @@ class ArSyncStore {
         this.markedForFreezeObjects = [];
         this.changes = [];
         this.eventListeners = { events: {}, serial: 0 };
-        ArSyncContainerBase.load(request, this).then((container) => {
+        this.request = request;
+        this.complete = false;
+        this.data = null;
+        this.load(0);
+    }
+    load(retryCount) {
+        ArSyncContainerBase.load(this.request, this).then((container) => {
             if (this.markForRelease) {
                 container.release();
                 return;
             }
             this.container = container;
             this.data = container.data;
-            if (immutable)
+            if (this.immutable)
                 this.freezeRecursive(this.data);
+            this.complete = true;
+            this.notfound = false;
             this.trigger('load');
             this.trigger('change', { path: [], value: this.data });
             container.onChange = (path, value) => {
@@ -512,9 +520,22 @@ class ArSyncStore {
                 this.setChangesBufferTimer();
             };
             container.onConnectionChange = state => {
-                this.trigger(state ? 'reconnect' : 'disconnect');
+                this.trigger('connection', state);
             };
-            this.loaded = true;
+        }).catch(e => {
+            if (this.markForRelease)
+                return;
+            if (!e.retry) {
+                this.complete = true;
+                this.notfound = true;
+                this.trigger('load');
+                return;
+            }
+            const sleepSeconds = Math.min(Math.pow(2, retryCount), 30);
+            this.retryLoadTimer = setTimeout(() => {
+                this.retryLoadTimer = null;
+                this.load(retryCount + 1);
+            }, sleepSeconds * 1000);
         });
     }
     setChangesBufferTimer() {
@@ -559,6 +580,8 @@ class ArSyncStore {
         this.markedForFreezeObjects = [];
     }
     release() {
+        if (this.retryLoadTimer)
+            clearTimeout(this.retryLoadTimer);
         if (this.changesBufferTimer)
             clearTimeout(this.changesBufferTimer);
         if (this.container) {

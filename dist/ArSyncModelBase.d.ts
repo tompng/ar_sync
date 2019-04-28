@@ -10,6 +10,9 @@ interface Change {
 }
 declare type ChangeCallback = (change: Change) => void;
 declare type LoadCallback = () => void;
+declare type ConnectionCallback = (status: boolean) => void;
+declare type SubscriptionType = 'load' | 'change' | 'connection';
+declare type SubscriptionCallback = ChangeCallback | LoadCallback | ConnectionCallback;
 interface Adapter {
     subscribe: (key: string, received: (data: any) => void) => {
         unsubscribe: () => void;
@@ -21,8 +24,10 @@ export default abstract class ArSyncModelBase<T> {
     private _ref;
     private _listenerSerial;
     private _listeners;
-    data: T | {} | undefined;
-    loaded: boolean | undefined;
+    complete: boolean;
+    notfound?: boolean;
+    connected: boolean;
+    data: T | null;
     static _cache: {
         [key: string]: {
             key: string;
@@ -33,14 +38,17 @@ export default abstract class ArSyncModelBase<T> {
     };
     static cacheTimeout: number;
     abstract refManagerClass(): any;
+    abstract connectionManager(): {
+        networkStatus: boolean;
+    };
     constructor(request: Request, option?: {
         immutable: boolean;
     });
     onload(callback: LoadCallback): void;
-    subscribeOnce(event: 'load' | 'change', callback: LoadCallback | ChangeCallback): {
+    subscribeOnce(event: SubscriptionType, callback: SubscriptionCallback): {
         unsubscribe: () => void;
     };
-    subscribe(event: 'load' | 'change', callback: LoadCallback | ChangeCallback): {
+    subscribe(event: SubscriptionType, callback: SubscriptionCallback): {
         unsubscribe: () => void;
     };
     release(): void;

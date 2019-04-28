@@ -5,13 +5,19 @@ class ArSyncModelBase {
         this._ref = this.refManagerClass().retrieveRef(request, option);
         this._listenerSerial = 0;
         this._listeners = {};
+        this.complete = false;
+        this.connected = this.connectionManager().networkStatus;
         const setData = () => {
             this.data = this._ref.model.data;
-            this.loaded = this._ref.model.loaded;
+            this.complete = this._ref.model.complete;
+            this.notfound = this._ref.model.notfound;
         };
         setData();
         this.subscribe('load', setData);
         this.subscribe('change', setData);
+        this.subscribe('connection', (status) => {
+            this.connected = status;
+        });
     }
     onload(callback) {
         this.subscribeOnce('load', callback);
@@ -32,13 +38,17 @@ class ArSyncModelBase {
             subscription.unsubscribe();
             delete this._listeners[id];
         };
-        if (this.loaded) {
-            const cb = () => { if (!unsubscribed)
-                callback({ path: [], value: this.data }); };
+        if (this.complete) {
             if (event === 'load')
-                setTimeout(cb, 0);
+                setTimeout(() => {
+                    if (!unsubscribed)
+                        callback();
+                }, 0);
             if (event === 'change')
-                setTimeout(cb, 0);
+                setTimeout(() => {
+                    if (!unsubscribed)
+                        callback({ path: [], value: this.data });
+                }, 0);
         }
         return this._listeners[id] = { unsubscribe };
     }
