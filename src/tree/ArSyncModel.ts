@@ -8,7 +8,6 @@ class ArSyncRecord {
   request
   subscriptions
   store
-  loaded
   retryLoadTimer
   data
   bufferTimer
