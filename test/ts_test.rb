@@ -50,7 +50,7 @@ class TsTest < Minitest::Test
       ArSync::TypeScript.generate_type_definition(Schema),
       tests
     ].join("\n")
-    output = `./node_modules/typescript/bin/tsc --noEmit test/generated_type_test.ts`
+    output = `./node_modules/typescript/bin/tsc --strict --noEmit test/generated_type_test.ts`
     puts output
     assert output.empty?
   end
