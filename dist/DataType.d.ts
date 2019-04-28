@@ -38,11 +38,12 @@ declare type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type 
 declare type _CollectExtraFields<Type> = keyof (Type) extends never ? null : Unpacked<{
     [key in keyof Type]: CollectExtraFields<Type[key], [key]>;
 }>;
-declare type _ValidateDataTypeExtraFileds<Extra, Type> = Unpacked<Extra> extends string ? {
+declare type SelectString<T> = T extends string ? T : never;
+declare type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Unpacked<Extra>> extends never ? Type : {
     error: {
-        extraFields: Unpacked<Extra>;
+        extraFields: SelectString<Unpacked<Extra>>;
     };
-} : Type;
+};
 declare type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>;
 declare type RequestBase = {
     api: string;

@@ -63,9 +63,10 @@ type _CollectExtraFields<Type> = keyof (Type) extends never
   ? null
   : Unpacked<{ [key in keyof Type]: CollectExtraFields<Type[key], [key]>}>
 
-type _ValidateDataTypeExtraFileds<Extra, Type> = Unpacked<Extra> extends string
-  ? { error: { extraFields: Unpacked<Extra> } }
-  : Type
+type SelectString<T> = T extends string ? T : never
+type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Unpacked<Extra>> extends never
+  ? Type
+  : { error: { extraFields: SelectString<Unpacked<Extra>> } }
 type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>
 
 type RequestBase = { api: string; query: any; params?: any; _meta?: { data: any } }
