@@ -13,6 +13,9 @@ class ArSyncModel extends ArSyncModelBase_1.default {
     refManagerClass() {
         return ArSyncModel;
     }
+    connectionManager() {
+        return ArSyncStore_1.default.connectionManager;
+    }
 }
 ArSyncModel._cache = {};
 ArSyncModel.cacheTimeout = 10 * 1000;

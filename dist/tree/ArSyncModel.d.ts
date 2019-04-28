@@ -4,13 +4,14 @@ declare class ArSyncRecord {
     request: any;
     subscriptions: any;
     store: any;
-    loaded: any;
     retryLoadTimer: any;
     data: any;
     bufferTimer: any;
     bufferedPatches: any;
     eventListeners: any;
     networkSubscription: any;
+    complete: boolean;
+    notfound?: boolean;
     static connectionManager: any;
     constructor(request: any, option?: {
         immutable?: boolean | undefined;
@@ -30,6 +31,7 @@ export default class ArSyncModel<T> extends ArSyncModelBase<T> {
     static setConnectionAdapter(adapter: any): void;
     static createRefModel(request: any, option: any): ArSyncRecord;
     refManagerClass(): typeof ArSyncModel;
+    connectionManager(): any;
     static _cache: {};
     static cacheTimeout: number;
 }

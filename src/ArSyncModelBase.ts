@@ -3,6 +3,9 @@ type Path = (string | number)[]
 interface Change { path: Path; value: any }
 type ChangeCallback = (change: Change) => void
 type LoadCallback = () => void
+type ConnectionCallback = (status: boolean) => void
+type SubscriptionType = 'load' | 'change' | 'connection'
+type SubscriptionCallback = ChangeCallback | LoadCallback | ConnectionCallback
 interface Adapter {
   subscribe: (key: string, received: (data: any) => void) => { unsubscribe: () => void }
   ondisconnect: () => void
@@ -13,34 +16,43 @@ export default abstract class ArSyncModelBase<T> {
   private _ref
   private _listenerSerial: number
   private _listeners
-  data: T | {} | undefined
-  loaded: boolean | undefined
+  complete: boolean
+  notfound?: boolean
+  connected: boolean
+  data: T | null
   static _cache: { [key: string]: { key: string; count: number; timer: number | null; model } }
   static cacheTimeout: number
   abstract refManagerClass(): any
+  abstract connectionManager(): { networkStatus: boolean }
   constructor(request: Request, option?: { immutable: boolean }) {
     this._ref = this.refManagerClass().retrieveRef(request, option)
     this._listenerSerial = 0
     this._listeners = {}
+    this.complete = false
+    this.connected = this.connectionManager().networkStatus
     const setData = () => {
       this.data = this._ref.model.data
-      this.loaded = this._ref.model.loaded
+      this.complete = this._ref.model.complete
+      this.notfound = this._ref.model.notfound
     }
     setData()
     this.subscribe('load', setData)
     this.subscribe('change', setData)
+    this.subscribe('connection', (status: boolean) => {
+      this.connected = status
+    })
   }
   onload(callback: LoadCallback) {
     this.subscribeOnce('load', callback)
   }
-  subscribeOnce(event: 'load' | 'change', callback: LoadCallback | ChangeCallback) {
+  subscribeOnce(event: SubscriptionType, callback: SubscriptionCallback) {
     const subscription = this.subscribe(event, (arg) => {
       (callback as (arg: any) => void)(arg)
       subscription.unsubscribe()
     })
     return subscription
   }
-  subscribe(event: 'load' | 'change', callback: LoadCallback | ChangeCallback): { unsubscribe: () => void } {
+  subscribe(event: SubscriptionType, callback: SubscriptionCallback): { unsubscribe: () => void } {
     const id = this._listenerSerial++
     const subscription = this._ref.model.subscribe(event, callback)
     let unsubscribed = false
@@ -49,10 +61,13 @@ export default abstract class ArSyncModelBase<T> {
       subscription.unsubscribe()
       delete this._listeners[id]
     }
-    if (this.loaded) {
-      const cb = () => { if (!unsubscribed) callback({ path: [], value: this.data }) }
-      if (event === 'load') setTimeout(cb, 0)
-      if (event === 'change') setTimeout(cb, 0)
+    if (this.complete) {
+      if (event === 'load') setTimeout(() => {
+        if (!unsubscribed) (callback as LoadCallback)()
+      }, 0)
+      if (event === 'change') setTimeout(() => {
+        if (!unsubscribed) (callback as ChangeCallback)({ path: [], value: this.data })
+      }, 0)
     }
     return this._listeners[id] = { unsubscribe }
   }

@@ -10,23 +10,27 @@ class ArSyncRecord {
         this.request = request;
         this.subscriptions = [];
         this.store = null;
-        this.data = {};
+        this.data = null;
+        this.complete = false;
         this.bufferedPatches = [];
         this.eventListeners = { events: {}, serial: 0 };
         this.networkSubscription = ArSyncRecord.connectionManager.subscribeNetwork((status) => {
+            if (this.notfound) {
+                this.trigger('connection', status);
+                return;
+            }
             if (status) {
                 this.load(() => {
-                    this.trigger('reconnect');
+                    this.trigger('connection', status);
                     this.trigger('change', { path: [], value: this.data });
                 });
             }
             else {
                 this.unsubscribeAll();
-                this.trigger('disconnect');
+                this.trigger('connection', false);
             }
         });
         this.load(() => {
-            this.loaded = true;
             this.trigger('load');
             this.trigger('change', { path: [], value: this.data });
         });
@@ -47,16 +51,16 @@ class ArSyncRecord {
             const { keys, data, limit, order } = syncData;
             this.initializeStore(keys, data, { limit, order, immutable: this.immutable });
             if (callback)
-                callback(this.data);
+                callback(true, this.data);
         }).catch(e => {
             console.error(e);
             if (e.retry) {
                 this.retryLoad(callback, retryCount + 1);
             }
             else {
-                this.initializeStore([], {}, { immutable: this.immutable });
+                this.initializeStore(null, null, null);
                 if (callback)
-                    callback(this.data);
+                    callback(false, this.data);
             }
         });
     }
@@ -101,6 +105,12 @@ class ArSyncRecord {
             listeners[id](arg);
     }
     initializeStore(keys, data, option) {
+        this.complete = true;
+        if (!keys) {
+            this.notfound = true;
+            return;
+        }
+        this.notfound = false;
         const query = this.request.query;
         if (this.store) {
             this.store.replaceData(data);
@@ -123,6 +133,9 @@ class ArSyncModel extends ArSyncModelBase_1.default {
     }
     refManagerClass() {
         return ArSyncModel;
+    }
+    connectionManager() {
+        return ArSyncRecord.connectionManager;
     }
 }
 ArSyncModel._cache = {};

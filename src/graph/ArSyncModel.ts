@@ -12,6 +12,9 @@ export default class ArSyncModel<T> extends ArSyncModelBase<T> {
   refManagerClass() {
     return ArSyncModel
   }
+  connectionManager() {
+    return ArSyncStore.connectionManager
+  }
   static _cache = {}
   static cacheTimeout = 10 * 1000
 }
