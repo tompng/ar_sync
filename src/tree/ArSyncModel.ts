@@ -1,7 +1,7 @@
 import ArSyncStore from './ArSyncStore'
-import ArSyncAPI from '../ArSyncApi'
-import ArSyncConnectionManager from '../ConnectionManager'
-import ArSyncModelBase from '../ArSyncModelBase'
+import ArSyncAPI from '../core/ArSyncApi'
+import ArSyncConnectionManager from '../core/ConnectionManager'
+import ArSyncModelBase from '../core/ArSyncModelBase'
 
 class ArSyncRecord {
   immutable

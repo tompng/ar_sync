@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "outDir": "./dist",
+    "outDir": ".",
     "rootDir": "./src",
     "module": "commonjs",
     "target": "es2017",

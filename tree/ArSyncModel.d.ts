@@ -1,4 +1,4 @@
-import ArSyncModelBase from '../ArSyncModelBase';
+import ArSyncModelBase from '../core/ArSyncModelBase';
 declare class ArSyncRecord {
     immutable: any;
     request: any;
