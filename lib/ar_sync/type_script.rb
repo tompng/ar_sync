@@ -28,7 +28,7 @@ module ArSync::TypeScript
     type.fields.each do |field|
       association_type = field.type.association_type
       next unless association_type
-      prefix = 'Class' if field.name.match? /\A[A-Z]/ # for class reload query
+      prefix = 'Class' if field.name.match?(/\A[A-Z]/) # for class reload query
       request_type_name = "Type#{prefix}#{field.name.camelize}Request"
       request_types[field.name] = request_type_name
       multiple = field.type.is_a? ArSerializer::GraphQL::ListTypeClass
@@ -55,7 +55,7 @@ module ArSync::TypeScript
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest } from 'ar_sync/DataType'
-      import ArSyncModelBase from 'ar_sync/#{mode}'
+      import ArSyncModelBase from 'ar_sync/#{mode}/ArSyncModel'
       export default class ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<{}> {
         constructor(r: R) { super(r) }
         data: DataTypeFromRequest<ApiNameRequests[R['api']], R> | null
@@ -67,7 +67,7 @@ module ArSync::TypeScript
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest } from 'ar_sync/DataType'
-      import { useArSyncModel: useArSyncModelBase, useArSyncFetch: useArSyncFetchBase } from 'ar_sync/#{mode}/hooks'
+      import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/#{mode}/hooks'
       export function useArSyncModel<R extends TypeRequest>(request: R | null) {
         return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
       }
