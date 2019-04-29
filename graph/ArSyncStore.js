@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const ArSyncApi_1 = require("../ArSyncApi");
+const ArSyncApi_1 = require("../core/ArSyncApi");
 const ModelBatchRequest = {
     timer: null,
     apiRequests: {},

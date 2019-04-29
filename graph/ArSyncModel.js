@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const ArSyncStore_1 = require("./ArSyncStore");
-const ConnectionManager_1 = require("../ConnectionManager");
-const ArSyncModelBase_1 = require("../ArSyncModelBase");
+const ConnectionManager_1 = require("../core/ConnectionManager");
+const ArSyncModelBase_1 = require("../core/ArSyncModelBase");
 class ArSyncModel extends ArSyncModelBase_1.default {
     static setConnectionAdapter(adapter) {
         ArSyncStore_1.default.connectionManager = new ConnectionManager_1.default(adapter);

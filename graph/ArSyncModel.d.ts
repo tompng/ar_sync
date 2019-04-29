@@ -1,4 +1,4 @@
-import ArSyncModelBase from '../ArSyncModelBase';
+import ArSyncModelBase from '../core/ArSyncModelBase';
 export default class ArSyncModel<T> extends ArSyncModelBase<T> {
     static setConnectionAdapter(adapter: any): void;
     static createRefModel(request: any, option: any): any;

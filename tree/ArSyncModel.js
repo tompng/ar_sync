@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const ArSyncStore_1 = require("./ArSyncStore");
-const ArSyncApi_1 = require("../ArSyncApi");
-const ConnectionManager_1 = require("../ConnectionManager");
-const ArSyncModelBase_1 = require("../ArSyncModelBase");
+const ArSyncApi_1 = require("../core/ArSyncApi");
+const ConnectionManager_1 = require("../core/ConnectionManager");
+const ArSyncModelBase_1 = require("../core/ArSyncModelBase");
 class ArSyncRecord {
     constructor(request, option = {}) {
         this.immutable = option.immutable ? true : false;
