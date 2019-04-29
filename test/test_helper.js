@@ -1,4 +1,4 @@
-const ArSyncStore = require('../dist/tree/ArSyncStore.js').default
+const ArSyncStore = require('../tree/ArSyncStore.js').default
 function dup(obj) { return JSON.parse(JSON.stringify(obj)) }
 function selectPatch(patches, keys) {
   return dup(patches).filter(arr => keys.indexOf(arr.key) >= 0)
