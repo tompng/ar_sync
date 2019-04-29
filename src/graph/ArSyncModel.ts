@@ -1,6 +1,6 @@
 import ArSyncStore from './ArSyncStore'
-import ArSyncConnectionManager from '../ConnectionManager'
-import ArSyncModelBase from '../ArSyncModelBase'
+import ArSyncConnectionManager from '../core/ConnectionManager'
+import ArSyncModelBase from '../core/ArSyncModelBase'
 
 export default class ArSyncModel<T> extends ArSyncModelBase<T> {
   static setConnectionAdapter(adapter) {
