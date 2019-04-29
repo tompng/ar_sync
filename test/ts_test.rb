@@ -3,7 +3,6 @@ require 'ar_sync'
 require_relative 'model_tree'
 require_relative 'model_graph'
 
-
 class TsTest < Minitest::Test
   class Schema
     include ArSerializer::Serializable
@@ -18,39 +17,16 @@ class TsTest < Minitest::Test
     assert !type_graph.include?('::')
   end
 
-  def test_ts_data_type
-    tests = <<~TYPESCRIPT
-      import { DataTypeFromRequest } from '../src/DataType'
-      type DataTypeFromRequestInstance<R extends TypeRequest> = DataTypeFromRequest<ApiNameRequests[R['api']], R>
-      const data1 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: 'id' }>)
-      data1.id
-      const data2 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: ['id', 'name'] }>)
-      data2.id; data2.name
-      const data3 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: '*' }>)
-      data3.id; data3.name; data3.posts
-      const data4 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser';  query: { posts: 'id' } }>)
-      data4.posts[0].id
-      const data5 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { posts: '*' } }>)
-      data5.posts[0].id; data5.posts[0].user; data5.posts[0].body
-      const data6 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { posts: { '*': true, comments: 'user' } } }>)
-      data6.posts[0].id; data6.posts[0].user; data6.posts[0].comments[0].user
-      const data7 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { name: true, poosts: true } }>)
-      data7.error.extraFields = 'poosts'
-      const data8 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { posts: { id: true, commmments: true, titllle: true } } }>)
-      data8.error.extraFields = 'commmments'
-      data8.error.extraFields = 'titllle'
-      const data9 = ({} as DataTypeFromRequestInstance<{ api: 'currentUser'; query: { '*': true, posts: { id: true, commmments: true } } }>)
-      data9.error.extraFields = 'commmments'
-      const data10 = ({} as DataTypeFromRequestInstance<{ api: 'users'; query: { '*': true, posts: { id: true, comments: '*' } } }>)
-      data10[0].posts[0].comments[0].id
-      const data11 = ({} as DataTypeFromRequestInstance<{ api: 'users'; query: { '*': true, posts: { id: true, comments: '*', commmments: true } } }>)
-      data11.error.extraFields = 'commmments'
-    TYPESCRIPT
-    File.write 'test/generated_type_test.ts', [
-      ArSync::TypeScript.generate_type_definition(Schema),
-      tests
-    ].join("\n")
-    output = `./node_modules/typescript/bin/tsc --strict --noEmit test/generated_type_test.ts`
+  def test_typed_files
+    dir = 'test/generated_typed_files'
+    Dir.mkdir dif unless Dir.exist? dir
+    ArSync::TypeScript.generate_typed_files Schema, mode: :tree, dir: dir
+    ['hooks.ts', 'ArSyncModel.ts'].each do |file|
+      path = File.join dir, file
+      File.write path, File.read(path).gsub('ar_sync/', '../../src/')
+    end
+    output = `./node_modules/typescript/bin/tsc --strict --lib es2017 --noEmit test/type_test.ts`
+    output = output.lines.grep(/type_test/)
     puts output
     assert output.empty?
   end
