@@ -4,7 +4,7 @@ const ActionCable = require("actioncable");
 class ActionCableAdapter {
     constructor() {
         this.connected = true;
-        this.subscribe(Math.random(), () => { });
+        this.subscribe(Math.random().toString(), () => { });
     }
     subscribe(key, received) {
         const disconnected = () => {

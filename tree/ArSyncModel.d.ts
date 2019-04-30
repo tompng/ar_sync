@@ -1,4 +1,5 @@
 import ArSyncModelBase from '../core/ArSyncModelBase';
+import ConnectionAdapter from '../core/ConnectionAdapter';
 declare class ArSyncRecord {
     immutable: any;
     request: any;
@@ -28,7 +29,7 @@ declare class ArSyncRecord {
     initializeStore(keys: any, data: any, option: any): void;
 }
 export default class ArSyncModel<T> extends ArSyncModelBase<T> {
-    static setConnectionAdapter(adapter: any): void;
+    static setConnectionAdapter(adapter: ConnectionAdapter): void;
     static createRefModel(request: any, option: any): ArSyncRecord;
     refManagerClass(): typeof ArSyncModel;
     connectionManager(): any;
