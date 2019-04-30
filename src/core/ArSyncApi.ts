@@ -1,34 +1,36 @@
-function apiBatchFetch(endpoint, requests) {
+async function apiBatchFetch(endpoint: string, requests: object[]) {
   const headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
   }
   const body = JSON.stringify({ requests })
   const option = { credentials: 'include', method: 'POST', headers, body } as const
-  return fetch(endpoint, option).then(res => {
-    if (res.status === 200) return res.json()
-    throw new Error(res.statusText)
-  })
+  const res = await fetch(endpoint, option)
+  if (res.status === 200) return res.json()
+  throw new Error(res.statusText)
+}
+
+interface PromiseCallback {
+  resolve: (data: object) => void
+  reject: (error: object) => void
 }
 
 class ApiFetcher {
   endpoint: string
-  batches
-  batchFetchTimer
+  batches: [object, PromiseCallback][] = []
+  batchFetchTimer: number | null = null
   constructor(endpoint: string) {
     this.endpoint = endpoint
-    this.batches = []
-    this.batchFetchTimer = null
   }
-  fetch(request) {
+  fetch(request: object) {
     return new Promise((resolve, reject) => {
       this.batches.push([request, { resolve, reject }])
       if (this.batchFetchTimer) return
-      this.batchFetchTimer = setTimeout(()=>{
+      this.batchFetchTimer = setTimeout(() => {
         this.batchFetchTimer = null
-        const compacts = {}
-        const requests: any[] = []
-        const callbacksList: any[] = []
+        const compacts: { [key: string]: PromiseCallback[] } = {}
+        const requests: object[] = []
+        const callbacksList: PromiseCallback[][] = []
         for (const batch of this.batches) {
           const request = batch[0]
           const callback = batch[1]
@@ -68,6 +70,6 @@ class ApiFetcher {
 const staticFetcher = new ApiFetcher('/static_api')
 const syncFetcher = new ApiFetcher('/sync_api')
 export default {
-  fetch: request => staticFetcher.fetch(request),
-  syncFetch: request => syncFetcher.fetch(request),
+  fetch: (request: object) => staticFetcher.fetch(request),
+  syncFetch: (request: object) => syncFetcher.fetch(request),
 }
