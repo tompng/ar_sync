@@ -54,7 +54,7 @@ module ArSync::TypeScript
   def self.generate_model_script(mode)
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
-      import { DataTypeFromRequest } from 'ar_sync/DataType'
+      import { DataTypeFromRequest } from 'ar_sync/core/DataType'
       import ArSyncModelBase from 'ar_sync/#{mode}/ArSyncModel'
       export default class ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<{}> {
         constructor(r: R) { super(r) }
@@ -66,7 +66,7 @@ module ArSync::TypeScript
   def self.generate_hooks_script(mode)
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
-      import { DataTypeFromRequest } from 'ar_sync/DataType'
+      import { DataTypeFromRequest } from 'ar_sync/core/DataType'
       import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/#{mode}/hooks'
       export function useArSyncModel<R extends TypeRequest>(request: R | null) {
         return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
