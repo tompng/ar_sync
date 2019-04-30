@@ -4,14 +4,13 @@ module ArSync
       create_file 'app/controllers/sync_api_controller.rb', <<~CODE
         class SyncApiController < ApplicationController
           include ArSync::ApiControllerConcern
-            # serializer_field :my_data do |_user|
-            #   current_user
-            # end
+          # serializer_field :my_data do |_user|
+          #   current_user
+          # end
 
-            # serializer_field :comment do |_user, id:|
-            #   Comment.where(current_user_can_access).find id
-            # end
-          end
+          # serializer_field :comment do |_user, id:|
+          #   Comment.where(current_user_can_access).find id
+          # end
         end
       CODE
     end
