@@ -14,6 +14,7 @@ type DataTypeExtractFieldsFromQuery<BaseType, Fields> = '*' extends Fields
 interface ExtraFieldErrorType {
   error: 'extraFieldError'
 }
+
 type DataTypeExtractFromQueryHash<BaseType, QueryType> = '*' extends keyof QueryType
   ? {
       [key in Exclude<(keyof BaseType) | (keyof QueryType), '_meta' | '_params' | '*'>]: (key extends keyof BaseType
@@ -38,15 +39,17 @@ type _DataTypeFromQuery<BaseType, QueryType> = QueryType extends keyof BaseType 
   ? DataTypeExtractFieldsFromQuery<NonOptionalType<BaseType>, Unpacked<QueryType>>
   : QueryType extends { as: string }
   ? { error: 'type for alias field is not supported' } | undefined
-  : QueryType extends { attributes: any }
-  ? DataTypeExtractFromQueryHash<BaseType, QueryType['attributes']>
   : DataTypeExtractFromQueryHash<BaseType, QueryType>
 
 export type DataTypeFromQuery<BaseType, QueryType> = BaseType extends any[]
-  ? _DataTypeFromQuery<BaseType[0], QueryType>[]
+  ? CheckAttributesField<BaseType[0], QueryType>[]
   : null extends BaseType
-  ? _DataTypeFromQuery<BaseType & {}, QueryType> | null
-  : _DataTypeFromQuery<BaseType & {}, QueryType>
+  ? CheckAttributesField<BaseType & {}, QueryType> | null
+  : CheckAttributesField<BaseType & {}, QueryType>
+
+type CheckAttributesField<P, Q> = Q extends { attributes: infer R }
+  ? _DataTypeFromQuery<P, R>
+  : _DataTypeFromQuery<P, Q>
 
 type IsAnyCompareLeftType = { __any: never }
 
