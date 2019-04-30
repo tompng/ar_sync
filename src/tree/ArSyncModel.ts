@@ -2,6 +2,7 @@ import ArSyncStore from './ArSyncStore'
 import ArSyncAPI from '../core/ArSyncApi'
 import ArSyncConnectionManager from '../core/ConnectionManager'
 import ArSyncModelBase from '../core/ArSyncModelBase'
+import ConnectionAdapter from '../core/ConnectionAdapter'
 
 class ArSyncRecord {
   immutable
@@ -127,7 +128,7 @@ class ArSyncRecord {
 }
 
 export default class ArSyncModel<T> extends ArSyncModelBase<T> {
-  static setConnectionAdapter(adapter) {
+  static setConnectionAdapter(adapter: ConnectionAdapter) {
     ArSyncRecord.connectionManager = new ArSyncConnectionManager(adapter)
   }
   static createRefModel(request, option) {
