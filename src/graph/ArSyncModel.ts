@@ -1,9 +1,10 @@
 import ArSyncStore from './ArSyncStore'
 import ArSyncConnectionManager from '../core/ConnectionManager'
 import ArSyncModelBase from '../core/ArSyncModelBase'
+import ConnectionAdapter from '../core/ConnectionAdapter'
 
 export default class ArSyncModel<T> extends ArSyncModelBase<T> {
-  static setConnectionAdapter(adapter) {
+  static setConnectionAdapter(adapter: ConnectionAdapter) {
     ArSyncStore.connectionManager = new ArSyncConnectionManager(adapter)
   }
   static createRefModel(request, option): any {

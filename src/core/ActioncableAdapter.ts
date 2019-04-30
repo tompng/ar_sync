@@ -1,13 +1,14 @@
 import * as ActionCable from 'actioncable'
+import ConnectionAdapter from './ConnectionAdapter'
 
-export default class ActionCableAdapter {
-  connected
-  _cable
+export default class ActionCableAdapter implements ConnectionAdapter {
+  connected: boolean
+  _cable: ActionCable.Cable
   constructor() {
     this.connected = true
-    this.subscribe(Math.random(), () => {})
+    this.subscribe(Math.random().toString(), () => {})
   }
-  subscribe(key, received) {
+  subscribe(key: string, received: (data: any) => void) {
     const disconnected = () => {
       if (!this.connected) return
       this.connected = false

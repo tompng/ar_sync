@@ -1,23 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-function apiBatchFetch(endpoint, requests) {
+async function apiBatchFetch(endpoint, requests) {
     const headers = {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
     };
     const body = JSON.stringify({ requests });
     const option = { credentials: 'include', method: 'POST', headers, body };
-    return fetch(endpoint, option).then(res => {
-        if (res.status === 200)
-            return res.json();
-        throw new Error(res.statusText);
-    });
+    const res = await fetch(endpoint, option);
+    if (res.status === 200)
+        return res.json();
+    throw new Error(res.statusText);
 }
 class ApiFetcher {
     constructor(endpoint) {
-        this.endpoint = endpoint;
         this.batches = [];
         this.batchFetchTimer = null;
+        this.endpoint = endpoint;
     }
     fetch(request) {
         return new Promise((resolve, reject) => {
@@ -70,6 +69,6 @@ class ApiFetcher {
 const staticFetcher = new ApiFetcher('/static_api');
 const syncFetcher = new ApiFetcher('/sync_api');
 exports.default = {
-    fetch: request => staticFetcher.fetch(request),
-    syncFetch: request => syncFetcher.fetch(request),
+    fetch: (request) => staticFetcher.fetch(request),
+    syncFetch: (request) => syncFetcher.fetch(request),
 };
