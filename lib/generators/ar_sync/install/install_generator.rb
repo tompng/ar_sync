@@ -4,14 +4,13 @@ module ArSync
       create_file 'app/controllers/sync_api_controller.rb', <<~CODE
         class SyncApiController < ApplicationController
           include ArSync::ApiControllerConcern
-            # serializer_field :my_data do |_user|
-            #   current_user
-            # end
+          # serializer_field :my_data do |_user|
+          #   current_user
+          # end
 
-            # serializer_field :comment do |_user, id:|
-            #   Comment.where(current_user_can_access).find id
-            # end
-          end
+          # serializer_field :comment do |_user, id:|
+          #   Comment.where(current_user_can_access).find id
+          # end
         end
       CODE
     end
@@ -57,7 +56,7 @@ module ArSync
         [
           '//= require ar_sync_tree',
           '//= require action_cable',
-          'require ar_sync_actioncable_adapter',
+          '//= require ar_sync_actioncable_adapter',
           'ArSyncModel.setConnectionAdapter(new ArSyncActionCableAdapter())'
         ].join("\n") + "\n",
         before: '//= require_tree .'
