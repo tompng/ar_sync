@@ -33,3 +33,9 @@ const data10 = new ArSyncModel({ api: 'users', query: { '*': true, posts: { id: 
 data10[0].posts[0].comments[0].id
 const data11 = new ArSyncModel({ api: 'users', query: { '*': true, posts: { id: true, comments: '*', commmments: true } } }).data!
 data11.error.extraFields = 'commmments'
+const data12 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { limit: 4 }, attributes: 'title' } } }).data!
+data12.posts[0].title
+const data13 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { limit: 4 }, attributes: ['id', 'title'] } } }).data!
+data13.posts[0].title
+const data14 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { limit: 4 }, attributes: { id: true, title: true } } } }).data!
+data14.posts[0].title
