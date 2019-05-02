@@ -1,14 +1,14 @@
 - if sampleapp_ar_sync_graph?
   javascript:
-    const currentUserQuery = ['sync_keys', 'name']
+    const currentUserQuery = 'name'
     const postQuery = [
-      'sync_keys', 'title', 'body', 'reaction_summary', 'created_at',
+      'title', 'body', 'reaction_summary', 'created_at',
       {
-        user: ['sync_keys', 'name'],
-        my_reaction: ['sync_keys', 'kind'],
+        user: 'name',
+        my_reaction: 'kind',
         comments: [
-          'sync_keys', 'body', 'reaction_summary',
-          { user: ['sync_keys', 'name'], my_reaction: ['sync_keys', 'kind'] }
+          'body', 'reaction_summary',
+          { user: 'name', my_reaction: 'kind' }
         ]
       }
     ]

@@ -1,12 +1,12 @@
 - if sampleapp_ar_sync_graph?
   javascript:
-    const currentUserQuery = ['sync_keys', 'name']
+    const currentUserQuery = 'name'
     const userQuery = [
-      'sync_keys', 'name', 'is_following', 'is_followed',
+      'name', 'is_following', 'is_followed',
       {
         posts: [
-          'sync_keys', 'title', 'comments_count', 'created_at',
-          { comments_last5: ['sync_keys', 'body', { user: ['sync_keys', 'name'] }, { as: 'recent_comments', params: { limit: 3 }}] }
+          'title', 'comments_count', 'created_at',
+          { comments_last5: ['body', { user: 'name' }, { as: 'recent_comments', params: { limit: 3 }}] }
         ]
       }
     ]

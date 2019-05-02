@@ -3,8 +3,8 @@
     const currentUserQuery = [
       'sync_keys', 'name',
       {
-        followeds: ['sync_keys', { from: ['sync_keys', 'name', { as: 'user' }] }],
-        followings: ['sync_keys', { to: ['sync_keys', 'name', { as: 'user' }] }]
+        followeds: { from: ['name', { as: 'user' }] },
+        followings: { to: ['name', { as: 'user' }] }
       }
     ]
 - else

@@ -2,7 +2,7 @@
   var exports = {}
   var modules = {}
   function require(name) { return modules[name] }
-  <% require = -> (path) { File.read File.dirname(__FILE__) + "/../../../#{path}" } %>
+  <% require = -> (path) { path = File.dirname(__FILE__) + "/../../../#{path}"; depend_on path; File.read path } %>
   <%= require.call 'core/ArSyncApi.js' %>
   window.ArSyncAPI = exports.default
   modules['../core/ArSyncApi'] = { default: exports.default }

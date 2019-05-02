@@ -82,9 +82,9 @@ module ArSync
       _api_call :static do |model, current_user, query|
         case model
         when ArSync::Collection, ActiveRecord::Relation, Array
-          ArSync.serialize model.to_a, query, user: current_user
+          ArSerializer.serialize model.to_a, query, context: current_user
         when ActiveRecord::Base
-          ArSync.serialize model, query, user: current_user
+          ArSerializer.serialize model, query, context: current_user
         else
           model
         end
