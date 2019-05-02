@@ -197,44 +197,39 @@ class ArSyncRecord extends ArSyncContainerBase {
       const aliasName = subQuery.as || key
       const subData = data[aliasName]
       if (key === 'sync_keys') continue
-      if (subQuery.attributes && subQuery.attributes.sync_keys) {
-        if (subData instanceof Array || (subData && subData.collection && subData.order)) {
-          if (this.children[aliasName]) {
-            this.children[aliasName].replaceData(subData, this.sync_keys)
-          } else {
-            const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root)
-            this.mark()
-            this.children[aliasName] = collection
-            this.data[aliasName] = collection.data
-            collection.parentModel = this
-            collection.parentKey = aliasName
-          }
+      if (subQuery.attributes && (subData instanceof Array || (subData && subData.collection && subData.order))) {
+        if (this.children[aliasName]) {
+          this.children[aliasName].replaceData(subData, this.sync_keys)
         } else {
-          this.paths.push(key)
-          if (subData) {
-            if (this.children[aliasName]) {
-              this.children[aliasName].replaceData(subData)
-            } else {
-              const model = new ArSyncRecord(subQuery, subData, null, this.root)
-              this.mark()
-              this.children[aliasName] = model
-              this.data[aliasName] = model.data
-              model.parentModel = this
-              model.parentKey = aliasName
-            }
-          } else {
-            if(this.children[aliasName]) this.children[aliasName].release()
-            delete this.children[aliasName]
-            if (this.data[aliasName]) {
-              this.mark()
-              this.data[aliasName] = null
-            }
-          }
+          const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root)
+          this.mark()
+          this.children[aliasName] = collection
+          this.data[aliasName] = collection.data
+          collection.parentModel = this
+          collection.parentKey = aliasName
         }
       } else {
-        if (this.data[aliasName] !== subData) {
-          this.mark()
-          this.data[aliasName] = subData
+        if (subQuery.attributes) this.paths.push(key);
+        if (subData && subData.sync_keys) {
+          if (this.children[aliasName]) {
+            this.children[aliasName].replaceData(subData)
+          } else {
+            const model = new ArSyncRecord(subQuery, subData, null, this.root)
+            this.mark()
+            this.children[aliasName] = model
+            this.data[aliasName] = model.data
+            model.parentModel = this
+            model.parentKey = aliasName
+          }
+        } else {
+          if(this.children[aliasName]) {
+            this.children[aliasName].release()
+            delete this.children[aliasName]
+          }
+          if (this.data[aliasName] !== subData) {
+            this.mark()
+            this.data[aliasName] = subData
+          }
         }
       }
     }
@@ -284,7 +279,11 @@ class ArSyncRecord extends ArSyncContainerBase {
     for (const key in this.query.attributes) {
       if (key === 'sync_keys') continue
       const val = this.query.attributes[key]
-      if (!val || !val.attributes || !val.attributes.sync_keys) reloadQuery.attributes.push(key)
+      if (!val || !val.attributes) {
+        reloadQuery.attributes.push(key)
+      } else if (!val.params && Object.keys(val.attributes).length === 0) {
+        reloadQuery.attributes.push({ [key]: val })
+      }
     }
     return reloadQuery
   }
