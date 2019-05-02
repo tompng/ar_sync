@@ -1,12 +1,13 @@
 module ArSync::TypeScript
-  def self.generate_typed_files(api_class, dir:, mode: nil)
+  def self.generate_typed_files(api_class, dir:, mode: nil, comment: nil)
     mode ||= :graph if ActiveRecord::Base.include? ArSync::GraphSync
     mode ||= :tree if ActiveRecord::Base.include? ArSync::TreeSync
+    raise 'ar_sync mode: graph or tree, is not specified.' unless mode
     {
       'types.ts' => generate_type_definition(api_class),
       'ArSyncModel.ts' => generate_model_script(mode),
       'hooks.ts' => generate_hooks_script(mode)
-    }.each { |file, code| File.write File.join(dir, file), code }
+    }.each { |file, code| File.write File.join(dir, file), "#{comment}#{code}" }
   end
 
   def self.generate_type_definition(api_class)
