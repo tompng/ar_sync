@@ -192,6 +192,10 @@ module ArSync::GraphSync::ClassMethods
       ArSync.sync_graph_keys self, current_user
     end
 
+    _sync_define :defaults, namespace: :sync do |current_user|
+      { sync_keys: ArSync.sync_graph_keys(self, current_user) }
+    end
+
     before_destroy do
       @_sync_parents_info_before_mutation ||= _sync_current_parents_info
     end
