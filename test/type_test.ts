@@ -39,3 +39,5 @@ const data13 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: {
 data13.posts[0].title
 const data14 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { limit: 4 }, attributes: { id: true, title: true } } } }).data!
 data14.posts[0].title
+const data15 = new ArSyncModel({ api: 'currentUser', query: { posts: ['id', 'title'] } } as const).data!
+data15.posts[0].title

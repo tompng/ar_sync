@@ -1,15 +1,12 @@
-declare type NonOptionalType<T> = {
-    [key in keyof T]-?: T[key];
-};
 declare type RecordType = {
     _meta?: {
         query: any;
     };
 };
-declare type Unpacked<T> = T extends {
+declare type Values<T> = T extends {
     [K in keyof T]: infer U;
 } ? U : never;
-declare type DataTypeExtractField<BaseType, Key extends keyof BaseType> = NonOptionalType<BaseType>[Key] & {} extends RecordType ? (null extends BaseType[Key] ? {} | null : {}) : NonOptionalType<BaseType>[Key] extends RecordType[] ? {}[] : NonOptionalType<BaseType>[Key];
+declare type DataTypeExtractField<BaseType, Key extends keyof BaseType> = BaseType[Key] extends RecordType ? (null extends BaseType[Key] ? {} | null : {}) : BaseType[Key] extends RecordType[] ? {}[] : BaseType[Key];
 declare type DataTypeExtractFieldsFromQuery<BaseType, Fields> = '*' extends Fields ? {
     [key in Exclude<keyof BaseType, '_meta'>]: DataTypeExtractField<BaseType, key>;
 } : {
@@ -23,25 +20,26 @@ declare type DataTypeExtractFromQueryHash<BaseType, QueryType> = '*' extends key
 } : {
     [key in keyof QueryType]: (key extends keyof BaseType ? (QueryType[key] extends true ? DataTypeExtractField<BaseType, key> : DataTypeFromQuery<BaseType[key] & {}, QueryType[key]>) : ExtraFieldErrorType);
 };
-declare type _DataTypeFromQuery<BaseType, QueryType> = QueryType extends keyof BaseType | '*' ? DataTypeExtractFieldsFromQuery<NonOptionalType<BaseType>, QueryType> : QueryType extends Readonly<(keyof BaseType | '*')[]> ? DataTypeExtractFieldsFromQuery<NonOptionalType<BaseType>, Unpacked<QueryType>> : QueryType extends {
+declare type _DataTypeFromQuery<BaseType, QueryType> = QueryType extends keyof BaseType | '*' ? DataTypeExtractFieldsFromQuery<BaseType, QueryType> : QueryType extends Readonly<(keyof BaseType | '*')[]> ? DataTypeExtractFieldsFromQuery<BaseType, Values<QueryType>> : QueryType extends {
     as: string;
 } ? {
     error: 'type for alias field is not supported';
-} | undefined : QueryType extends {
-    attributes: any;
-} ? DataTypeExtractFromQueryHash<BaseType, QueryType['attributes']> : DataTypeExtractFromQueryHash<BaseType, QueryType>;
-export declare type DataTypeFromQuery<BaseType, QueryType> = BaseType extends any[] ? _DataTypeFromQuery<BaseType[0], QueryType>[] : null extends BaseType ? _DataTypeFromQuery<BaseType & {}, QueryType> | null : _DataTypeFromQuery<BaseType & {}, QueryType>;
+} | undefined : DataTypeExtractFromQueryHash<BaseType, QueryType>;
+export declare type DataTypeFromQuery<BaseType, QueryType> = BaseType extends any[] ? CheckAttributesField<BaseType[0], QueryType>[] : null extends BaseType ? CheckAttributesField<BaseType & {}, QueryType> | null : CheckAttributesField<BaseType & {}, QueryType>;
+declare type CheckAttributesField<P, Q> = Q extends {
+    attributes: infer R;
+} ? _DataTypeFromQuery<P, R> : _DataTypeFromQuery<P, Q>;
 declare type IsAnyCompareLeftType = {
     __any: never;
 };
 declare type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : Type extends object ? _CollectExtraFields<Type> : null;
-declare type _CollectExtraFields<Type> = keyof (Type) extends never ? null : Unpacked<{
+declare type _CollectExtraFields<Type> = keyof (Type) extends never ? null : Values<{
     [key in keyof Type]: CollectExtraFields<Type[key], [key]>;
 }>;
 declare type SelectString<T> = T extends string ? T : never;
-declare type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Unpacked<Extra>> extends never ? Type : {
+declare type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Values<Extra>> extends never ? Type : {
     error: {
-        extraFields: SelectString<Unpacked<Extra>>;
+        extraFields: SelectString<Values<Extra>>;
     };
 };
 declare type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>;
