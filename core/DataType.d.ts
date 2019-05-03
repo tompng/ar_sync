@@ -3,7 +3,7 @@ declare type RecordType = {
         query: any;
     };
 };
-declare type Unpacked<T> = T extends {
+declare type Values<T> = T extends {
     [K in keyof T]: infer U;
 } ? U : never;
 declare type DataTypeExtractField<BaseType, Key extends keyof BaseType> = BaseType[Key] extends RecordType ? (null extends BaseType[Key] ? {} | null : {}) : BaseType[Key] extends RecordType[] ? {}[] : BaseType[Key];
@@ -20,7 +20,7 @@ declare type DataTypeExtractFromQueryHash<BaseType, QueryType> = '*' extends key
 } : {
     [key in keyof QueryType]: (key extends keyof BaseType ? (QueryType[key] extends true ? DataTypeExtractField<BaseType, key> : DataTypeFromQuery<BaseType[key] & {}, QueryType[key]>) : ExtraFieldErrorType);
 };
-declare type _DataTypeFromQuery<BaseType, QueryType> = QueryType extends keyof BaseType | '*' ? DataTypeExtractFieldsFromQuery<BaseType, QueryType> : QueryType extends Readonly<(keyof BaseType | '*')[]> ? DataTypeExtractFieldsFromQuery<BaseType, Unpacked<QueryType>> : QueryType extends {
+declare type _DataTypeFromQuery<BaseType, QueryType> = QueryType extends keyof BaseType | '*' ? DataTypeExtractFieldsFromQuery<BaseType, QueryType> : QueryType extends Readonly<(keyof BaseType | '*')[]> ? DataTypeExtractFieldsFromQuery<BaseType, Values<QueryType>> : QueryType extends {
     as: string;
 } ? {
     error: 'type for alias field is not supported';
@@ -33,13 +33,13 @@ declare type IsAnyCompareLeftType = {
     __any: never;
 };
 declare type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : Type extends object ? _CollectExtraFields<Type> : null;
-declare type _CollectExtraFields<Type> = keyof (Type) extends never ? null : Unpacked<{
+declare type _CollectExtraFields<Type> = keyof (Type) extends never ? null : Values<{
     [key in keyof Type]: CollectExtraFields<Type[key], [key]>;
 }>;
 declare type SelectString<T> = T extends string ? T : never;
-declare type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Unpacked<Extra>> extends never ? Type : {
+declare type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Values<Extra>> extends never ? Type : {
     error: {
-        extraFields: SelectString<Unpacked<Extra>>;
+        extraFields: SelectString<Values<Extra>>;
     };
 };
 declare type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>;
