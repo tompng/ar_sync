@@ -1,23 +1,46 @@
 module ArSync
   class InstallGenerator < ::Rails::Generators::Base
-    def create_api_controller
-      create_file 'app/controllers/sync_api_controller.rb', <<~CODE
-        class SyncApiController < ApplicationController
-          include ArSync::ApiControllerConcern
-          # serializer_field :my_data do |_user|
-          #   current_user
-          # end
+    class_option :mode, enum: %w[tree graph], desc: 'sync mode', default: 'tree'
 
-          # serializer_field :comment do |_user, id:|
-          #   Comment.where(current_user_can_access).find id
-          # end
-        end
+    def create_api_controller
+      base_code = <<~CODE
+        include ArSync::ApiControllerConcern
+
+        # serializer_field :profile, type: User do |_user|
+        #   current_user
+        # end
+
+        # serializer_field :post, type: Post do |_user, id:|
+        #   Post.where(current_user_can_access).find id
+        # end
       CODE
+      graph_additional_code = <<~CODE
+        # Reload API for all types should be defined here.
+
+        # serializer_field :User do |_user, ids:|
+        #   User.where(current_user_can_access).where id: ids
+        # end
+
+        # serializer_field :Post do |_user, ids:|
+        #   Post.where(current_user_can_access).where id: ids
+        # end
+
+        # serializer_field :Comment do |_user, ids:|
+        #   Comment.where(current_user_can_access).where id: ids
+        # end
+      CODE
+      controller_body = options['mode'] == 'tree' ? base_code : base_code + "\n" + graph_additional_code
+      code = [
+        "class SyncApiController < ApplicationController\n",
+        controller_body.lines.map { |l| '  ' + l },
+        "end\n"
+      ].join
+      create_file 'app/controllers/sync_api_controller.rb', code
     end
 
     def create_config
       create_file 'config/initializers/ar_sync.rb', <<~CODE
-        ArSync.use :tree
+        ArSync.use :#{options['mode']}
         ArSync.configure do |config|
           config.current_user_method = :current_user
           config.key_prefix = 'ar_sync_'
@@ -44,8 +67,7 @@ module ArSync
         'config/routes.rb',
         "\n  post '/sync_api', to: 'sync_api#sync_call'" +
         "\n  post '/static_api', to: 'sync_api#static_call'" +
-        "\n  post '/graphql', to: 'sync_api#graphql_call'" +
-        "\n  get '/schema.graphql', to: 'sync_api#graphql_schema'",
+        "\n  post '/graphql', to: 'sync_api#graphql_call'",
         after: 'Rails.application.routes.draw do'
       )
     end
@@ -54,7 +76,7 @@ module ArSync
       inject_into_file(
         'app/assets/javascripts/application.js',
         [
-          '//= require ar_sync_tree',
+          "//= require ar_sync_#{options['mode']}",
           '//= require action_cable',
           '//= require ar_sync_actioncable_adapter',
           'ArSyncModel.setConnectionAdapter(new ArSyncActionCableAdapter())'
