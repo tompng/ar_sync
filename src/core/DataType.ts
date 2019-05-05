@@ -11,7 +11,7 @@ type DataTypeExtractFieldsFromQuery<BaseType, Fields> = '*' extends Fields
   : { [key in Fields & keyof (BaseType)]: DataTypeExtractField<BaseType, key> }
 
 interface ExtraFieldErrorType {
-  error: 'extraFieldError'
+  extraFieldError: any
 }
 
 type DataTypeExtractFromQueryHash<BaseType, QueryType> = '*' extends keyof QueryType
@@ -52,15 +52,12 @@ type CheckAttributesField<P, Q> = Q extends { attributes: infer R }
 
 type IsAnyCompareLeftType = { __any: never }
 
-type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type
-  ? null
-  : Type extends ExtraFieldErrorType
-  ? Path
-  : Type extends (infer R)[]
-  ? _CollectExtraFields<R>
-  : Type extends object
-  ? _CollectExtraFields<Type>
-  : null
+type CollectExtraFields<Type, Path> = ExtraFieldErrorType extends Type
+  ? (IsAnyCompareLeftType extends Type ? null : Path)
+  : _CollectExtraFields<
+    Type extends (infer R)[] ? R : (Type extends object ? Type : null)
+  >
+
 type _CollectExtraFields<Type> = keyof (Type) extends never
   ? null
   : Values<{ [key in keyof Type]: CollectExtraFields<Type[key], [key]>}>
