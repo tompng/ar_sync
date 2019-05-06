@@ -32,7 +32,7 @@ module ArSync
       controller_body = options['mode'] == 'tree' ? base_code : base_code + "\n" + graph_additional_code
       code = [
         "class SyncApiController < ApplicationController\n",
-        controller_body.lines.map { |l| '  ' + l },
+        controller_body.lines.map { |l| l.blank? ? l : '  ' + l },
         "end\n"
       ].join
       create_file 'app/controllers/sync_api_controller.rb', code
