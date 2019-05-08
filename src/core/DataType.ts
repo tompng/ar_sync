@@ -54,13 +54,11 @@ type IsAnyCompareLeftType = { __any: never }
 
 type CollectExtraFields<Type, Path> = ExtraFieldErrorType extends Type
   ? (IsAnyCompareLeftType extends Type ? null : Path)
-  : _CollectExtraFields<
-    Type extends (infer R)[] ? R : (Type extends object ? Type : null)
-  >
+  : _CollectExtraFields<Type extends (infer R)[] ? R : (Type extends object ? Type : null)>
 
 type _CollectExtraFields<Type> = keyof (Type) extends never
   ? null
-  : Values<{ [key in keyof Type]: CollectExtraFields<Type[key], [key]>}>
+  : Values<{ [key in keyof Type]: CollectExtraFields<Type[key], [key]> }>
 
 type SelectString<T> = T extends string ? T : never
 type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Values<Extra>> extends never
