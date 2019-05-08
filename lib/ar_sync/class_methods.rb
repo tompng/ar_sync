@@ -45,7 +45,7 @@ module ArSync::TreeSync::ClassMethods
     ArSync::Collection::Tree.find self, name
   end
 
-  def sync_has_data(*names, user_specific: nil, **option, &original_data_block)
+  def sync_has_data(*names, **option, &original_data_block)
     @_sync_self = true
     option = option.dup
     if original_data_block
@@ -54,7 +54,7 @@ module ArSync::TreeSync::ClassMethods
     option[:params_type] = {}
     names.each do |name|
       type_override = data_block.nil? && reflect_on_association(name.to_s.underscore) ? { type: :any } : {}
-      _sync_define ArSync::DataField.new(name, user_specific: user_specific), option.merge(type_override), &data_block
+      _sync_define ArSync::DataField.new(name), option.merge(type_override), &data_block
     end
   end
 

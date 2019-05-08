@@ -11,7 +11,7 @@ module ArSync::TreeSync::InstanceMethods
     fallbacks = {}
     names = []
     self.class._each_sync_child do |name, info|
-      names << name if info.type == :data && !info.user_specific?
+      names << name if info.type == :data
       if new_record
         fallbacks[name] = [] if info.type == :many
         fallbacks[name] = nil if info.type == :one
