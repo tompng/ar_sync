@@ -56,7 +56,6 @@ module ArSync
           def subscribed
             key = ArSync.validate_expiration params[:key]
             stream_from key if key
-            stream_from params[:key]
           end
         end
       CODE
