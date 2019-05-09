@@ -1,6 +1,6 @@
 module ArSync
   class InstallGenerator < ::Rails::Generators::Base
-    class_option :mode, enum: %w[tree graph], desc: 'sync mode', default: 'tree'
+    class_option :mode, enum: %w[tree graph], desc: 'sync mode', default: 'graph'
 
     def create_api_controller
       base_code = <<~CODE
