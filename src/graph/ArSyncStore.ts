@@ -209,7 +209,7 @@ class ArSyncRecord extends ArSyncContainerBase {
           collection.parentKey = aliasName
         }
       } else {
-        if (subQuery.attributes) this.paths.push(key);
+        if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0) this.paths.push(key);
         if (subData && subData.sync_keys) {
           if (this.children[aliasName]) {
             this.children[aliasName].replaceData(subData)
