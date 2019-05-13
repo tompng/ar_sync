@@ -82,6 +82,35 @@ module ArSync::GraphSync::InstanceMethods
     parents
   end
 
+  def _serializer_field_value(name)
+    field = self.class._serializer_field_info name
+    preloadeds = field.preloaders.map do |preloader|
+      args = [[self], nil, {}]
+      preloader.call(*(preloader.arity < 0 ? args : args.take(preloader.arity)))
+    end
+    instance_exec(*preloadeds, nil, {}, &field.data_block)
+  end
+
+  def _sync_current_belongs_to_info
+    belongs = {}
+    self.class._each_sync_child do |name, (type, option, data_block)|
+      next unless type == :one
+      option ||= {}
+      association_name = (option[:association] || name).to_s.underscore
+      association = self.class.reflect_on_association association_name
+      next if association && !association.belongs_to?
+      if association && !option[:preload] && !data_block
+        belongs[name] = {
+          type: association.foreign_type && self[association.foreign_type],
+          id: self[association.foreign_key]
+        }
+      else
+        belongs[name] = { value: _serializer_field_value(name) }
+      end
+    end
+    belongs
+  end
+
   def _sync_notify_parent(action)
     if action == :create
       parents = _sync_current_parents_info
@@ -125,6 +154,14 @@ module ArSync::GraphSync::InstanceMethods
   end
 
   def _sync_notify_self
+    belongs_was = _sync_belongs_to_info_before_mutation
+    belongs = _sync_current_belongs_to_info
+    belongs.each do |name, info|
+      next if belongs_was[name] == info
+      value = info.key?(:value) ? info[:value] : _serializer_field_value(name)
+      _sync_notify_child_added value, name, nil, true if value.is_a? ArSerializer::Serializable
+      _sync_notify_child_removed value, name, nil, true if value.nil?
+    end
     ArSync.sync_graph_send(to: self, action: :update, model: self)
   end
 end
