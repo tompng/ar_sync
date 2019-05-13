@@ -124,12 +124,12 @@ module ArSync::GraphSync::ClassMethods
   end
 
   def sync_has_many(name, **option, &data_block)
-    _sync_children_info[name] = :many
+    _sync_children_info[name] = [:many, option, data_block]
     _sync_has_many name, option, &data_block
   end
 
   def sync_has_one(name, **option, &data_block)
-    _sync_children_info[name] = :one
+    _sync_children_info[name] = [:one, option, data_block]
     _sync_define name, option, &data_block
   end
 
@@ -179,12 +179,13 @@ module ArSync::GraphSync::ClassMethods
       def write_attribute(attr_name, value)
         self.class.default_scoped.scoping do
           @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+          @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
         end
         super attr_name, value
       end
     end
     prepend mod
-    attr_reader :_sync_parents_info_before_mutation
+    attr_reader :_sync_parents_info_before_mutation, :_sync_belongs_to_info_before_mutation
 
     _sync_define :id
 
@@ -198,10 +199,12 @@ module ArSync::GraphSync::ClassMethods
 
     before_destroy do
       @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+      @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
     end
 
     before_save on: :create do
       @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+      @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
     end
 
     %i[create update destroy].each do |action|
@@ -209,6 +212,7 @@ module ArSync::GraphSync::ClassMethods
         next if ArSync.skip_notification?
         self.class.default_scoped.scoping { _sync_notify action }
         @_sync_parents_info_before_mutation = nil
+        @_sync_belongs_to_info_before_mutation = nil
       end
     end
   end
