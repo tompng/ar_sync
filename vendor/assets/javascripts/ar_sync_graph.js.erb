@@ -3,6 +3,8 @@
   var modules = {}
   function require(name) { return modules[name] }
   <% require = -> (path) { path = File.dirname(__FILE__) + "/../../../#{path}"; depend_on path; File.read path } %>
+  <%= require.call 'core/parseRequest.js' %>
+  modules['../core/parseRequest'] = { parseRequest: exports.parseRequest }
   <%= require.call 'core/ArSyncApi.js' %>
   window.ArSyncAPI = exports.default
   modules['../core/ArSyncApi'] = { default: exports.default }
