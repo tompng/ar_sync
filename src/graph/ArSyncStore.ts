@@ -221,7 +221,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.onChange([path], null)
     } else if (action === 'add') {
       if (this.data.id === id) return
-      const query = this.query[path]
+      const query = this.query[path].query
       ModelBatchRequest.fetch(class_name, query, id).then(data => {
         if (!data) return
         const model = new ArSyncRecord(query, data, null, this.root)
