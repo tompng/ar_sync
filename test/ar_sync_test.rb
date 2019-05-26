@@ -9,9 +9,29 @@ ArSync.on_notification do |events|
   end
 end
 
-query = [name: { as: '名前' }, posts: [:user, :title, as: :articles, my_comments: [:star_count, as: :my_opinions], comments: [:star_count, :user, my_stars: :id, my_star: { as: :my_reaction }]]]
-post_query = [:user, :title, comments: [:body, as: :cmnts]]
-collection_query = [:user, :title, my_comments: [:star_count, as: :my_opinions], comments: [:star_count, :user, my_stars: :id, my_star: { as: :my_reaction }]]
+query = {
+  名前: { field: :name },
+  articles: {
+    field: :posts,
+    query: {
+      user: true, title: true,
+      my_opinions: { field: :my_comments, query: :star_count },
+      comments: {
+        star_count: true, user: true, my_stars: :id,
+        my_reaction: { field: :my_star }
+      }
+    }
+  }
+}
+post_query = { user: true, title: true, cmnts: { field: :comments, query: :body } }
+collection_query = {
+  user: true, title: true,
+  my_opinions: { field: :my_comments, query: :star_count },
+  comments: {
+    star_count: true, user: true, my_stars: :id,
+    my_reaction: { field: :my_star }
+  }
+}
 
 $test_cases = {
   user: [Tree::User.first, query],
