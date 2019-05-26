@@ -167,11 +167,11 @@ class Updator {
 
 export default class ArSyncStore {
   data
-  query
+  request
   immutable
-  constructor(query, data, option = {} as { immutable?: boolean }) {
+  constructor(request, data, option = {} as { immutable?: boolean }) {
     this.data = option.immutable ? Updator.createFrozenObject(data) : data
-    this.query = ArSyncStore.parseQuery(query)
+    this.request = ArSyncStore.parseQuery(request)
     this.immutable = option.immutable
   }
   replaceData(data) {
@@ -187,13 +187,13 @@ export default class ArSyncStore {
   update(patch) {
     return this.batchUpdate([patch])
   }
-  _slicePatch(patchData, query) {
+  _slicePatch(patchData, request) {
     const obj = {}
     for (const key in patchData) {
-      if (key === 'id' || query.attributes['*']) {
+      if (key === 'id' || request.query['*']) {
         obj[key] = patchData[key]
       } else {
-        const subq = query.attributes[key]
+        const subq = request.query[key]
         if (subq) {
           obj[subq.column || key] = patchData[key]
         }
@@ -201,11 +201,11 @@ export default class ArSyncStore {
     }
     return obj
   }
-  _applyPatch(data, accessKeys, actualPath, updator, query, patchData) {
+  _applyPatch(data, accessKeys, actualPath, updator, request, patchData) {
     for (const key in patchData) {
-      const subq = query.attributes[key]
+      const subq = request.query[key]
       const value = patchData[key]
-      if (subq || query.attributes['*']) {
+      if (subq || request.query['*']) {
         const subcol = (subq && subq.column) || key
         if (data[subcol] !== value) {
           this.data = updator.add(this.data, accessKeys, actualPath, subcol, value)
@@ -216,7 +216,7 @@ export default class ArSyncStore {
   _update(patch, updator, events) {
     const { action, path } = patch
     const patchData = patch.data
-    let query = this.query
+    let request = this.request
     let data = this.data
     const actualPath: (string | number)[] = []
     const accessKeys: (string | number)[] = []
@@ -229,10 +229,10 @@ export default class ArSyncStore {
         accessKeys.push(idx)
         data = data[idx]
       } else {
-        const { attributes } = query
-        if (!attributes[nameOrId]) return
-        const column = attributes[nameOrId].column || nameOrId
-        query = attributes[nameOrId]
+        const { query } = request
+        if (!query[nameOrId]) return
+        const column = query[nameOrId].column || nameOrId
+        request = query[nameOrId]
         actualPath.push(column)
         accessKeys.push(column)
         data = data[column]
@@ -246,20 +246,20 @@ export default class ArSyncStore {
       idx = data.findIndex(o => o.id === id)
       target = data[idx]
     } else if (nameOrId) {
-      const { attributes } = query
-      if (!attributes[nameOrId]) return
-      column = attributes[nameOrId].column || nameOrId
-      query = attributes[nameOrId]
+      const { query } = request
+      if (!query[nameOrId]) return
+      column = query[nameOrId].column || nameOrId
+      request = query[nameOrId]
       target = data[column]
     }
     if (action === 'create') {
-      const obj = this._slicePatch(patchData, query)
+      const obj = this._slicePatch(patchData, request)
       if (column) {
         this.data = updator.add(this.data, accessKeys, actualPath, column, obj)
       } else if (!target) {
         const ordering = Object.assign({}, patch.ordering)
-        const limitOverride = query.params && query.params.limit
-        ordering.order = query.params && query.params.order || ordering.order
+        const limitOverride = request.params && request.params.limit
+        ordering.order = request.params && request.params.order || ordering.order
         if (ordering.limit == null || limitOverride != null && limitOverride < ordering.limit) ordering.limit = limitOverride
         this.data = updator.add(this.data, accessKeys, actualPath, data.length, obj, ordering)
       }
@@ -282,42 +282,42 @@ export default class ArSyncStore {
       accessKeys.push(idx)
     }
     if (action === 'update') {
-      this._applyPatch(target, accessKeys, actualPath, updator, query, patchData)
+      this._applyPatch(target, accessKeys, actualPath, updator, request, patchData)
     } else {
       const eventData = { target, path: actualPath, data: patchData.data }
       events.push({ type: patchData.type, data: eventData })
     }
   }
 
-  static parseQuery(query, attrsonly?){
-    const attributes = {}
+  static parseQuery(request, attrsonly?){
+    const query = {}
     let column = null
     let params = null
-    if (query.constructor !== Array) query = [query]
-    for (const arg of query) {
+    if (request.constructor !== Array) request = [request]
+    for (const arg of request) {
       if (typeof(arg) === 'string') {
-        attributes[arg] = {}
+        query[arg] = {}
       } else if (typeof(arg) === 'object') {
         for (const key in arg){
           const value = arg[key]
           if (attrsonly) {
-            attributes[key] = this.parseQuery(value)
+            query[key] = this.parseQuery(value)
             continue
           }
-          if (key === 'attributes') {
+          if (key === 'query') {
             const child = this.parseQuery(value, true)
-            for (const k in child) attributes[k] = child[k]
+            for (const k in child) query[k] = child[k]
           } else if (key === 'as') {
             column = value
           } else if (key === 'params') {
             params = value
           } else {
-            attributes[key] = this.parseQuery(value)
+            query[key] = this.parseQuery(value)
           }
         }
       }
     }
-    if (attrsonly) return attributes
-    return { attributes, column, params }
+    if (attrsonly) return query
+    return { query, column, params }
   }
 }
