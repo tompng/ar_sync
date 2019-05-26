@@ -1,3 +1,4 @@
+import { parseRequest } from '../core/parseRequest'
 class Updator {
   changes
   markedForFreezeObjects
@@ -171,7 +172,7 @@ export default class ArSyncStore {
   immutable
   constructor(request, data, option = {} as { immutable?: boolean }) {
     this.data = option.immutable ? Updator.createFrozenObject(data) : data
-    this.request = ArSyncStore.parseQuery(request)
+    this.request = parseRequest(request)
     this.immutable = option.immutable
   }
   replaceData(data) {
@@ -287,37 +288,5 @@ export default class ArSyncStore {
       const eventData = { target, path: actualPath, data: patchData.data }
       events.push({ type: patchData.type, data: eventData })
     }
-  }
-
-  static parseQuery(request, attrsonly?){
-    const query = {}
-    let column = null
-    let params = null
-    if (request.constructor !== Array) request = [request]
-    for (const arg of request) {
-      if (typeof(arg) === 'string') {
-        query[arg] = {}
-      } else if (typeof(arg) === 'object') {
-        for (const key in arg){
-          const value = arg[key]
-          if (attrsonly) {
-            query[key] = this.parseQuery(value)
-            continue
-          }
-          if (key === 'query') {
-            const child = this.parseQuery(value, true)
-            for (const k in child) query[k] = child[k]
-          } else if (key === 'as') {
-            column = value
-          } else if (key === 'params') {
-            params = value
-          } else {
-            query[key] = this.parseQuery(value)
-          }
-        }
-      }
-    }
-    if (attrsonly) return query
-    return { query, column, params }
   }
 }

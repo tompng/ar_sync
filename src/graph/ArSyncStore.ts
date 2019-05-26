@@ -1,4 +1,5 @@
 import ArSyncAPI from '../core/ArSyncApi'
+import { parseRequest } from '../core/parseRequest'
 
 const ModelBatchRequest = {
   timer: null,
@@ -96,40 +97,8 @@ class ArSyncContainerBase {
     for (const l of this.listeners) l.unsubscribe()
     this.listeners = []
   }
-  static parseQuery(query, attrsonly = false){
-    const attributes = {}
-    let column = null
-    let params = null
-    if (!query) query = []
-    if (query.constructor !== Array) query = [query]
-    for (const arg of query) {
-      if (typeof(arg) === 'string') {
-        attributes[arg] = {}
-      } else if (typeof(arg) === 'object') {
-        for (const key in arg){
-          const value = arg[key]
-          if (attrsonly) {
-            attributes[key] = this.parseQuery(value)
-            continue
-          }
-          if (key === 'attributes') {
-            const child = this.parseQuery(value, true)
-            for (const k in child) attributes[k] = child[k]
-          } else if (key === 'as') {
-            column = value
-          } else if (key === 'params') {
-            params = value
-          } else {
-            attributes[key] = this.parseQuery(value)
-          }
-        }
-      }
-    }
-    if (attrsonly) return attributes
-    return { attributes, as: column, params }
-  }
   static _load({ api, id, params, query }, root) {
-    const parsedQuery = ArSyncRecord.parseQuery(query)
+    const parsedQuery = parseRequest(query)
     if (id) {
       return ModelBatchRequest.fetch(api, query, id).then(data => new ArSyncRecord(parsedQuery, data[0], null, root))
     } else {
