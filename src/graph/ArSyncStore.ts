@@ -162,41 +162,41 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.paths = []
     for (const key in this.query) {
       const queryField = this.query[key]
-      const aliasName = queryField.as || key
-      const subData = data[aliasName]
+      const aliasName = queryField.field || key
+      const subData = data[key]
       if (key === 'sync_keys') continue
       if (queryField.query && (subData instanceof Array || (subData && subData.collection && subData.order))) {
-        if (this.children[aliasName]) {
-          this.children[aliasName].replaceData(subData, this.sync_keys)
+        if (this.children[key]) {
+          this.children[key].replaceData(subData, this.sync_keys)
         } else {
-          const collection = new ArSyncCollection(this.sync_keys, key, queryField.query, queryField.params, subData, null, this.root)
+          const collection = new ArSyncCollection(this.sync_keys, aliasName, queryField.query, queryField.params, subData, null, this.root)
           this.mark()
-          this.children[aliasName] = collection
-          this.data[aliasName] = collection.data
+          this.children[key] = collection
+          this.data[key] = collection.data
           collection.parentModel = this
-          collection.parentKey = aliasName
+          collection.parentKey = key
         }
       } else {
         if (queryField.query && Object.keys(queryField.query).length > 0) this.paths.push(key);
         if (subData && subData.sync_keys) {
-          if (this.children[aliasName]) {
-            this.children[aliasName].replaceData(subData)
+          if (this.children[key]) {
+            this.children[key].replaceData(subData)
           } else {
             const model = new ArSyncRecord(queryField.query, subData, null, this.root)
             this.mark()
-            this.children[aliasName] = model
-            this.data[aliasName] = model.data
+            this.children[key] = model
+            this.data[key] = model.data
             model.parentModel = this
-            model.parentKey = aliasName
+            model.parentKey = key
           }
         } else {
-          if(this.children[aliasName]) {
-            this.children[aliasName].release()
-            delete this.children[aliasName]
+          if(this.children[key]) {
+            this.children[key].release()
+            delete this.children[key]
           }
-          if (this.data[aliasName] !== subData) {
+          if (this.data[key] !== subData) {
             this.mark()
-            this.data[aliasName] = subData
+            this.data[key] = subData
           }
         }
       }
