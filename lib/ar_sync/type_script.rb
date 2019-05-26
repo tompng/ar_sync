@@ -35,7 +35,7 @@ module ArSync::TypeScript
       multiple = field.type.is_a? ArSerializer::GraphQL::ListTypeClass
       definitions << <<~CODE
         export interface #{request_type_name} {
-          api: '#{field.name}'
+          field: '#{field.name}'
           params?: #{field.args_ts_type}
           query: Type#{association_type.name}Query
           _meta?: { data: Type#{field.type.association_type.name}#{'[]' if multiple} }
@@ -59,7 +59,7 @@ module ArSync::TypeScript
       import ArSyncModelBase from 'ar_sync/#{mode}/ArSyncModel'
       export default class ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<{}> {
         constructor(r: R) { super(r) }
-        data: DataTypeFromRequest<ApiNameRequests[R['api']], R> | null
+        data: DataTypeFromRequest<ApiNameRequests[R['field']], R> | null
       }
     CODE
   end
@@ -70,10 +70,10 @@ module ArSync::TypeScript
       import { DataTypeFromRequest } from 'ar_sync/core/DataType'
       import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/#{mode}/hooks'
       export function useArSyncModel<R extends TypeRequest>(request: R | null) {
-        return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
+        return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['field']], R>>(request)
       }
       export function useArSyncFetch<R extends TypeRequest>(request: R | null) {
-        return useArSyncFetchBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
+        return useArSyncFetchBase<DataTypeFromRequest<ApiNameRequests[R['field']], R>>(request)
       }
     CODE
   end
