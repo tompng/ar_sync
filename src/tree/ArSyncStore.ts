@@ -188,10 +188,10 @@ export default class ArSyncStore {
   update(patch) {
     return this.batchUpdate([patch])
   }
-  _slicePatch(patchData, request) {
-    const obj = request.query && request.query['*'] ? { ...patchData } : {}
-    for (const key in request) {
-      const fieldQuery = request[key]
+  _slicePatch(patchData, query) {
+    const obj = query && query['*'] ? { ...patchData } : {}
+    for (const key in query) {
+      const fieldQuery = query[key]
       const field = (fieldQuery && fieldQuery.field) || key
       if (field in patchData) obj[key] = patchData[field]
     }
@@ -239,7 +239,7 @@ export default class ArSyncStore {
           const queryField = query[key]
           if (lastStep) {
             if (!queryField) return
-            apply(accessKeys, actualPath, query[key], key, null, data[key])
+            apply(accessKeys, actualPath, queryField.query, key, null, data[key])
           } else {
             const data2 = data[key]
             if (!data2) return
