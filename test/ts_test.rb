@@ -21,12 +21,12 @@ class TsTest < Minitest::Test
     dir = 'test/generated_typed_files'
     Dir.mkdir dif unless Dir.exist? dir
     ArSync::TypeScript.generate_typed_files Schema, mode: :tree, dir: dir
-    ['hooks.ts', 'ArSyncModel.ts'].each do |file|
+    ['hooks.ts', 'ArSyncModel.ts', 'types.ts'].each do |file|
       path = File.join dir, file
       File.write path, File.read(path).gsub('ar_sync/', '../../src/')
     end
     output = `./node_modules/typescript/bin/tsc --strict --lib es2017 --noEmit test/type_test.ts`
-    output = output.lines.grep(/type_test/)
+    output = output.lines.grep(/test/)
     puts output
     assert output.empty?
   end
