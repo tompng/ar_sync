@@ -1,7 +1,7 @@
 interface Request {
-    api: string;
-    query: any;
+    field: string;
     params?: any;
+    query?: any;
 }
 declare type Path = (string | number)[];
 interface Change {

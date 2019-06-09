@@ -5,9 +5,9 @@ interface ModelStatus {
 }
 export declare type DataAndStatus<T> = [T | null, ModelStatus];
 export interface Request {
-    api: string;
+    field: string;
     params?: any;
-    query: any;
+    query?: any;
 }
 interface ArSyncModel<T> {
     data: T | null;
