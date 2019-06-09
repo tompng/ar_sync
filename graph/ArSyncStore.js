@@ -16,7 +16,7 @@ const ModelBatchRequest = {
         });
     },
     batchFetch() {
-        const { apiRequests } = this;
+        const { apiRequests } = ModelBatchRequest;
         for (const field in apiRequests) {
             const apiRequest = apiRequests[field];
             for (const { query, requests } of Object.values(apiRequest)) {
@@ -31,14 +31,14 @@ const ModelBatchRequest = {
                 });
             }
         }
-        this.apiRequests = {};
+        ModelBatchRequest.apiRequests = {};
     },
     setTimer() {
-        if (this.timer)
+        if (ModelBatchRequest.timer)
             return;
-        this.timer = setTimeout(() => {
-            this.timer = null;
-            this.batchFetch();
+        ModelBatchRequest.timer = setTimeout(() => {
+            ModelBatchRequest.timer = null;
+            ModelBatchRequest.batchFetch();
         }, 20);
     }
 };
@@ -91,7 +91,7 @@ class ArSyncContainerBase {
     static _load({ field, id, params, query }, root) {
         const parsedQuery = parseRequest_1.parseRequest(query, true);
         if (id) {
-            return ModelBatchRequest.fetch(field, query, id).then(data => new ArSyncRecord(parsedQuery, data[0], null, root));
+            return ModelBatchRequest.fetch(field, query, id).then(data => new ArSyncRecord(parsedQuery, data, null, root));
         }
         else {
             const request = { field, query, params };
