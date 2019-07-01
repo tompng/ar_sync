@@ -176,7 +176,6 @@ class ArSyncRecord extends ArSyncContainerBase {
         this.sync_keys = sync_keys;
         if (!this.sync_keys) {
             this.sync_keys = [];
-            console.error('warning: no sync_keys');
         }
     }
     replaceData(data) {
@@ -207,7 +206,7 @@ class ArSyncRecord extends ArSyncContainerBase {
                 }
             }
             else {
-                if (subQuery.attributes)
+                if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0)
                     this.paths.push(key);
                 if (subData && subData.sync_keys) {
                     if (this.children[aliasName]) {
