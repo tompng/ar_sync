@@ -181,7 +181,6 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.sync_keys = sync_keys
     if (!this.sync_keys) {
       this.sync_keys = []
-      console.error('warning: no sync_keys')
     }
   }
   replaceData(data) {
