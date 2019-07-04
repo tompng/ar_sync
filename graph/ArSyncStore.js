@@ -233,7 +233,14 @@ class ArSyncRecord extends ArSyncContainerBase {
                 }
             }
         }
-        this.subscribeAll();
+        if (this.query.attributes['*']) {
+            for (const key in data) {
+                if (!this.query.attributes[key] && this.data[key] !== data[key]) {
+                    this.mark();
+                    this.data[key] = data[key];
+                }
+            }
+        }
     }
     onNotify(notifyData, path) {
         const { action, class_name, id } = notifyData;
@@ -298,6 +305,9 @@ class ArSyncRecord extends ArSyncContainerBase {
     }
     update(data) {
         for (const key in data) {
+            const subQuery = this.query.attributes[key];
+            if (subQuery && subQuery.attributes && Object.keys(subQuery.attributes).length > 0)
+                continue;
             if (this.data[key] === data[key])
                 continue;
             this.mark();
