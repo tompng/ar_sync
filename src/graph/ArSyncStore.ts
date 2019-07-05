@@ -240,6 +240,7 @@ class ArSyncRecord extends ArSyncContainerBase {
         }
       }
     }
+    this.subscribeAll();
   }
   onNotify(notifyData, path?) {
     const { action, class_name, id } = notifyData
