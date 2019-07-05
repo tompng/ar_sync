@@ -355,7 +355,6 @@ class ArSyncCollection extends ArSyncContainerBase {
             this.sync_keys = sync_keys.map(key => key + this.path);
         }
         else {
-            console.error('warning: no sync_keys');
             this.sync_keys = [];
         }
     }
