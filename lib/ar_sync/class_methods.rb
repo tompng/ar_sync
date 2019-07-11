@@ -153,16 +153,27 @@ module ArSync::GraphSync::ClassMethods
           limit: [params && params[:limit]&.to_i, limit].compact.min
         )
       end
+      serializer_data_block = lambda do |preloaded, _context, _params|
+        preloaded ? preloaded[id] || [] : send(name)
+      end
       params_type = { limit?: :int, order?: [{ :* => %w[asc desc] }, 'asc', 'desc'] }
     else
       params_type = {}
     end
-    _sync_define name, preload: preload, association: association, **option.merge(params_type: params_type), &data_block
+    _sync_define(
+      name,
+      serializer_data_block: serializer_data_block,
+      preload: preload,
+      association: association,
+      params_type: params_type,
+      **option,
+      &data_block
+    )
   end
 
-  def _sync_define(name, **option, &data_block)
+  def _sync_define(name, serializer_data_block: nil, **option, &data_block)
     _initialize_sync_callbacks
-    serializer_field name, **option, &data_block unless _serializer_field_info name
+    serializer_field name, **option, &(serializer_data_block || data_block) unless _serializer_field_info name
     serializer_field name, **option, namespace: :sync, &data_block
   end
 
