@@ -1,4 +1,4 @@
-interface Request { api: string; query: any; params?: any }
+interface Request { field: string; params?: any; query?: any }
 type Path = (string | number)[]
 interface Change { path: Path; value: any }
 type ChangeCallback = (change: Change) => void

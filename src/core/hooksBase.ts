@@ -3,7 +3,7 @@ import ArSyncAPI from './ArSyncApi'
 
 interface ModelStatus { complete: boolean; notfound?: boolean; connected: boolean }
 export type DataAndStatus<T> = [T | null, ModelStatus]
-export interface Request { api: string; params?: any; query: any }
+export interface Request { field: string; params?: any; query?: any }
 
 interface ArSyncModel<T> {
   data: T | null

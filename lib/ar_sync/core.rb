@@ -119,13 +119,13 @@ module ArSync
   def self._extract_paths(args)
     parsed = ArSerializer::Serializer.parse_args args
     paths = []
-    extract = lambda do |path, attributes|
+    extract = lambda do |path, query|
       paths << path
-      attributes.each do |key, value|
-        sub_attributes = value[:attributes]
-        next unless sub_attributes
-        sub_path = [*path, key]
-        extract.call sub_path, sub_attributes
+      query&.each do |key, value|
+        sub_query = value[:attributes]
+        next unless sub_query
+        sub_path = [*path, (value[:field_name] || key)]
+        extract.call sub_path, sub_query
       end
     end
     extract.call [], parsed[:attributes]

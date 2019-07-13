@@ -1,3 +1,4 @@
+import { parseRequest } from '../core/parseRequest'
 class Updator {
   changes
   markedForFreezeObjects
@@ -167,11 +168,11 @@ class Updator {
 
 export default class ArSyncStore {
   data
-  query
+  request
   immutable
-  constructor(query, data, option = {} as { immutable?: boolean }) {
+  constructor(request, data, option = {} as { immutable?: boolean }) {
     this.data = option.immutable ? Updator.createFrozenObject(data) : data
-    this.query = ArSyncStore.parseQuery(query)
+    this.request = parseRequest(request)
     this.immutable = option.immutable
   }
   replaceData(data) {
@@ -188,136 +189,110 @@ export default class ArSyncStore {
     return this.batchUpdate([patch])
   }
   _slicePatch(patchData, query) {
-    const obj = {}
-    for (const key in patchData) {
-      if (key === 'id' || query.attributes['*']) {
-        obj[key] = patchData[key]
-      } else {
-        const subq = query.attributes[key]
-        if (subq) {
-          obj[subq.column || key] = patchData[key]
-        }
-      }
+    const obj = query && query['*'] ? { ...patchData } : {}
+    for (const key in query) {
+      const fieldQuery = query[key]
+      const field = (fieldQuery && fieldQuery.field) || key
+      if (field in patchData) obj[key] = patchData[field]
     }
+    if (patchData.id) obj.id = patchData.id
     return obj
   }
   _applyPatch(data, accessKeys, actualPath, updator, query, patchData) {
     for (const key in patchData) {
-      const subq = query.attributes[key]
-      const value = patchData[key]
-      if (subq || query.attributes['*']) {
-        const subcol = (subq && subq.column) || key
-        if (data[subcol] !== value) {
-          this.data = updator.add(this.data, accessKeys, actualPath, subcol, value)
+      const subq = query[key]
+      const value = patchData[(subq && subq.field) || key]
+      if (subq || query['*']) {
+        if (data[key] !== value) {
+          this.data = updator.add(this.data, accessKeys, actualPath, key, value)
         }
       }
     }
   }
-  _update(patch, updator, events) {
+  _update(patch: { action: string; path: (string | number)[]; ordering; data }, updator, events) {
     const { action, path } = patch
     const patchData = patch.data
-    let query = this.query
+    let request = this.request
     let data = this.data
-    const actualPath: (string | number)[] = []
-    const accessKeys: (string | number)[] = []
-    for (let i = 0; i < path.length - 1; i++) {
+    const trace = (i: number, actualPath: (string | number)[], accessKeys: (string | number)[], query, data) => {
       const nameOrId = path[i]
+      const lastStep = i === path.length - 1
       if (typeof(nameOrId) === 'number') {
         const idx = data.findIndex(o => o.id === nameOrId)
-        if (idx < 0) return
-        actualPath.push(nameOrId)
-        accessKeys.push(idx)
-        data = data[idx]
+        if (lastStep) {
+          apply(accessKeys, actualPath, query, null, idx, data[idx])
+        } else {
+          if (idx < 0) return
+          actualPath.push(nameOrId)
+          accessKeys.push(idx)
+          const data2 = data[idx]
+          trace(i + 1, actualPath, accessKeys, query, data2)
+        }
       } else {
-        const { attributes } = query
-        if (!attributes[nameOrId]) return
-        const column = attributes[nameOrId].column || nameOrId
-        query = attributes[nameOrId]
-        actualPath.push(column)
-        accessKeys.push(column)
-        data = data[column]
-      }
-      if (!data) return
-    }
-    const nameOrId = path[path.length - 1]
-    let id, idx, column, target = data
-    if (typeof(nameOrId) === 'number') {
-      id = nameOrId
-      idx = data.findIndex(o => o.id === id)
-      target = data[idx]
-    } else if (nameOrId) {
-      const { attributes } = query
-      if (!attributes[nameOrId]) return
-      column = attributes[nameOrId].column || nameOrId
-      query = attributes[nameOrId]
-      target = data[column]
-    }
-    if (action === 'create') {
-      const obj = this._slicePatch(patchData, query)
-      if (column) {
-        this.data = updator.add(this.data, accessKeys, actualPath, column, obj)
-      } else if (!target) {
-        const ordering = Object.assign({}, patch.ordering)
-        const limitOverride = query.params && query.params.limit
-        ordering.order = query.params && query.params.order || ordering.order
-        if (ordering.limit == null || limitOverride != null && limitOverride < ordering.limit) ordering.limit = limitOverride
-        this.data = updator.add(this.data, accessKeys, actualPath, data.length, obj, ordering)
-      }
-      return
-    }
-    if (action === 'destroy') {
-      if (column) {
-        this.data = updator.remove(this.data, accessKeys, actualPath, column)
-      } else if (idx >= 0) {
-        this.data = updator.remove(this.data, accessKeys, actualPath, idx)
-      }
-      return
-    }
-    if (!target) return
-    if (column) {
-      actualPath.push(column)
-      accessKeys.push(column)
-    } else if (id) {
-      actualPath.push(id)
-      accessKeys.push(idx)
-    }
-    if (action === 'update') {
-      this._applyPatch(target, accessKeys, actualPath, updator, query, patchData)
-    } else {
-      const eventData = { target, path: actualPath, data: patchData.data }
-      events.push({ type: patchData.type, data: eventData })
-    }
-  }
-
-  static parseQuery(query, attrsonly?){
-    const attributes = {}
-    let column = null
-    let params = null
-    if (query.constructor !== Array) query = [query]
-    for (const arg of query) {
-      if (typeof(arg) === 'string') {
-        attributes[arg] = {}
-      } else if (typeof(arg) === 'object') {
-        for (const key in arg){
-          const value = arg[key]
-          if (attrsonly) {
-            attributes[key] = this.parseQuery(value)
-            continue
-          }
-          if (key === 'attributes') {
-            const child = this.parseQuery(value, true)
-            for (const k in child) attributes[k] = child[k]
-          } else if (key === 'as') {
-            column = value
-          } else if (key === 'params') {
-            params = value
+        const matchedKeys: string[] = []
+        for (const key in query) {
+          const field = query[key].field || key
+          if (field === nameOrId) matchedKeys.push(key)
+        }
+        const fork = matchedKeys.length > 1
+        for (const key of matchedKeys) {
+          const queryField = query[key]
+          if (lastStep) {
+            if (!queryField) return
+            apply(accessKeys, actualPath, queryField.query, key, null, data[key])
           } else {
-            attributes[key] = this.parseQuery(value)
+            const data2 = data[key]
+            if (!data2) return
+            const actualPath2 = fork ? [...actualPath] : actualPath
+            const accessKeys2 = fork ? [...accessKeys] : accessKeys
+            actualPath2.push(key)
+            accessKeys2.push(key)
+            trace(i + 1, actualPath2, accessKeys2, queryField.query, data2)
           }
         }
       }
     }
-    if (attrsonly) return attributes
-    return { attributes, column, params }
+    const apply = (accessKeys: (string | number)[], actualPath: (string | number)[], query, column: string | null, idx: number | null, target) => {
+      if (action === 'create') {
+        const obj = this._slicePatch(patchData, query)
+        if (column) {
+          this.data = updator.add(this.data, accessKeys, actualPath, column, obj)
+        } else if (!target) {
+          const ordering = Object.assign({}, patch.ordering)
+          const limitOverride = request.params && request.params.limit
+          ordering.order = request.params && request.params.order || ordering.order
+          if (ordering.limit == null || limitOverride != null && limitOverride < ordering.limit) ordering.limit = limitOverride
+          this.data = updator.add(this.data, accessKeys, actualPath, data.length, obj, ordering)
+        }
+        return
+      }
+      if (action === 'destroy') {
+        if (column) {
+          this.data = updator.remove(this.data, accessKeys, actualPath, column)
+        } else if (idx != null) {
+          this.data = updator.remove(this.data, accessKeys, actualPath, idx)
+        }
+        return
+      }
+      if (!target) return
+      if (column) {
+        actualPath.push(column)
+        accessKeys.push(column)
+      } else if (idx != null && patchData.id) {
+        actualPath.push(patchData.id)
+        accessKeys.push(idx)
+      }
+      if (action === 'update') {
+        this._applyPatch(target, accessKeys, actualPath, updator, query, patchData)
+      } else {
+        const eventData = { target, path: actualPath, data: patchData.data }
+        events.push({ type: patchData.type, data: eventData })
+      }
+    }
+    if (path.length === 0) {
+      apply([], [], request.query, null, null, data)
+    } else {
+      trace(0, [], [], request.query, data)
+    }
   }
 }

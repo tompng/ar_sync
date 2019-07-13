@@ -99,7 +99,7 @@ module ArSync
       end
       responses = params[:requests].map do |request|
         begin
-          api_name = request[:api]
+          api_name = request[:field]
           info = self.class._serializer_field_info api_name
           raise ArSync::ApiNotFound, "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless info
           api_params = (request[:params].as_json || {}).transform_keys(&:to_sym)

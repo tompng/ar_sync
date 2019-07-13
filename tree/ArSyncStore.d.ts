@@ -1,8 +1,8 @@
 export default class ArSyncStore {
     data: any;
-    query: any;
+    request: any;
     immutable: any;
-    constructor(query: any, data: any, option?: {
+    constructor(request: any, data: any, option?: {
         immutable?: boolean | undefined;
     });
     replaceData(data: any): void;
@@ -14,8 +14,12 @@ export default class ArSyncStore {
         changes: any;
         events: never[];
     };
-    _slicePatch(patchData: any, query: any): {};
+    _slicePatch(patchData: any, query: any): any;
     _applyPatch(data: any, accessKeys: any, actualPath: any, updator: any, query: any, patchData: any): void;
-    _update(patch: any, updator: any, events: any): void;
-    static parseQuery(query: any, attrsonly?: any): {};
+    _update(patch: {
+        action: string;
+        path: (string | number)[];
+        ordering: any;
+        data: any;
+    }, updator: any, events: any): void;
 }

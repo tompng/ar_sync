@@ -11,69 +11,46 @@ module ArSync::TypeScript
   end
 
   def self.generate_type_definition(api_class)
+    schema = Class.new
+    schema.define_singleton_method(:name) { 'Schema' }
+    schema.define_singleton_method(:ancestors) { api_class.ancestors }
+    schema.define_singleton_method(:method_missing) { |*args| api_class.send(*args) }
+    classes = [schema] + api_related_classes(api_class) - [api_class]
     [
-      ArSerializer::TypeScript.generate_type_definition(api_related_classes(api_class)),
-      request_type_definition(api_class)
+      "import { DataTypeFromQueryPair } from 'ar_sync/core/DataType'",
+      ArSerializer::TypeScript.generate_type_definition(classes),
+      <<~CODE
+      type ExtractData<T> = T extends { data: infer D } ? D : T
+      export type DataTypeFromRootQuery<Q extends TypeSchemaAliasFieldQuery> =
+        ExtractData<DataTypeFromQueryPair<TypeSchema, { data: Q }>>
+        export type TypeRootQuery = TypeSchemaAliasFieldQuery
+      CODE
     ].join "\n"
   end
 
   def self.api_related_classes(api_class)
-    classes = ArSerializer::TypeScript.related_serializer_types([api_class]).map(&:type)
-    classes - [api_class]
-  end
-
-  def self.request_type_definition(api_class)
-    type = ArSerializer::GraphQL::TypeClass.from api_class
-    definitions = []
-    request_types = {}
-    type.fields.each do |field|
-      association_type = field.type.association_type
-      next unless association_type
-      prefix = 'Class' if field.name.match?(/\A[A-Z]/) # for class reload query
-      request_type_name = "Type#{prefix}#{field.name.camelize}Request"
-      request_types[field.name] = request_type_name
-      multiple = field.type.is_a? ArSerializer::GraphQL::ListTypeClass
-      definitions << <<~CODE
-        export interface #{request_type_name} {
-          api: '#{field.name}'
-          params?: #{field.args_ts_type}
-          query: Type#{association_type.name}Query
-          _meta?: { data: Type#{field.type.association_type.name}#{'[]' if multiple} }
-        }
-      CODE
-    end
-    [
-      'export type TypeRequest = ',
-      request_types.values.map { |value| "  | #{value}" },
-      'export type ApiNameRequests =  {',
-      request_types.map { |key, value| "  #{key}: #{value}" },
-      '}',
-      definitions
-    ].join("\n")
+    ArSerializer::TypeScript.related_serializer_types([api_class]).map(&:type)
   end
 
   def self.generate_model_script(mode)
     <<~CODE
-      import { TypeRequest, ApiNameRequests } from './types'
-      import { DataTypeFromRequest } from 'ar_sync/core/DataType'
+      import { TypeSchema, TypeRootQuery, DataTypeFromRootQuery } from './types'
       import ArSyncModelBase from 'ar_sync/#{mode}/ArSyncModel'
-      export default class ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<{}> {
-        constructor(r: R) { super(r) }
-        data: DataTypeFromRequest<ApiNameRequests[R['api']], R> | null
+      export default class ArSyncModel<Q extends TypeRootQuery> extends ArSyncModelBase<DataTypeFromRootQuery<Q>> {
+        constructor(q: Q) { super(q) }
       }
     CODE
   end
 
   def self.generate_hooks_script(mode)
     <<~CODE
-      import { TypeRequest, ApiNameRequests } from './types'
-      import { DataTypeFromRequest } from 'ar_sync/core/DataType'
+      import { TypeSchema, TypeRootQuery, DataTypeFromRootQuery } from './types'
       import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/#{mode}/hooks'
-      export function useArSyncModel<R extends TypeRequest>(request: R | null) {
-        return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
+      export function useArSyncModel<Q extends TypeRootQuery>(request: Q | null) {
+        return useArSyncModelBase<DataTypeFromRootQuery<Q>>(request)
       }
-      export function useArSyncFetch<R extends TypeRequest>(request: R | null) {
-        return useArSyncFetchBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
+      export function useArSyncFetch<Q extends TypeRootQuery>(request: Q | null) {
+        return useArSyncFetchBase<DataTypeFromRootQuery<Q>>(request)
       }
     CODE
   end

@@ -1,9 +1,10 @@
 import ArSyncAPI from '../core/ArSyncApi'
+import { parseRequest } from '../core/parseRequest'
 
 const ModelBatchRequest = {
-  timer: null,
+  timer: null as null | number,
   apiRequests: {} as {
-    [api: string]: {
+    [key: string]: {
       [queryJSON: string]: {
         query
         requests: {
@@ -16,23 +17,23 @@ const ModelBatchRequest = {
       }
     }
   },
-  fetch(api, query, id) {
+  fetch(field, query, id) {
     this.setTimer()
     return new Promise(resolve => {
       const queryJSON = JSON.stringify(query)
-      const apiRequest = this.apiRequests[api] = this.apiRequests[api] || {}
+      const apiRequest = this.apiRequests[field] = this.apiRequests[field] || {}
       const queryRequests = apiRequest[queryJSON] = apiRequest[queryJSON] || { query, requests: {} }
       const request = queryRequests.requests[id] = queryRequests.requests[id] || { id, callbacks: [] }
       request.callbacks.push(resolve)
     })
   },
   batchFetch() {
-    const { apiRequests } = this as typeof ModelBatchRequest
-    for (const api in apiRequests) {
-      const apiRequest = apiRequests[api]
+    const { apiRequests } = ModelBatchRequest
+    for (const field in apiRequests) {
+      const apiRequest = apiRequests[field]
       for (const { query, requests } of Object.values(apiRequest)) {
         const ids = Object.values(requests).map(({ id }) => id)
-        ArSyncAPI.syncFetch({ api, query, params: { ids } }).then((models: any[]) => {
+        ArSyncAPI.syncFetch({ field, query, params: { ids } }).then((models: any[]) => {
           for (const model of models) requests[model.id].model = model
           for (const { model, callbacks } of Object.values(requests)) {
             for (const callback of callbacks) callback(model)
@@ -40,13 +41,13 @@ const ModelBatchRequest = {
         })
       }
     }
-    this.apiRequests = {}
+    ModelBatchRequest.apiRequests = {}
   },
   setTimer() {
-    if (this.timer) return
-    this.timer = setTimeout(() => {
-      this.timer = null
-      this.batchFetch()
+    if (ModelBatchRequest.timer) return
+    ModelBatchRequest.timer = setTimeout(() => {
+      ModelBatchRequest.timer = null
+      ModelBatchRequest.batchFetch()
     }, 20)
   }
 }
@@ -96,47 +97,15 @@ class ArSyncContainerBase {
     for (const l of this.listeners) l.unsubscribe()
     this.listeners = []
   }
-  static parseQuery(query, attrsonly = false){
-    const attributes = {}
-    let column = null
-    let params = null
-    if (!query) query = []
-    if (query.constructor !== Array) query = [query]
-    for (const arg of query) {
-      if (typeof(arg) === 'string') {
-        attributes[arg] = {}
-      } else if (typeof(arg) === 'object') {
-        for (const key in arg){
-          const value = arg[key]
-          if (attrsonly) {
-            attributes[key] = this.parseQuery(value)
-            continue
-          }
-          if (key === 'attributes') {
-            const child = this.parseQuery(value, true)
-            for (const k in child) attributes[k] = child[k]
-          } else if (key === 'as') {
-            column = value
-          } else if (key === 'params') {
-            params = value
-          } else {
-            attributes[key] = this.parseQuery(value)
-          }
-        }
-      }
-    }
-    if (attrsonly) return attributes
-    return { attributes, as: column, params }
-  }
-  static _load({ api, id, params, query }, root) {
-    const parsedQuery = ArSyncRecord.parseQuery(query)
+  static _load({ field, id, params, query }, root) {
+    const parsedQuery = parseRequest(query, true)
     if (id) {
-      return ModelBatchRequest.fetch(api, query, id).then(data => new ArSyncRecord(parsedQuery, data[0], null, root))
+      return ModelBatchRequest.fetch(field, query, id).then(data => new ArSyncRecord(parsedQuery, data, null, root))
     } else {
-      const request = { api, query, params }
+      const request = { field, query, params }
       return ArSyncAPI.syncFetch(request).then((response: any) => {
         if (response.collection && response.order) {
-          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root)
+          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, params, response, request, root)
         } else {
           return new ArSyncRecord(parsedQuery, response, request, root)
         }
@@ -168,10 +137,10 @@ class ArSyncRecord extends ArSyncContainerBase {
   sync_keys
   paths
   reloadQueryCache
-  constructor(query, data, request, root) {
+  constructor(query, data, initialRequest, root) {
     super()
     this.root = root
-    if (request) this.initForReload(request)
+    if (initialRequest) this.initForReload(initialRequest)
     this.query = query
     this.data = {}
     this.children = {}
@@ -191,43 +160,43 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.data.id = data.id
     }
     this.paths = []
-    for (const key in this.query.attributes) {
-      const subQuery = this.query.attributes[key]
-      const aliasName = subQuery.as || key
-      const subData = data[aliasName]
+    for (const key in this.query) {
+      const queryField = this.query[key]
+      const aliasName = queryField.field || key
+      const subData = data[key]
       if (key === 'sync_keys') continue
-      if (subQuery.attributes && (subData instanceof Array || (subData && subData.collection && subData.order))) {
-        if (this.children[aliasName]) {
-          this.children[aliasName].replaceData(subData, this.sync_keys)
+      if (queryField.query && (subData instanceof Array || (subData && subData.collection && subData.order))) {
+        if (this.children[key]) {
+          this.children[key].replaceData(subData, this.sync_keys)
         } else {
-          const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root)
+          const collection = new ArSyncCollection(this.sync_keys, aliasName, queryField.query, queryField.params, subData, null, this.root)
           this.mark()
-          this.children[aliasName] = collection
-          this.data[aliasName] = collection.data
+          this.children[key] = collection
+          this.data[key] = collection.data
           collection.parentModel = this
-          collection.parentKey = aliasName
+          collection.parentKey = key
         }
       } else {
-        if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0) this.paths.push(key);
+        if (queryField.query && Object.keys(queryField.query).length > 0) this.paths.push(key);
         if (subData && subData.sync_keys) {
-          if (this.children[aliasName]) {
-            this.children[aliasName].replaceData(subData)
+          if (this.children[key]) {
+            this.children[key].replaceData(subData)
           } else {
-            const model = new ArSyncRecord(subQuery, subData, null, this.root)
+            const model = new ArSyncRecord(queryField.query, subData, null, this.root)
             this.mark()
-            this.children[aliasName] = model
-            this.data[aliasName] = model.data
+            this.children[key] = model
+            this.data[key] = model.data
             model.parentModel = this
-            model.parentKey = aliasName
+            model.parentKey = key
           }
         } else {
-          if(this.children[aliasName]) {
-            this.children[aliasName].release()
-            delete this.children[aliasName]
+          if(this.children[key]) {
+            this.children[key].release()
+            delete this.children[key]
           }
-          if (this.data[aliasName] !== subData) {
+          if (this.data[key] !== subData) {
             this.mark()
-            this.data[aliasName] = subData
+            this.data[key] = subData
           }
         }
       }
@@ -252,7 +221,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.onChange([path], null)
     } else if (action === 'add') {
       if (this.data.id === id) return
-      const query = this.query.attributes[path]
+      const query = this.query[path].query
       ModelBatchRequest.fetch(class_name, query, id).then(data => {
         if (!data) return
         const model = new ArSyncRecord(query, data, null, this.root)
@@ -282,14 +251,14 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
   reloadQuery() {
     if (this.reloadQueryCache) return this.reloadQueryCache
-    const reloadQuery = this.reloadQueryCache = { attributes: [] as any[] }
-    for (const key in this.query.attributes) {
+    const reloadQuery = this.reloadQueryCache = { query: [] as any[] }
+    for (const key in this.query) {
       if (key === 'sync_keys') continue
-      const val = this.query.attributes[key]
-      if (!val || !val.attributes) {
-        reloadQuery.attributes.push(key)
-      } else if (!val.params && Object.keys(val.attributes).length === 0) {
-        reloadQuery.attributes.push({ [key]: val })
+      const val = this.query[key]
+      if (!val || !val.query) {
+        reloadQuery.query.push(key)
+      } else if (!val.params && Object.keys(val.query).length === 0) {
+        reloadQuery.query.push({ [key]: val })
       }
     }
     return reloadQuery
@@ -326,13 +295,13 @@ class ArSyncCollection extends ArSyncContainerBase {
   data
   children
   sync_keys
-  constructor(sync_keys, path, query, data, request, root){
+  constructor(sync_keys, path, query, params, data, initialRequest, root){
     super()
     this.root = root
     this.path = path
-    if (request) this.initForReload(request)
-    if (query.params && (query.params.order || query.params.limit)) {
-      this.order = { limit: query.params.limit, mode: query.params.order || 'asc' }
+    if (initialRequest) this.initForReload(initialRequest)
+    if (params && (params.order || params.limit)) {
+      this.order = { limit: params.limit, mode: params.order || 'asc' }
     } else {
       this.order = { limit: null, mode: 'asc' }
     }
