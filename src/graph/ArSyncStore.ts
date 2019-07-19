@@ -208,7 +208,7 @@ class ArSyncRecord extends ArSyncContainerBase {
           collection.parentKey = aliasName
         }
       } else {
-        if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0) this.paths.push(key);
+        if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0) this.paths.push(key)
         if (subData && subData.sync_keys) {
           if (this.children[aliasName]) {
             this.children[aliasName].replaceData(subData)
@@ -240,7 +240,7 @@ class ArSyncRecord extends ArSyncContainerBase {
         }
       }
     }
-    this.subscribeAll();
+    this.subscribeAll()
   }
   onNotify(notifyData, path?) {
     const { action, class_name, id } = notifyData
@@ -254,7 +254,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       if (this.data.id === id) return
       const query = this.query.attributes[path]
       ModelBatchRequest.fetch(class_name, query, id).then(data => {
-        if (!data) return
+        if (!data || !this.data) return
         const model = new ArSyncRecord(query, data, null, this.root)
         if (this.children[path]) this.children[path].release()
         this.children[path] = model
@@ -266,7 +266,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       })
     } else {
       ModelBatchRequest.fetch(class_name, this.reloadQuery(), id).then(data => {
-        this.update(data)
+        if (this.data) this.update(data)
       })
     }
   }
@@ -395,7 +395,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       }
     }
     ModelBatchRequest.fetch(className, this.query, id).then((data) => {
-      if (!data) return
+      if (!data || !this.data) return
       const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parentModel = this
       model.parentKey = id
