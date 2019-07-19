@@ -76,6 +76,7 @@ module ArSync::GraphSync::InstanceMethods
         to_user = only_to.is_a?(Symbol) ? instance_eval(&only_to) : instance_exec(&only_to)
         parent = nil unless to_user
       end
+      inverse_name = instance_exec(&inverse_name) if inverse_name.is_a? Proc
       owned = parent.class._sync_child_info(inverse_name).present? if parent
       parents << [parent, [inverse_name, to_user, owned]]
     end
