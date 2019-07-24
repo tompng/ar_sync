@@ -3,7 +3,7 @@ interface Request {
     query: any;
     params?: any;
 }
-declare type Path = (string | number)[];
+declare type Path = Readonly<(string | number)[]>;
 interface Change {
     path: Path;
     value: any;
@@ -20,6 +20,12 @@ interface Adapter {
     ondisconnect: () => void;
     onreconnect: () => void;
 }
+declare type PathFirst<P extends Readonly<any[]>> = ((...args: P) => void) extends (first: infer First, ...other: any) => void ? First : never;
+declare type PathRest<U> = U extends Readonly<any[]> ? ((...args: U) => any) extends (head: any, ...args: infer T) => any ? U extends Readonly<[any, any, ...any[]]> ? T : never : never : never;
+declare type DigResult<Data, P extends Readonly<any[]>> = Data extends null | undefined ? Data : PathFirst<P> extends never ? Data : PathFirst<P> extends keyof Data ? (Data extends Readonly<any[]> ? undefined : never) | {
+    0: Data[PathFirst<P>];
+    1: DigResult<Data[PathFirst<P>], PathRest<P>>;
+}[PathRest<P> extends never ? 0 : 1] : undefined;
 export default abstract class ArSyncModelBase<T> {
     private _ref;
     private _listenerSerial;
@@ -48,6 +54,8 @@ export default abstract class ArSyncModelBase<T> {
     subscribeOnce(event: SubscriptionType, callback: SubscriptionCallback): {
         unsubscribe: () => void;
     };
+    dig<P extends Path>(path: P): DigResult<T, P> | null;
+    static digData<Data, P extends Path>(data: Data, path: P): DigResult<Data, P>;
     subscribe(event: SubscriptionType, callback: SubscriptionCallback): {
         unsubscribe: () => void;
     };
