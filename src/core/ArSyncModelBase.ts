@@ -1,5 +1,5 @@
 interface Request { api: string; query: any; params?: any }
-type Path = (string | number)[]
+type Path = Readonly<(string | number)[]>
 interface Change { path: Path; value: any }
 type ChangeCallback = (change: Change) => void
 type LoadCallback = () => void
@@ -11,6 +11,24 @@ interface Adapter {
   ondisconnect: () => void
   onreconnect: () => void
 }
+
+type PathFirst<P extends Readonly<any[]>> = ((...args: P) => void) extends (first: infer First, ...other: any) => void ? First : never
+
+type PathRest<U> = U extends Readonly<any[]> ?
+  ((...args: U) => any) extends (head: any, ...args: infer T) => any
+    ? U extends Readonly<[any, any, ...any[]]> ? T : never
+    : never
+  : never;
+
+type DigResult<Data, P extends Readonly<any[]>> =
+  Data extends null | undefined ? Data :
+  PathFirst<P> extends never ? Data :
+  PathFirst<P> extends keyof Data ?
+  (Data extends Readonly<any[]> ? undefined : never) | {
+    0: Data[PathFirst<P>];
+    1: DigResult<Data[PathFirst<P>], PathRest<P>>
+  }[PathRest<P> extends never ? 0 : 1]
+  : undefined
 
 export default abstract class ArSyncModelBase<T> {
   private _ref
@@ -51,6 +69,20 @@ export default abstract class ArSyncModelBase<T> {
       subscription.unsubscribe()
     })
     return subscription
+  }
+  dig<P extends Path>(path: P) {
+    return ArSyncModelBase.digData(this.data, path)
+  }
+  static digData<Data, P extends Path>(data: Data, path: P): DigResult<Data, P> {
+    if (path.length === 0) return data as any
+    if (data == null) return data
+    const key = path[0]
+    const other = path.slice(1)
+    if (Array.isArray(data)) {
+      return this.digData(data.find(el => el.id === key), other)
+    } else {
+      return this.digData(data[key], other)
+    }
   }
   subscribe(event: SubscriptionType, callback: SubscriptionCallback): { unsubscribe: () => void } {
     const id = this._listenerSerial++
