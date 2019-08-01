@@ -56,6 +56,8 @@ module ArSync
           ArSync.serialize model.to_a, query, user: current_user
         when ActiveRecord::Base
           ArSync.sync_api model, current_user, query
+        when ArSerializer::Serializable
+          ArSync.serialize model, query, user: current_user
         else
           model
         end
@@ -83,7 +85,7 @@ module ArSync
         case model
         when ArSync::Collection, ActiveRecord::Relation, Array
           ArSerializer.serialize model.to_a, query, context: current_user
-        when ActiveRecord::Base
+        when ArSerializer::Serializable
           ArSerializer.serialize model, query, context: current_user
         else
           model
