@@ -363,15 +363,19 @@ class ArSyncCollection extends ArSyncContainerBase {
     const newData: any[] = []
     for (const subData of collection) {
       let model = existings[subData.id]
+      let data = subData
       if (model) {
         model.replaceData(subData)
-      } else {
+      } else if (subData.id) {
         model = new ArSyncRecord(this.query, subData, null, this.root)
         model.parentModel = this
         model.parentKey = subData.id
       }
-      newChildren.push(model)
-      newData.push(model.data)
+      if (model) {
+        newChildren.push(model)
+        data = model.data
+      }
+      newData.push(data)
     }
     while (this.children.length) {
       const child = this.children.pop()
