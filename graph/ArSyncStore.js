@@ -193,7 +193,7 @@ class ArSyncRecord extends ArSyncContainerBase {
             const child = this.children[aliasName];
             if (key === 'sync_keys')
                 continue;
-            if (subQuery.attributes && (subData instanceof Array || (subData && subData.collection && subData.order))) {
+            if (subData instanceof Array || (subData && subData.collection && subData.order)) {
                 if (child) {
                     child.replaceData(subData, this.sync_keys);
                 }
