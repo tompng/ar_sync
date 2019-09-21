@@ -329,10 +329,6 @@ class ArSyncRecord extends ArSyncContainerBase {
         if (this.parentModel)
             this.parentModel.markAndSet(this.parentKey, this.data);
     }
-    onChange(path, data) {
-        if (this.parentModel)
-            this.parentModel.onChange([this.parentKey, ...path], data);
-    }
 }
 class ArSyncCollection extends ArSyncContainerBase {
     constructor(sync_keys, path, query, data, request, root) {
@@ -342,15 +338,34 @@ class ArSyncCollection extends ArSyncContainerBase {
         if (request)
             this.initForReload(request);
         if (query.params && (query.params.order || query.params.limit)) {
-            this.order = { limit: query.params.limit, mode: query.params.order || 'asc' };
+            this.setOrdering(query.params.limit, query.params.order);
         }
         else {
-            this.order = { limit: null, mode: 'asc' };
+            this.order = { limit: null, mode: 'asc', key: 'id' };
         }
         this.query = query;
         this.data = [];
         this.children = [];
         this.replaceData(data, sync_keys);
+    }
+    setOrdering(limit, order) {
+        let mode = 'asc';
+        let key = 'id';
+        if (order === 'asc' || order === 'desc') {
+            mode = order;
+        }
+        else if (typeof order === 'object' && order) {
+            const keys = Object.keys(order);
+            if (keys.length > 1)
+                throw 'multiple order keys are not supported';
+            if (keys.length === 1)
+                key = keys[0];
+            mode = order[key] === 'asc' ? 'asc' : 'desc';
+        }
+        const limitNumber = (typeof limit === 'number') ? limit : null;
+        if (limitNumber !== null && key !== 'id')
+            throw 'limit with custom order key is not supported';
+        this.order = { limit: limitNumber, mode, key };
     }
     setSyncKeys(sync_keys) {
         if (sync_keys) {
@@ -366,9 +381,9 @@ class ArSyncCollection extends ArSyncContainerBase {
         for (const child of this.children)
             existings[child.data.id] = child;
         let collection;
-        if (data.collection && data.order) {
+        if ('collection' in data && 'order' in data) {
             collection = data.collection;
-            this.order = data.order;
+            this.setOrdering(data.order.limit, data.order.mode);
         }
         else {
             collection = data;
@@ -376,7 +391,7 @@ class ArSyncCollection extends ArSyncContainerBase {
         const newChildren = [];
         const newData = [];
         for (const subData of collection) {
-            let model = existings[subData.id];
+            let model = subData && 'id' in subData && existings[subData.id];
             let data = subData;
             if (model) {
                 model.replaceData(subData);
@@ -422,7 +437,7 @@ class ArSyncCollection extends ArSyncContainerBase {
                     return;
             }
         }
-        ModelBatchRequest.fetch(className, this.query, id).then((data) => {
+        ModelBatchRequest.fetch(className, this.query, id).then(data => {
             if (!data || !this.data)
                 return;
             const model = new ArSyncRecord(this.query, data, null, this.root);
@@ -431,14 +446,13 @@ class ArSyncCollection extends ArSyncContainerBase {
             const overflow = this.order.limit && this.order.limit === this.data.length;
             let rmodel;
             this.mark();
+            const orderKey = this.order.key;
             if (this.order.mode === 'asc') {
                 const last = this.data[this.data.length - 1];
                 this.children.push(model);
                 this.data.push(model.data);
-                if (last && last.id > id) {
-                    this.children.sort((a, b) => a.data.id < b.data.id ? -1 : +1);
-                    this.data.sort((a, b) => a.id < b.id ? -1 : +1);
-                }
+                if (last && last[orderKey] > data[orderKey])
+                    this.markAndSort();
                 if (overflow) {
                     rmodel = this.children.shift();
                     rmodel.release();
@@ -449,10 +463,8 @@ class ArSyncCollection extends ArSyncContainerBase {
                 const first = this.data[0];
                 this.children.unshift(model);
                 this.data.unshift(model.data);
-                if (first && first.id > id) {
-                    this.children.sort((a, b) => a.data.id > b.data.id ? -1 : +1);
-                    this.data.sort((a, b) => a.id > b.id ? -1 : +1);
-                }
+                if (first && first[orderKey] > data[orderKey])
+                    this.markAndSort();
                 if (overflow) {
                     rmodel = this.children.pop();
                     rmodel.release();
@@ -463,6 +475,18 @@ class ArSyncCollection extends ArSyncContainerBase {
             if (rmodel)
                 this.onChange([rmodel.id], null);
         });
+    }
+    markAndSort() {
+        this.mark();
+        const orderKey = this.order.key;
+        if (this.order.mode === 'asc') {
+            this.children.sort((a, b) => a.data[orderKey] < b.data[orderKey] ? -1 : +1);
+            this.data.sort((a, b) => a[orderKey] < b[orderKey] ? -1 : +1);
+        }
+        else {
+            this.children.sort((a, b) => a.data[orderKey] > b.data[orderKey] ? -1 : +1);
+            this.data.sort((a, b) => a[orderKey] > b[orderKey] ? -1 : +1);
+        }
     }
     consumeRemove(id) {
         const idx = this.data.findIndex(a => a.id === id);
@@ -486,6 +510,11 @@ class ArSyncCollection extends ArSyncContainerBase {
         const callback = data => this.onNotify(data);
         for (const key of this.sync_keys)
             this.subscribe(key, callback);
+    }
+    onChange(path, data) {
+        super.onChange(path, data);
+        if (path[1] === this.order.key)
+            this.markAndSort();
     }
     markAndSet(id, data) {
         this.mark();
