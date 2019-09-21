@@ -1,9 +1,9 @@
 export default class ArSyncStore {
-    immutable: any;
-    markedForFreezeObjects: any;
+    immutable: boolean;
+    markedForFreezeObjects: any[];
     changes: any;
     eventListeners: any;
-    markForRelease: any;
+    markForRelease: true | undefined;
     container: any;
     request: any;
     complete: boolean;

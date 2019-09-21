@@ -190,11 +190,12 @@ class ArSyncRecord extends ArSyncContainerBase {
             const subQuery = this.query.attributes[key];
             const aliasName = subQuery.as || key;
             const subData = data[aliasName];
+            const child = this.children[aliasName];
             if (key === 'sync_keys')
                 continue;
             if (subQuery.attributes && (subData instanceof Array || (subData && subData.collection && subData.order))) {
-                if (this.children[aliasName]) {
-                    this.children[aliasName].replaceData(subData, this.sync_keys);
+                if (child) {
+                    child.replaceData(subData, this.sync_keys);
                 }
                 else {
                     const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root);
@@ -209,8 +210,8 @@ class ArSyncRecord extends ArSyncContainerBase {
                 if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0)
                     this.paths.push(key);
                 if (subData && subData.sync_keys) {
-                    if (this.children[aliasName]) {
-                        this.children[aliasName].replaceData(subData);
+                    if (child) {
+                        child.replaceData(subData);
                     }
                     else {
                         const model = new ArSyncRecord(subQuery, subData, null, this.root);
@@ -222,8 +223,8 @@ class ArSyncRecord extends ArSyncContainerBase {
                     }
                 }
                 else {
-                    if (this.children[aliasName]) {
-                        this.children[aliasName].release();
+                    if (child) {
+                        child.release();
                         delete this.children[aliasName];
                     }
                     if (this.data[aliasName] !== subData) {
@@ -246,7 +247,9 @@ class ArSyncRecord extends ArSyncContainerBase {
     onNotify(notifyData, path) {
         const { action, class_name, id } = notifyData;
         if (action === 'remove') {
-            this.children[path].release();
+            const child = this.children[path];
+            if (child)
+                child.release();
             this.children[path] = null;
             this.mark();
             this.data[path] = null;
@@ -260,8 +263,9 @@ class ArSyncRecord extends ArSyncContainerBase {
                 if (!data || !this.data)
                     return;
                 const model = new ArSyncRecord(query, data, null, this.root);
-                if (this.children[path])
-                    this.children[path].release();
+                const child = this.children[path];
+                if (child)
+                    child.release();
                 this.children[path] = model;
                 this.mark();
                 this.data[path] = model.data;
@@ -533,7 +537,7 @@ class ArSyncCollection extends ArSyncContainerBase {
 }
 class ArSyncStore {
     constructor(request, { immutable } = {}) {
-        this.immutable = immutable;
+        this.immutable = !!immutable;
         this.markedForFreezeObjects = [];
         this.changes = [];
         this.eventListeners = { events: {}, serial: 0 };

@@ -57,7 +57,8 @@ class ArSyncContainerBase {
   networkSubscriber
   parentModel
   parentKey
-  children: ArSyncContainerBase[]
+  children: ArSyncContainerBase[] | { [key: string]: ArSyncContainerBase | null }
+  sync_keys: string[]
   onConnectionChange
   constructor() {
     this.listeners = []
@@ -89,7 +90,7 @@ class ArSyncContainerBase {
   onChange(path, data) {
     if (this.parentModel) this.parentModel.onChange([this.parentKey, ...path], data)
   }
-  subscribe(key, listener) {
+  subscribe(key: string, listener) {
     this.listeners.push(ArSyncStore.connectionManager.subscribe(key, listener))
   }
   unsubscribeAll() {
@@ -160,13 +161,12 @@ class ArSyncContainerBase {
 }
 
 class ArSyncRecord extends ArSyncContainerBase {
-  id
+  id: number
   root
   query
   data
-  children
-  sync_keys
-  paths
+  children: { [key: string]: ArSyncContainerBase | null }
+  paths: string[]
   reloadQueryCache
   constructor(query, data, request, root) {
     super()
@@ -177,7 +177,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.children = {}
     this.replaceData(data)
   }
-  setSyncKeys(sync_keys) {
+  setSyncKeys(sync_keys: string[]) {
     this.sync_keys = sync_keys
     if (!this.sync_keys) {
       this.sync_keys = []
@@ -195,10 +195,11 @@ class ArSyncRecord extends ArSyncContainerBase {
       const subQuery = this.query.attributes[key]
       const aliasName = subQuery.as || key
       const subData = data[aliasName]
+      const child = this.children[aliasName]
       if (key === 'sync_keys') continue
       if (subQuery.attributes && (subData instanceof Array || (subData && subData.collection && subData.order))) {
-        if (this.children[aliasName]) {
-          this.children[aliasName].replaceData(subData, this.sync_keys)
+        if (child) {
+          child.replaceData(subData, this.sync_keys)
         } else {
           const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root)
           this.mark()
@@ -210,8 +211,8 @@ class ArSyncRecord extends ArSyncContainerBase {
       } else {
         if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0) this.paths.push(key)
         if (subData && subData.sync_keys) {
-          if (this.children[aliasName]) {
-            this.children[aliasName].replaceData(subData)
+          if (child) {
+            child.replaceData(subData)
           } else {
             const model = new ArSyncRecord(subQuery, subData, null, this.root)
             this.mark()
@@ -221,8 +222,8 @@ class ArSyncRecord extends ArSyncContainerBase {
             model.parentKey = aliasName
           }
         } else {
-          if(this.children[aliasName]) {
-            this.children[aliasName].release()
+          if(child) {
+            child.release()
             delete this.children[aliasName]
           }
           if (this.data[aliasName] !== subData) {
@@ -245,7 +246,8 @@ class ArSyncRecord extends ArSyncContainerBase {
   onNotify(notifyData, path?) {
     const { action, class_name, id } = notifyData
     if (action === 'remove') {
-      this.children[path].release()
+      const child = this.children[path]
+      if (child) child.release()
       this.children[path] = null
       this.mark()
       this.data[path] = null
@@ -256,7 +258,8 @@ class ArSyncRecord extends ArSyncContainerBase {
       ModelBatchRequest.fetch(class_name, query, id).then(data => {
         if (!data || !this.data) return
         const model = new ArSyncRecord(query, data, null, this.root)
-        if (this.children[path]) this.children[path].release()
+        const child = this.children[path]
+        if (child) child.release()
         this.children[path] = model
         this.mark()
         this.data[path] = model.data
@@ -304,7 +307,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.onChange([key], data[key])
     }
   }
-  markAndSet(key, data) {
+  markAndSet(key: string, data: any) {
     this.mark()
     this.data[key] = data
   }
@@ -323,7 +326,6 @@ class ArSyncCollection extends ArSyncContainerBase {
   query
   data: any[]
   children: ArSyncRecord[]
-  sync_keys: string[]
   constructor(sync_keys: string[], path: string, query, data: any[], request, root){
     super()
     this.root = root
@@ -400,7 +402,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     for (const el of newData) this.data.push(el)
     this.subscribeAll()
   }
-  consumeAdd(className, id) {
+  consumeAdd(className: string, id: number) {
     if (this.data.findIndex(a => a.id === id) >= 0) return
     if (this.order.limit === this.data.length) {
       if (this.order.mode === 'asc') {
@@ -456,7 +458,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       this.data.sort((a, b) => a[orderKey] > b[orderKey] ? -1 : +1)
     }
   }
-  consumeRemove(id) {
+  consumeRemove(id: number) {
     const idx = this.data.findIndex(a => a.id === id)
     if (idx < 0) return
     this.mark()
@@ -476,11 +478,11 @@ class ArSyncCollection extends ArSyncContainerBase {
     const callback = data => this.onNotify(data)
     for (const key of this.sync_keys) this.subscribe(key, callback)
   }
-  onChange(path, data) {
+  onChange(path: (string | number)[], data) {
     super.onChange(path, data)
     if (path[1] === this.order.key) this.markAndSort()
   }
-  markAndSet(id, data) {
+  markAndSet(id: number, data) {
     this.mark()
     const idx = this.data.findIndex(a => a.id === id)
     if (idx >= 0) this.data[idx] = data
@@ -494,11 +496,11 @@ class ArSyncCollection extends ArSyncContainerBase {
 }
 
 export default class ArSyncStore {
-  immutable
-  markedForFreezeObjects
+  immutable: boolean
+  markedForFreezeObjects: any[]
   changes
   eventListeners
-  markForRelease
+  markForRelease: true | undefined
   container
   request
   complete: boolean
@@ -508,7 +510,7 @@ export default class ArSyncStore {
   retryLoadTimer: number | undefined | null
   static connectionManager
   constructor(request, { immutable } = {} as { immutable?: boolean }) {
-    this.immutable = immutable
+    this.immutable = !!immutable
     this.markedForFreezeObjects = []
     this.changes = []
     this.eventListeners = { events: {}, serial: 0 }
