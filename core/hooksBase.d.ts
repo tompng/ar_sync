@@ -24,6 +24,6 @@ interface FetchStatus {
     complete: boolean;
     notfound?: boolean;
 }
-declare type DataAndStatusAndUpdater<T> = [T | null, FetchStatus, () => void];
-export declare function useArSyncFetch<T>(request: Request | null): DataAndStatusAndUpdater<T>;
+declare type DataStatusUpdate<T> = [T | null, FetchStatus, () => void];
+export declare function useArSyncFetch<T>(request: Request | null): DataStatusUpdate<T>;
 export {};
