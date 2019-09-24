@@ -7,6 +7,8 @@ async function apiBatchFetch(endpoint, requests) {
     };
     const body = JSON.stringify({ requests });
     const option = { credentials: 'include', method: 'POST', headers, body };
+    if (ArSyncApi.domain)
+        endpoint = ArSyncApi.domain + endpoint;
     const res = await fetch(endpoint, option);
     if (res.status === 200)
         return res.json();
@@ -41,7 +43,7 @@ class ApiFetcher {
                     }
                 }
                 this.batches = [];
-                apiBatchFetch(this.endpoint, requests).then((results) => {
+                ArSyncApi._batchFetch(this.endpoint, requests).then((results) => {
                     for (const i in callbacksList) {
                         const result = results[i];
                         const callbacks = callbacksList[i];
@@ -68,7 +70,10 @@ class ApiFetcher {
 }
 const staticFetcher = new ApiFetcher('/static_api');
 const syncFetcher = new ApiFetcher('/sync_api');
-exports.default = {
+const ArSyncApi = {
+    domain: null,
+    _batchFetch: apiBatchFetch,
     fetch: (request) => staticFetcher.fetch(request),
     syncFetch: (request) => syncFetcher.fetch(request),
 };
+exports.default = ArSyncApi;
