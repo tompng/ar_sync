@@ -66,6 +66,12 @@ function useArSyncFetch(request) {
         }
         function update() {
             if (request) {
+                setState(state => {
+                    const { data, status } = state;
+                    if (!status.complete && status.notfound === undefined)
+                        return state;
+                    return { data, status: { complete: false, notfound: undefined } };
+                });
                 fetch(request, 0);
             }
             else {
