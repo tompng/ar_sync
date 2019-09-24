@@ -6,6 +6,7 @@ module ArSync::TypeScript
     {
       'types.ts' => generate_type_definition(api_class),
       'ArSyncModel.ts' => generate_model_script(mode),
+      'ArSyncApi.ts' => generate_api_script(mode),
       'hooks.ts' => generate_hooks_script(mode)
     }.each { |file, code| File.write File.join(dir, file), "#{comment}#{code}" }
   end
@@ -62,6 +63,17 @@ module ArSync::TypeScript
       }
       const ArSyncModel: typeof _ArSyncModel = ArSyncModelBase as any
       export default ArSyncModel
+    CODE
+  end
+
+  def self.generate_api_script(mode)
+    <<~CODE
+      import { TypeRequest, ApiNameRequests } from './types'
+      import { DataTypeFromRequest } from 'ar_sync/core/DataType'
+      import ArSyncApi from 'ar_sync/core/ArSyncApi'
+      export function fetch<R extends TypeRequest>(request: R) {
+        return ArSyncApi.fetch(request) as Promise<DataTypeFromRequest<ApiNameRequests[R['api']], R>>
+      }
     CODE
   end
 

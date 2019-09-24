@@ -2,79 +2,89 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = require("react");
 const ArSyncApi_1 = require("./ArSyncApi");
+const initialResult = [null, { complete: false, notfound: undefined, connected: true }];
 function useArSyncModelWithClass(modelClass, request) {
-    const [data, setData] = react_1.useState(null);
-    const [status, setStatus] = react_1.useState({ complete: false, connected: true });
-    const updateStatus = (complete, notfound, connected) => {
-        if (complete === status.complete || notfound === status.notfound || connected === status.notfound)
-            return;
-        setStatus({ complete, notfound, connected });
-    };
-    react_1.useEffect(() => {
-        if (!request)
-            return () => { };
-        const model = new modelClass(request, { immutable: true });
-        if (model.complete)
-            setData(model.data);
-        updateStatus(model.complete, model.notfound, model.connected);
-        model.subscribe('change', () => {
-            updateStatus(model.complete, model.notfound, model.connected);
-            setData(model.data);
-        });
-        model.subscribe('connection', () => {
-            updateStatus(model.complete, model.notfound, model.connected);
-        });
-        return () => model.release();
-    }, [JSON.stringify(request && request.params)]);
-    return [data, status];
-}
-exports.useArSyncModelWithClass = useArSyncModelWithClass;
-function useArSyncFetch(request) {
-    const [response, setResponse] = react_1.useState(null);
-    const [status, setStatus] = react_1.useState({ complete: false });
+    const [result, setResult] = react_1.useState(initialResult);
     const requestString = JSON.stringify(request && request.params);
-    let canceled = false;
-    let timer = null;
-    const update = react_1.useCallback(() => {
+    react_1.useEffect(() => {
         if (!request) {
-            setStatus({ complete: false, notfound: undefined });
+            setResult(initialResult);
             return () => { };
         }
-        canceled = false;
-        timer = null;
-        const fetch = (count) => {
+        const model = new modelClass(request, { immutable: true });
+        function update() {
+            const { complete, notfound, connected, data } = model;
+            setResult(resultWas => {
+                const [, statusWas] = resultWas;
+                const statusPersisted = statusWas.complete === complete && statusWas.notfound === notfound && statusWas.connected === connected;
+                const status = statusPersisted ? statusWas : { complete, notfound, connected };
+                return [data, status];
+            });
+        }
+        if (model.complete) {
+            update();
+        }
+        else {
+            setResult(initialResult);
+        }
+        model.subscribe('change', update);
+        model.subscribe('connection', update);
+        return () => model.release();
+    }, [requestString]);
+    return result;
+}
+exports.useArSyncModelWithClass = useArSyncModelWithClass;
+const initialFetchState = { data: null, status: { complete: false, notfound: undefined } };
+function useArSyncFetch(request) {
+    const [state, setState] = react_1.useState(initialFetchState);
+    const requestString = JSON.stringify(request && request.params);
+    const loader = react_1.useMemo(() => {
+        let lastLoadId = 0;
+        let timer = null;
+        function cancel() {
             if (timer)
                 clearTimeout(timer);
             timer = null;
-            ArSyncApi_1.default.fetch(request)
-                .then((response) => {
-                if (canceled)
+            lastLoadId++;
+        }
+        function fetch(request, retryCount) {
+            cancel();
+            const currentLoadingId = lastLoadId;
+            ArSyncApi_1.default.fetch(request).then((response) => {
+                if (currentLoadingId !== lastLoadId)
                     return;
-                setResponse(response);
-                setStatus({ complete: true, notfound: false });
-            })
-                .catch(e => {
-                if (canceled)
+                setState({ data: response, status: { complete: true, notfound: false } });
+            }).catch(e => {
+                if (currentLoadingId !== lastLoadId)
                     return;
                 if (!e.retry) {
-                    setResponse(null);
-                    setStatus({ complete: true, notfound: true });
+                    setState({ data: null, status: { complete: true, notfound: true } });
                     return;
                 }
-                timer = setTimeout(() => fetch(count + 1), 1000 * Math.min(4 ** count, 30));
+                timer = setTimeout(() => fetch(request, retryCount + 1), 1000 * Math.min(4 ** retryCount, 30));
             });
-        };
-        fetch(0);
+        }
+        function update() {
+            if (request) {
+                setState(state => {
+                    const { data, status } = state;
+                    if (!status.complete && status.notfound === undefined)
+                        return state;
+                    return { data, status: { complete: false, notfound: undefined } };
+                });
+                fetch(request, 0);
+            }
+            else {
+                setState(initialFetchState);
+            }
+        }
+        return { update, cancel };
     }, [requestString]);
     react_1.useEffect(() => {
-        update();
-        return () => {
-            canceled = true;
-            if (timer)
-                clearTimeout(timer);
-            timer = null;
-        };
+        setState(initialFetchState);
+        loader.update();
+        return () => loader.cancel();
     }, [requestString]);
-    return [response, status, update];
+    return [state.data, state.status, loader.update];
 }
 exports.useArSyncFetch = useArSyncFetch;
