@@ -17,7 +17,7 @@ class ConnectionAdapter {
   notify(key, data) {
     const room = this.rooms[key]
     if (!room) return
-    for (const cb of room.callbacks) cb(data)
+    for (const cb of Object.values(room.callbacks)) cb(data)
   }
 }
 

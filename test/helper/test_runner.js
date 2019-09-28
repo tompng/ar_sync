@@ -2,10 +2,10 @@
 const readline = require('readline')
 const input = readline.createInterface({ input: process.stdin })
 const ConnectionAdapter = new require('./connection_adapter')
-const ArSyncModel = require('../../graph/ArSyncModel')
-const ArSyncApi = require('../../core/ArSyncApi')
+const ArSyncModel = require('../../graph/ArSyncModel').default
+const ArSyncApi = require('../../core/ArSyncApi').default
 const connectionAdapter = new ConnectionAdapter
-ArSyncModel.connectionAdapter = connectionAdapter
+ArSyncModel.setConnectionAdapter(connectionAdapter)
 
 const waitingCallbacks = {}
 ArSyncApi._batchFetch = (_, requests) => {
@@ -26,10 +26,12 @@ input.on('line', line => {
     case 'eval': {
       let result, error, responseJSON
       try {
-        const res = eval(e.data)
-        result = res && res.constructor && `[${res.constructor.name}]`
-        JSON.stringify(res)
-        result = res
+        result = eval(e.data)
+        try {
+          if (result && !JSON.stringify(result)) throw ''
+        } catch (e) {
+          result = `[${result.constructor.name}]`
+        }
       } catch (e) {
         error = e.message
       }
