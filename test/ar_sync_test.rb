@@ -1,3 +1,4 @@
+__END__
 database_name = 'test/test.sqlite3'
 ENV['DATABASE_NAME'] = database_name
 File.unlink database_name if File.exist? database_name

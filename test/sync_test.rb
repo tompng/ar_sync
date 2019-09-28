@@ -16,11 +16,11 @@ class Schema
   end
 end
 
-current_user = Graph::User.second
-runner = TestRunner.new Schema.new, current_user
+user = Graph::User.second
+runner = TestRunner.new Schema.new, user
 
 runner.eval_script <<~JAVASCRIPT
-  global.currentUserModel = new ArSyncModel({
+  global.userModel = new ArSyncModel({
     api: 'currentUser',
     query: {
       name: { as: '名前' },
@@ -41,5 +41,13 @@ runner.eval_script <<~JAVASCRIPT
   })
 JAVASCRIPT
 
-require 'pry'
-binding.pry
+users = Graph::User.all.to_a
+
+runner.assert_script 'userModel.data'
+runner.assert_script 'userModel.data.articles.length', to_be: user.posts.size
+post = user.posts.first
+post.update title: "Title#{rand}"
+runner.assert_script 'userModel.data.articles[0].title', to_be: post.title
+new_post = user.posts.create user: users.sample, title: "NewPost#{rand}"
+runner.assert_script('userModel.data.articles.map(a => a.title)') { |r| r.include? new_post.title }
+new_post.destroy;runner.assert_script('userModel.data.articles.map(a => a.title)') { |r| !r.include? new_post.title }
