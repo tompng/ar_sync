@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'activerecord'
   spec.add_dependency 'ar_serializer'
-  %w[rake pry sqlite3].each do |gem_name|
+  %w[rake pry sqlite3 activerecord-import].each do |gem_name|
     spec.add_development_dependency gem_name
   end
 end

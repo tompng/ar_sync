@@ -1,3 +1,4 @@
+require 'activerecord-import'
 require_relative 'db'
 require_relative 'model_tree'
 database_file = ActiveRecord::Base.connection.instance_eval { @config[:database] }
@@ -28,16 +29,31 @@ ActiveRecord::Migration::Current.class_eval do
   end
 end
 
-users = Array.new 4 do |i|
-  Tree::User.create name: "User#{i}"
+srand 0
+users = 4.times.map { |i| { name: "User#{i}" } }
+user_ids = Tree::User.import(users).ids
+
+posts = 16.times.map do |i|
+  { user_id: user_ids.sample, title: "Post#{i}", body: "post #{i}" }
 end
-posts = Array.new 16 do |i|
-  Tree::Post.create user: users.sample, title: "Post#{i}", body: "post #{i}"
+post_ids = Tree::Post.import(posts).ids
+
+comments = 64.times.map do |i|
+  { user_id: user_ids.sample, post_id: post_ids.sample, body: "comment #{i}" }
 end
-comments = Array.new 64 do |i|
-  Tree::Comment.create user: users.sample, post: posts.sample, body: "post #{i}"
+comment_ids = Tree::Comment.import(comments).ids
+
+sets = Set.new
+stars = 128.times.map do
+  user_id = user_ids.sample
+  comment_id = comment_ids.sample
+  while sets.include? [user_id, comment_id]
+    user_id = user_ids.sample
+    comment_id = comment_ids.sample
+  end
+  sets.add [user_id, comment_id]
+  { user_id: user_id, comment_id: comment_id }
 end
-stars = Array.new 128 do
-  Tree::Star.create user: users.sample, comment: comments.sample
-end
+Tree::Star.import stars
+
 p users.size, posts.size, comments.size, stars.size
