@@ -8,11 +8,12 @@ class ConnectionAdapter {
     const subKey = room.id++
     room.callbacks[subKey] = callback
     room.count++
-    return () => {
+    const unsubscribe = () => {
       delete room.callbacks[subKey]
       room.count--
       if (room.count === 0) delete this.rooms[key]
     }
+    return { unsubscribe }
   }
   notify(key, data) {
     const room = this.rooms[key]

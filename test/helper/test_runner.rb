@@ -97,11 +97,11 @@ class TestRunner
     blocks << -> v { v != not_to_be } if not_to_be != :unset
     raise ArgumentError if blocks.size >= 2
     block = blocks.first || -> v { v != nil }
-    return if block.call eval_script(code)
+    return true if block.call eval_script(code)
     loop do
       sleep [timeout, 0.05].min
       result = eval_script(code)
-      return if block.call result
+      return true if block.call result
       raise "Assert failed: #{result}" if Time.now - start > timeout
     end
   end
