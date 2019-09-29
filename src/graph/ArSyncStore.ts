@@ -323,21 +323,20 @@ class ArSyncRecord extends ArSyncContainerBase {
 class ArSyncCollection extends ArSyncContainerBase {
   root
   path: string
-  order: { limit: number | null; key: string; mode: 'asc' | 'desc' }
+  order: { limit: number | null; key: string; mode: 'asc' | 'desc' } = { limit: null, mode: 'asc', key: 'id' }
   query
   data: any[]
   children: ArSyncRecord[]
+  aliasOrderKey = 'id'
   constructor(sync_keys: string[], path: string, query, data: any[], request, root){
     super()
     this.root = root
     this.path = path
+    this.query = query
     if (request) this.initForReload(request)
     if (query.params && (query.params.order || query.params.limit)) {
       this.setOrdering(query.params.limit, query.params.order)
-    } else {
-      this.order = { limit: null, mode: 'asc', key: 'id' }
     }
-    this.query = query
     this.data = []
     this.children = []
     this.replaceData(data, sync_keys)
@@ -355,6 +354,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
     const limitNumber = (typeof limit === 'number') ? limit : null
     if (limitNumber !== null && key !== 'id') throw 'limit with custom order key is not supported'
+    const subQuery = this.query.attributes[key]
+    this.aliasOrderKey = (subQuery && subQuery.as) || key
     this.order = { limit: limitNumber, mode, key }
   }
   setSyncKeys(sync_keys: string[]) {
@@ -422,7 +423,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       const overflow = this.order.limit && this.order.limit === this.data.length
       let rmodel: ArSyncRecord | undefined
       this.mark()
-      const orderKey = this.order.key
+      const orderKey = this.aliasOrderKey
       if (this.order.mode === 'asc') {
         const last = this.data[this.data.length - 1]
         this.children.push(model)
@@ -450,7 +451,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
   markAndSort() {
     this.mark()
-    const orderKey = this.order.key
+    const orderKey = this.aliasOrderKey
     if (this.order.mode === 'asc') {
       this.children.sort((a, b) => a.data[orderKey] < b.data[orderKey] ? -1 : +1)
       this.data.sort((a, b) => a[orderKey] < b[orderKey] ? -1 : +1)
@@ -481,7 +482,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
   onChange(path: (string | number)[], data) {
     super.onChange(path, data)
-    if (path[1] === this.order.key) this.markAndSort()
+    if (path[1] === this.aliasOrderKey) this.markAndSort()
   }
   markAndSet(id: number, data) {
     this.mark()
