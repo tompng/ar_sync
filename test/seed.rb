@@ -1,3 +1,4 @@
+require 'activerecord-import'
 require_relative 'db'
 require_relative 'model_tree'
 database_file = ActiveRecord::Base.connection.instance_eval { @config[:database] }
@@ -28,16 +29,36 @@ ActiveRecord::Migration::Current.class_eval do
   end
 end
 
-users = Array.new 4 do |i|
-  Tree::User.create name: "User#{i}"
+def bulk_import(table_name, records)
+  klass = Class.new(ActiveRecord::Base) { self.table_name = table_name }
+  klass.import(records).ids
 end
-posts = Array.new 16 do |i|
-  Tree::Post.create user: users.sample, title: "Post#{i}", body: "post #{i}"
+
+srand 0
+users = 4.times.map { |i| { name: "User#{i}" } }
+user_ids = bulk_import :users, users
+
+posts = 16.times.map do |i|
+  { user_id: user_ids.sample, title: "Post#{i}", body: "post #{i}" }
 end
-comments = Array.new 64 do |i|
-  Tree::Comment.create user: users.sample, post: posts.sample, body: "post #{i}"
+post_ids = bulk_import :posts, posts
+
+comments = 64.times.map do |i|
+  { user_id: user_ids.sample, post_id: post_ids.sample, body: "comment #{i}" }
 end
-stars = Array.new 128 do
-  Tree::Star.create user: users.sample, comment: comments.sample
+comment_ids = bulk_import :comments, comments
+
+sets = Set.new
+stars = 128.times.map do
+  user_id = user_ids.sample
+  comment_id = comment_ids.sample
+  while sets.include? [user_id, comment_id]
+    user_id = user_ids.sample
+    comment_id = comment_ids.sample
+  end
+  sets.add [user_id, comment_id]
+  { user_id: user_id, comment_id: comment_id }
 end
+bulk_import :stars, stars
+
 p users.size, posts.size, comments.size, stars.size
