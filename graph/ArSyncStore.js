@@ -246,32 +246,33 @@ class ArSyncRecord extends ArSyncContainerBase {
     }
     onNotify(notifyData, path) {
         const { action, class_name, id } = notifyData;
+        const query = this.query.attributes[path];
+        const aliasName = (query && query.as) || path;
         if (action === 'remove') {
-            const child = this.children[path];
+            const child = this.children[aliasName];
             if (child)
                 child.release();
-            this.children[path] = null;
+            this.children[aliasName] = null;
             this.mark();
-            this.data[path] = null;
-            this.onChange([path], null);
+            this.data[aliasName] = null;
+            this.onChange([aliasName], null);
         }
         else if (action === 'add') {
-            if (this.data.id === id)
+            if (this.data[aliasName] && this.data[aliasName].id === id)
                 return;
-            const query = this.query.attributes[path];
             ModelBatchRequest.fetch(class_name, query, id).then(data => {
                 if (!data || !this.data)
                     return;
                 const model = new ArSyncRecord(query, data, null, this.root);
-                const child = this.children[path];
+                const child = this.children[aliasName];
                 if (child)
                     child.release();
-                this.children[path] = model;
+                this.children[aliasName] = model;
                 this.mark();
-                this.data[path] = model.data;
+                this.data[aliasName] = model.data;
                 model.parentModel = this;
-                model.parentKey = path;
-                this.onChange([path], model.data);
+                model.parentKey = aliasName;
+                this.onChange([aliasName], model.data);
             });
         }
         else {
