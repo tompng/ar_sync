@@ -8,8 +8,8 @@ require_relative 'model_graph'
 class Schema
   include ArSerializer::Serializable
   serializer_field(:currentUser) { |user| user }
-  serializer_field(:post) { |_user, id:| Post.find id }
-  serializer_field(:comment) { |_user, id:| Post.find id }
+  serializer_field(:post) { |_user, id:| Graph::Post.find id }
+  serializer_field(:comment) { |_user, id:| Graph::Post.find id }
 
   [Graph::User, Graph::Post, Graph::Comment, Graph::Star].each do |klass|
     serializer_field(klass.name) { |_user, ids:| klass.where id: ids }
@@ -128,4 +128,37 @@ tap do # per-user has_one
   runner.assert_script "#{comment_code}.starCount", to_be: comment.stars.count
   runner.assert_script "#{comment_code}.myReaction"
   runner.assert_script "#{comment_code}.myReaction.id", to_be: star.id
+end
+
+tap do # order test
+  post = Graph::Post.first
+  post.comments.each do |c|
+    c.update body: rand.to_s
+  end
+  10.times do
+    post.comments.create user: users.sample, body: rand.to_s
+  end
+  runner.eval_script <<~JAVASCRIPT
+    global.postModel = new ArSyncModel({
+      api: 'post',
+      params: { id: #{post.id} },
+      query: {
+        comments: {
+          params: { order: { body: 'desc' } },
+          attributes: { id: true, body: { as: 'text' } }
+        }
+      }
+    })
+  JAVASCRIPT
+  runner.assert_script 'postModel.data'
+  comments_code = 'postModel.data.comments.map(c => c.id)'
+  current_order = -> { post.comments.reload.sort_by(&:body).reverse.map(&:id) }
+  runner.assert_script comments_code, to_be: current_order.call
+  post.comments.create user: users.sample, body: '0.6'
+  runner.assert_script comments_code, to_be: current_order.call
+  post.comments.sort_by(&:body).first.update body: '0.4'
+  runner.assert_script comments_code, to_be: current_order.call
+  comments_body_code = 'postModel.data.comments.map(c => c.text)'
+  runner.assert_script comments_body_code, to_include: '0.4'
+  runner.assert_script comments_body_code, to_include: '0.6'
 end
