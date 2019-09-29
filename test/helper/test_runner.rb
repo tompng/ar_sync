@@ -61,12 +61,11 @@ class TestRunner
     while data = @io.gets
       begin
         e = JSON.parse data rescue nil
-        type = e.is_a?(Hash) && e['type']
+        type = e.is_a?(Hash) && e['__test_runner_type']
         case type
         when 'result'
-          @eval_responses[e['key']]&.<< e
+          @eval_responses[e['key']] << e
         when 'request'
-          p request: e['data']
           response = handle_requests e['data']
           @io.puts({ type: :response, key: e['key'], data: response }.to_json)
         else
@@ -81,28 +80,42 @@ class TestRunner
 
   def eval_script(code)
     key = rand
-    @io.puts({ type: :eval, key: key, data: code }.to_json)
     queue = @eval_responses[key] = Queue.new
+    @io.puts({ type: :eval, key: key, data: code }.to_json)
     output = queue.deq
     @eval_responses.delete key
     raise output['error'] if output['error']
     output['result']
   end
 
-  def assert_script(code, to_be: :unset, not_to_be: :unset, timeout: 1, &block)
+  def assert_script(code, **options, &block)
+    timeout = options.has_key?(:timeout) ? options.delete(:timeout) : 1
     start = Time.now
-    raise if [to_be != :unset, not_to_be != :unset, block].count(&:itself) >= 2
-    blocks = [*block]
-    blocks << -> v { v == to_be } if to_be != :unset
-    blocks << -> v { v != not_to_be } if not_to_be != :unset
-    raise ArgumentError if blocks.size >= 2
-    block = blocks.first || -> v { v != nil }
+    raise if block ? options.size != 0 : options.size >= 2
+
+    if options.empty?
+      block ||= :itself.to_proc
+    else
+      key, value = options.entries.first
+      /^(?<reversed>not_)?to_(?<verb>.+)/ =~ key
+      test = lambda do |v|
+        if verb == 'be'
+          v == value
+        else
+          v.send verb + '?', value
+        end
+      end
+      block = lambda do |v|
+        f = test.call(v)
+        reversed ? !f : f
+      end
+    end
     return true if block.call eval_script(code)
     loop do
       sleep [timeout, 0.05].min
-      result = eval_script(code)
+      result = eval_script code
       return true if block.call result
-      raise "Assert failed: #{result}" if Time.now - start > timeout
+      raise "Assert failed: #{result.inspect} #{options unless options.empty?}" if Time.now - start > timeout
     end
   end
 

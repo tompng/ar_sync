@@ -10,7 +10,7 @@ ArSyncModel.setConnectionAdapter(connectionAdapter)
 const waitingCallbacks = {}
 ArSyncApi._batchFetch = (_, requests) => {
   const key = Math.random()
-  const data = { type: 'request', key: key, data: requests }
+  const data = { __test_runner_type: 'request', key: key, data: requests }
   process.stdout.write(JSON.stringify(data) + '\n')
   return new Promise(res => {
     waitingCallbacks[key] = (data) => {
@@ -36,7 +36,7 @@ input.on('line', line => {
         error = e.message
       }
       const data = {
-        type: 'result',
+        __test_runner_type: 'result',
         key: e.key,
         result,
         error

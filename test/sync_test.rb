@@ -12,7 +12,7 @@ class Schema
   serializer_field(:comment) { |_user, id:| Post.find id }
 
   [Graph::User, Graph::Post, Graph::Comment, Graph::Star].each do |klass|
-    serializer_field(klass.name) { |_user, ids:| klass.find ids }
+    serializer_field(klass.name) { |_user, ids:| klass.where id: ids }
   end
 end
 
@@ -29,11 +29,11 @@ runner.eval_script <<~JAVASCRIPT
         attributes: {
           user: ['id', 'name'],
           title: true,
-          myComments: { as: 'myComments', attributes: ['id', 'starCount'] },
+          myComments: { as: 'myCmnts', attributes: ['id', 'starCount'] },
           comments: {
             starCount: true,
             user: ['id', 'name'],
-            myStars: { as: 'myReaction', attributes: 'id' }
+            myStar: { as: 'myReaction', attributes: 'id' }
           }
         }
       }
@@ -43,11 +43,89 @@ JAVASCRIPT
 
 users = Graph::User.all.to_a
 
-runner.assert_script 'userModel.data'
-runner.assert_script 'userModel.data.articles.length', to_be: user.posts.size
-post = user.posts.first
-post.update title: "Title#{rand}"
-runner.assert_script 'userModel.data.articles[0].title', to_be: post.title
-new_post = user.posts.create user: users.sample, title: "NewPost#{rand}"
-runner.assert_script('userModel.data.articles.map(a => a.title)') { |r| r.include? new_post.title }
-new_post.destroy;runner.assert_script('userModel.data.articles.map(a => a.title)') { |r| !r.include? new_post.title }
+tap do # load test
+  runner.assert_script 'userModel.data'
+  runner.assert_script 'userModel.data.articles.length > 0'
+end
+
+tap do # field udpate test
+  post = user.posts.first
+  name = "Name#{rand}"
+  user.update name: name
+  runner.assert_script 'userModel.data.名前', to_be: name
+  runner.assert_script 'userModel.data.articles[0].user.name', to_be: name
+  title = "Title#{rand}"
+  post.update title: title
+  runner.assert_script 'userModel.data.articles[0].title', to_be: title
+end
+
+tap do # has_many update & destroy
+  title = "NewPost#{rand}"
+  new_post = user.posts.create user: users.sample, title: title
+  runner.assert_script 'userModel.data.articles.map(a => a.title)', to_include: title
+  new_comment = new_post.comments.create user: users.sample
+  idx = user.posts.size - 1
+  runner.assert_script "userModel.data.articles[#{idx}].comments.map(c => c.id)", to_include: new_comment.id
+  new_comment.destroy
+  runner.assert_script "userModel.data.articles[#{idx}].comments.map(c => c.id)", not_to_include: new_comment.id
+  new_post.destroy
+  runner.assert_script 'userModel.data.articles.map(a => a.title)', not_to_include: title
+end
+
+tap do # has_one change
+  comment = user.posts.first.comments.first
+  runner.assert_script 'userModel.data.articles[0].comments[0].user.name', to_be: comment.user.name
+  comment.update user: nil
+  runner.assert_script 'userModel.data.articles[0].comments[0].user', to_be: nil
+  comment.update user: users.second
+  runner.assert_script 'userModel.data.articles[0].comments[0].user'
+  runner.assert_script 'userModel.data.articles[0].comments[0].user.id', to_be: users.second.id
+  comment.update user: users.third
+  runner.assert_script 'userModel.data.articles[0].comments[0].user.id', to_be: users.third.id
+end
+
+tap do # parent replace
+  comment = user.posts.first.comments.first
+  runner.assert_script 'userModel.data.articles[0].comments[0].id', to_be: comment.id
+  comment.update post: user.posts.second
+  runner.assert_script 'userModel.data.articles[0].comments[0].id', not_to_be: comment.id
+  runner.assert_script 'userModel.data.articles[1].comments.map(c => c.id)', to_include: comment.id
+end
+
+tap do # per-user has_many
+  post = user.posts.first
+  other_user = (users - [user]).sample
+  comment_other = post.comments.create user: other_user, body: rand.to_s
+  comment_self = post.comments.create user: user, body: rand.to_s
+  all_comments_code = 'userModel.data.articles[0].comments.map(c => c.id)'
+  my_comments_code = 'userModel.data.articles[0].myCmnts.map(c => c.id)'
+  runner.assert_script all_comments_code, to_include: comment_other.id
+  runner.assert_script all_comments_code, to_include: comment_self.id
+  runner.assert_script my_comments_code, not_to_include: comment_other.id
+  runner.assert_script my_comments_code, to_include: comment_self.id
+  comment_other.update user: user
+  runner.assert_script my_comments_code, to_include: comment_other.id
+  runner.assert_script my_comments_code, to_include: comment_self.id
+  comment_self.update user: other_user
+  runner.assert_script my_comments_code, to_include: comment_other.id
+  runner.assert_script my_comments_code, not_to_include: comment_self.id
+  post.comments.reload
+end
+
+tap do # per-user has_one
+  comment = user.posts.first.comments.first
+  other_user = (users - [user]).sample
+  comment_code = 'userModel.data.articles[0].comments[0]'
+  comment.stars.where(user: user).first_or_create
+  runner.assert_script "#{comment_code}.myReaction"
+  comment.stars.find_by(user: user).destroy
+  runner.assert_script "#{comment_code}.myReaction", to_be: nil
+  comment.stars.find_by(user: other_user)&.destroy
+  comment.stars.create(user: other_user)
+  runner.assert_script "#{comment_code}.starCount", to_be: comment.stars.count
+  runner.assert_script "#{comment_code}.myReaction", to_be: nil
+  star = comment.stars.create(user: user)
+  runner.assert_script "#{comment_code}.starCount", to_be: comment.stars.count
+  runner.assert_script "#{comment_code}.myReaction"
+  runner.assert_script "#{comment_code}.myReaction.id", to_be: star.id
+end
