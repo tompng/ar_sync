@@ -53,11 +53,11 @@ class ApiFetcher {
                 callback.resolve(result.data)
               } else {
                 const error = result.error || { type: 'Unknown Error' }
-                callback.reject(error)
+                callback.reject({ ...error, retry: false })
               }
             }
           }
-        }).catch((e) => {
+        }).catch(e => {
           const error = { type: e.name, message: e.message, retry: true }
           for (const callbacks of callbacksList) {
             for (const callback of callbacks) callback.reject(error)

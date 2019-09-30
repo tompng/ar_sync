@@ -161,6 +161,7 @@ tap do # order test
   comments_body_code = 'postModel.data.comments.map(c => c.text)'
   runner.assert_script comments_body_code, to_include: '0.4'
   runner.assert_script comments_body_code, to_include: '0.6'
+  runner.eval_script 'postModel.release(); postModel = null'
 end
 
 tap do # wildcard update test
@@ -173,6 +174,27 @@ tap do # wildcard update test
   runner.assert_script 'wildCardTestModel.data'
   title = "Title#{rand}"
   user.posts.reload.second.update title: title
-  require 'pry';binding.pry
   runner.assert_script 'wildCardTestModel.data.posts[1].title', to_be: title
+  runner.eval_script 'wildCardTestModel.release(); wildCardTestModel = null'
+end
+
+tap do # plain-array filed test
+  post1 = Graph::Post.first
+  post2 = Graph::Post.second
+  post1.update title: ''
+  post2.update title: 'abc'
+  [post1, post2].each do |post|
+    runner.eval_script <<~JAVASCRIPT
+      global.postModel = new ArSyncModel({
+        api: 'post',
+        params: { id: #{post.id} },
+        query: ['id','titleChars']
+      })
+    JAVASCRIPT
+    runner.assert_script 'postModel.data'
+    runner.assert_script 'postModel.data.titleChars', to_be: post.title.chars
+    chars = rand.to_s.chars
+    post.update title: chars.join
+    runner.assert_script 'postModel.data.titleChars', to_be: chars
+  end
 end

@@ -28,6 +28,7 @@ class Graph::Post < Graph::BaseRecord
   sync_parent :user, inverse_of: :do_not_call_after_destroyed
   sync_parent :user, inverse_of: :posts
   sync_has_data :id, :title, :body
+  sync_has_data(:titleChars) { (title || '').chars }
   sync_has_one :user, only: [:id, :name]
   sync_has_many :comments
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
