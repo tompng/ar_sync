@@ -2,39 +2,49 @@ module ArSync
   class InstallGenerator < ::Rails::Generators::Base
     class_option :mode, enum: %w[tree graph], desc: 'sync mode', default: 'graph'
 
-    def create_api_controller
+    def create_schema_class
       base_code = <<~CODE
-        include ArSync::ApiControllerConcern
-
-        # serializer_field :profile, type: User do |_user|
+        # serializer_field :profile, type: User do |current_user|
         #   current_user
         # end
 
-        # serializer_field :post, type: Post do |_user, id:|
-        #   Post.where(current_user_can_access).find id
+        # serializer_field :post, type: Post do |current_user, id:|
+        #   Post.where(current_user_can_access).find_by id: id
         # end
       CODE
       graph_additional_code = <<~CODE
         # Reload API for all types should be defined here.
 
-        # serializer_field :User do |_user, ids:|
+        # serializer_field :User do |current_user, ids:|
         #   User.where(current_user_can_access).where id: ids
         # end
 
-        # serializer_field :Post do |_user, ids:|
+        # serializer_field :Post do |current_user, ids:|
         #   Post.where(current_user_can_access).where id: ids
         # end
 
-        # serializer_field :Comment do |_user, ids:|
+        # serializer_field :Comment do |current_user, ids:|
         #   Comment.where(current_user_can_access).where id: ids
         # end
       CODE
-      controller_body = options['mode'] == 'tree' ? base_code : base_code + "\n" + graph_additional_code
+      code_body = options['mode'] == 'tree' ? base_code : base_code + "\n" + graph_additional_code
       code = [
-        "class SyncApiController < ApplicationController\n",
-        controller_body.lines.map { |l| l.blank? ? l : '  ' + l },
+        "class SyncSchema < ArSync::SyncSchemaBase\n",
+        code_body.lines.map { |l| l.blank? ? l : '  ' + l },
         "end\n"
       ].join
+      create_file 'app/models/sync_schema.rb', code
+    end
+
+    def create_api_controller
+      code = <<~CODE
+        class SyncApiController < ApplicationController
+          include ArSync::ApiControllerConcern
+          def schema
+            SyncSchema.new
+          end
+        end
+      CODE
       create_file 'app/controllers/sync_api_controller.rb', code
     end
 

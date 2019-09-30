@@ -140,4 +140,27 @@ module ArSync
   def self.serialize(record_or_records, query, user: nil)
     ArSerializer.serialize record_or_records, query, context: user, include_id: true, use: :sync
   end
+
+  def self.sync_serialize(target, user, query)
+    case target
+    when ArSync::Collection::Graph, ArSync::GraphSync
+      serialized = ArSerializer.serialize target, query, context: user, include_id: true, use: :sync
+      return serialized if target.is_a? ArSync::GraphSync
+      {
+        sync_keys: ArSync.sync_graph_keys(target, user),
+        order: { mode: target.order, limit: target.limit },
+        collection: serialized
+      }
+    when ArSync::Collection::Tree
+      ArSync.sync_collection_api target, user, query
+    when ActiveRecord::Relation, Array
+      ArSync.serialize target.to_a, query, user: user
+    when ActiveRecord::Base
+      ArSync.sync_api target, user, query
+    when ArSerializer::Serializable
+      ArSync.serialize target, query, user: user
+    else
+      target
+    end
+  end
 end

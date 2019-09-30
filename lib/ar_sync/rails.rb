@@ -28,49 +28,37 @@ module ArSync
     around_action :action_with_compact_ar_sync_notification
   end
 
+  class SyncSchemaBase
+    include ArSerializer::Serializable
+    serializer_field :__schema do
+      ArSerializer::GraphQL::SchemaClass.new self.class
+    end
+  end
+
   module ApiControllerConcern
     extend ActiveSupport::Concern
-    include ArSerializer::Serializable
 
     included do
       protect_from_forgery except: %i[sync_call static_call graphql_call]
-      serializer_field :__schema do
-        ArSerializer::GraphQL::SchemaClass.new self.class
-      end
+    end
+
+    def schema
+      raise 'you must implement method `schema`'
     end
 
     def sync_call
       _api_call :sync do |model, current_user, query|
-        case model
-        when ArSync::Collection::Graph, ArSync::GraphSync
-          serialized = ArSerializer.serialize model, query, context: current_user, include_id: true, use: :sync
-          next serialized if model.is_a? ArSync::GraphSync
-          {
-            sync_keys: ArSync.sync_graph_keys(model, current_user),
-            order: { mode: model.order, limit: model.limit },
-            collection: serialized
-          }
-        when ArSync::Collection::Tree
-          ArSync.sync_collection_api model, current_user, query
-        when ActiveRecord::Relation, Array
-          ArSync.serialize model.to_a, query, user: current_user
-        when ActiveRecord::Base
-          ArSync.sync_api model, current_user, query
-        when ArSerializer::Serializable
-          ArSync.serialize model, query, user: current_user
-        else
-          model
-        end
+        ArSync.sync_serialize model, current_user, query
       end
     end
 
     def graphql_schema
-      render plain: ArSerializer::GraphQL.definition(self.class)
+      render plain: ArSerializer::GraphQL.definition(schema.class)
     end
 
     def graphql_call
       render json: ArSerializer::GraphQL.serialize(
-        self,
+        schema,
         params[:query],
         operation_name: params[:operationName],
         variables: (params[:variables] || {}).as_json,
@@ -102,7 +90,7 @@ module ArSync
       responses = params[:requests].map do |request|
         begin
           api_name = request[:api]
-          info = self.class._serializer_field_info api_name
+          info = schema.class._serializer_field_info api_name
           raise ArSync::ApiNotFound, "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless info
           api_params = (request[:params].as_json || {}).transform_keys(&:to_sym)
           model = instance_exec(current_user, api_params, &info.data_block)
