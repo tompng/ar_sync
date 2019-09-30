@@ -367,7 +367,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
   replaceData(data: any[] | { collection: any[]; order: any }, sync_keys: string[]) {
     this.setSyncKeys(sync_keys)
-    const existings = {}
+    const existings: { [key: string]: ArSyncRecord } = {}
     for (const child of this.children) existings[child.data.id] = child
     let collection: any[]
     if ('collection' in data && 'order' in data) {
@@ -379,7 +379,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     const newChildren: any[] = []
     const newData: any[] = []
     for (const subData of collection) {
-      let model = subData && 'id' in subData && existings[subData.id]
+      let model: ArSyncRecord | null = null
+      if (typeof(subData) === 'object' && subData && 'id' in subData) model = existings[subData.id]
       let data = subData
       if (model) {
         model.replaceData(subData)
@@ -542,6 +543,7 @@ export default class ArSyncStore {
         this.trigger('connection', state)
       }
     }).catch(e => {
+      if (!e || e.retry === undefined) throw e
       if (this.markForRelease) return
       if (!e.retry) {
         this.complete = true

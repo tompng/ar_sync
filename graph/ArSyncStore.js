@@ -397,7 +397,9 @@ class ArSyncCollection extends ArSyncContainerBase {
         const newChildren = [];
         const newData = [];
         for (const subData of collection) {
-            let model = subData && 'id' in subData && existings[subData.id];
+            let model = null;
+            if (typeof (subData) === 'object' && subData && 'id' in subData)
+                model = existings[subData.id];
             let data = subData;
             if (model) {
                 model.replaceData(subData);
@@ -570,6 +572,8 @@ class ArSyncStore {
                 this.trigger('connection', state);
             };
         }).catch(e => {
+            if (!e || e.retry === undefined)
+                throw e;
             if (this.markForRelease)
                 return;
             if (!e.retry) {
