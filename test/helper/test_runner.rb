@@ -25,29 +25,30 @@ class TestRunner
       api_name = request['api']
       info = @schema.class._serializer_field_info api_name
       api_params = (request['params'] || {}).transform_keys(&:to_sym)
-      model = instance_exec(@current_user, api_params, &info.data_block)
-      { data: serialize(model,request['query']) }
+      user = @current_user.reload
+      model = instance_exec(user, api_params, &info.data_block)
+      { data: serialize(model, request['query'], user) }
     end
   end
 
-  def serialize(model, query)
+  def serialize(model, query, user)
     case model
     when ArSync::Collection::Graph, ArSync::GraphSync
-      serialized = ArSerializer.serialize model, query, context: @current_user, include_id: true, use: :sync
+      serialized = ArSerializer.serialize model, query, context: user, include_id: true, use: :sync
       return serialized if model.is_a? ArSync::GraphSync
       {
-        sync_keys: ArSync.sync_graph_keys(model, @current_user),
+        sync_keys: ArSync.sync_graph_keys(model, user),
         order: { mode: model.order, limit: model.limit },
         collection: serialized
       }
     when ArSync::Collection::Tree
-      ArSync.sync_collection_api model, @current_user, query
+      ArSync.sync_collection_api model, user, query
     when ActiveRecord::Relation, Array
-      ArSync.serialize model.to_a, query, user: @current_user
+      ArSync.serialize model.to_a, query, user: user
     when ActiveRecord::Base
-      ArSync.sync_api model, @current_user, query
+      ArSync.sync_api model, user, query
     when ArSerializer::Serializable
-      ArSync.serialize model, query, user: @current_user
+      ArSync.serialize model, query, user: user
     else
       model
     end

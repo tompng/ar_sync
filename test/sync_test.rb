@@ -162,3 +162,17 @@ tap do # order test
   runner.assert_script comments_body_code, to_include: '0.4'
   runner.assert_script comments_body_code, to_include: '0.6'
 end
+
+tap do # wildcard update test
+  runner.eval_script <<~JAVASCRIPT
+    global.wildCardTestModel = new ArSyncModel({
+      api: 'currentUser',
+      query: { posts: '*' }
+    })
+  JAVASCRIPT
+  runner.assert_script 'wildCardTestModel.data'
+  title = "Title#{rand}"
+  user.posts.reload.second.update title: title
+  require 'pry';binding.pry
+  runner.assert_script 'wildCardTestModel.data.posts[1].title', to_be: title
+end
