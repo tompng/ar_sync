@@ -138,6 +138,8 @@ class ArSyncContainerBase {
       return ArSyncAPI.syncFetch(request).then((response: any) => {
         if (response.collection && response.order) {
           return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root)
+        } else if (response instanceof Array) {
+          return new ArSyncCollection([], '', parsedQuery, response, request, root)
         } else {
           return new ArSyncRecord(parsedQuery, response, request, root)
         }
