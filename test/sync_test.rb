@@ -198,3 +198,23 @@ tap do # plain-array filed test
     runner.assert_script 'postModel.data.titleChars', to_be: chars
   end
 end
+
+tap do # watch test
+  comment = Graph::Comment.first
+  post = comment.post
+  star = comment.stars.create user: Graph::User.first
+  count = comment.stars.where('created_at != updated_at').count
+  runner.eval_script <<~JAVASCRIPT
+    global.postModel = new ArSyncModel({
+      api: 'post',
+      params: { id: #{post.id} },
+      query: { comments: 'editedStarCount' }
+    })
+  JAVASCRIPT
+  runner.assert_script 'postModel.data'
+  runner.assert_script 'postModel.data.comments[0].editedStarCount', to_be: count
+  star.update updated_at: 1.day.since
+  runner.assert_script 'postModel.data.comments[0].editedStarCount', to_be: count + 1
+  star.update updated_at: star.created_at
+  runner.assert_script 'postModel.data.comments[0].editedStarCount', to_be: count
+end

@@ -31,8 +31,10 @@ module ArSync::TreeSync::InstanceMethods
   end
 
   def _sync_notify_parent(action, path: nil, data: nil, order_param: nil, only_to_user: nil)
-    self.class._each_sync_parent do |parent, inverse_name:, only_to:|
-      parent = send(parent) if parent.is_a? Symbol
+    self.class._each_sync_parent do |parent, info|
+      inverse_name = info[:inverse_name]
+      only_to = info[:only_to]
+      parent = send parent if parent.is_a? Symbol
       parent = instance_exec(&parent) if parent.is_a? Proc
       next unless parent
       next if parent.respond_to?(:destroyed?) && parent.destroyed?
@@ -67,9 +69,19 @@ module ArSync::GraphSync::InstanceMethods
     _sync_notify_self if self.class._sync_self? && action == :update
   end
 
+  def _sync_current_watch_values
+    values = {}
+    self.class._each_sync_parent do |_, info|
+      [*info[:watch]].each do |watch|
+        values[watch] = watch.is_a?(Proc) ? instance_exec(&watch) : send(watch)
+      end
+    end
+    values
+  end
+
   def _sync_current_parents_info
     parents = []
-    self.class._each_sync_parent do |parent, inverse_name:, only_to:|
+    self.class._each_sync_parent do |parent, inverse_name:, only_to:, watch:|
       parent = send parent if parent.is_a? Symbol
       parent = instance_exec(&parent) if parent.is_a? Proc
       if only_to
@@ -78,7 +90,7 @@ module ArSync::GraphSync::InstanceMethods
       end
       inverse_name = instance_exec(&inverse_name) if inverse_name.is_a? Proc
       owned = parent.class._sync_child_info(inverse_name).present? if parent
-      parents << [parent, [inverse_name, to_user, owned]]
+      parents << [parent, [inverse_name, to_user, owned, watch]]
     end
     parents
   end
@@ -122,36 +134,42 @@ module ArSync::GraphSync::InstanceMethods
     else
       parents_was = _sync_parents_info_before_mutation
       parents = _sync_current_parents_info
+      column_values_was = _sync_watch_values_before_mutation
+      column_values = _sync_current_watch_values
     end
     parents_was.zip(parents).each do |(parent_was, info_was), (parent, info)|
-      if parent_was == parent && info_was == info
-        parent&._sync_notify_child_changed self, *info
-      else
-        parent_was&._sync_notify_child_removed self, *info_was
-        parent&._sync_notify_child_added self, *info
+      name, to_user, owned, watch = info
+      name_was, to_user_was, owned_was = info_was
+      if parent_was != parent || info_was != info
+        if owned_was
+          parent_was&._sync_notify_child_removed self, name_was, to_user_was
+        else
+          parent_was&._sync_notify_child_changed name_was, to_user_was
+        end
+        if owned
+          parent&._sync_notify_child_added self, name, to_user
+        else
+          parent&._sync_notify_child_changed name, to_user
+        end
+      elsif parent
+        changed = [*watch].any? do |w|
+          column_values_was[w] != column_values[w]
+        end
+        parent._sync_notify_child_changed name, to_user if changed
       end
     end
   end
 
-  def _sync_notify_child_removed(child, name, to_user, owned)
-    if owned
-      ArSync.sync_graph_send to: self, action: :remove, model: child, path: name, to_user: to_user
-    else
-      ArSync.sync_graph_send to: self, action: :update, model: self, to_user: to_user
-    end
+  def _sync_notify_child_removed(child, name, to_user)
+    ArSync.sync_graph_send to: self, action: :remove, model: child, path: name, to_user: to_user
   end
 
-  def _sync_notify_child_added(child, name, to_user, owned)
-    if owned
-      ArSync.sync_graph_send to: self, action: :add, model: child, path: name, to_user: to_user
-    else
-      ArSync.sync_graph_send to: self, action: :update, model: self, to_user: to_user
-    end
+  def _sync_notify_child_added(child, name, to_user)
+    ArSync.sync_graph_send to: self, action: :add, model: child, path: name, to_user: to_user
   end
 
-  def _sync_notify_child_changed(_child, _name, to_user, owned)
-    return if owned
-    ArSync.sync_graph_send(to: self, action: :update, model: self, to_user: to_user)
+  def _sync_notify_child_changed(name, to_user)
+    ArSync.sync_graph_send to: self, action: :update, model: self, field: name, to_user: to_user
   end
 
   def _sync_notify_self
@@ -160,8 +178,8 @@ module ArSync::GraphSync::InstanceMethods
     belongs.each do |name, info|
       next if belongs_was[name] == info
       value = info.key?(:value) ? info[:value] : _serializer_field_value(name)
-      _sync_notify_child_added value, name, nil, true if value.is_a? ArSerializer::Serializable
-      _sync_notify_child_removed value, name, nil, true if value.nil?
+      _sync_notify_child_added value, name, nil if value.is_a? ArSerializer::Serializable
+      _sync_notify_child_removed value, name, nil if value.nil?
     end
     ArSync.sync_graph_send(to: self, action: :update, model: self)
   end

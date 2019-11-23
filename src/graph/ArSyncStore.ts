@@ -160,6 +160,13 @@ class ArSyncContainerBase {
   }
 }
 
+type NotifyData = {
+  action: 'add' | 'remove' | 'update'
+  class_name: string
+  id: number
+  field?: string
+}
+
 class ArSyncRecord extends ArSyncContainerBase {
   id: number
   root
@@ -243,9 +250,9 @@ class ArSyncRecord extends ArSyncContainerBase {
     }
     this.subscribeAll()
   }
-  onNotify(notifyData, path?) {
+  onNotify(notifyData: NotifyData, path?: string) {
     const { action, class_name, id } = notifyData
-    const query = this.query.attributes[path]
+    const query = path && this.query.attributes[path]
     const aliasName = (query && query.as) || path;
     if (action === 'remove') {
       const child = this.children[aliasName]
@@ -269,7 +276,9 @@ class ArSyncRecord extends ArSyncContainerBase {
         this.onChange([aliasName], model.data)
       })
     } else {
-      ModelBatchRequest.fetch(class_name, this.reloadQuery(), id).then(data => {
+      const { field } = notifyData
+      const query = field ? this.patchQuery(field) : this.reloadQuery()
+      if (query) ModelBatchRequest.fetch(class_name, query, id).then(data => {
         if (this.data) this.update(data)
       })
     }
@@ -283,6 +292,12 @@ class ArSyncRecord extends ArSyncContainerBase {
       const pathCallback = data => this.onNotify(data, path)
       for (const key of this.sync_keys) this.subscribe(key + path, pathCallback)
     }
+  }
+  patchQuery(key: string) {
+    const val = this.query.attributes[key]
+    if (!val) return
+    if (!val.attributes) return key
+    if (!val.params && Object.keys(val.attributes).length === 0) return { [key]: val }
   }
   reloadQuery() {
     if (this.reloadQueryCache) return this.reloadQueryCache

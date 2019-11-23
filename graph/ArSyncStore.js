@@ -246,7 +246,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     }
     onNotify(notifyData, path) {
         const { action, class_name, id } = notifyData;
-        const query = this.query.attributes[path];
+        const query = path && this.query.attributes[path];
         const aliasName = (query && query.as) || path;
         if (action === 'remove') {
             const child = this.children[aliasName];
@@ -276,10 +276,13 @@ class ArSyncRecord extends ArSyncContainerBase {
             });
         }
         else {
-            ModelBatchRequest.fetch(class_name, this.reloadQuery(), id).then(data => {
-                if (this.data)
-                    this.update(data);
-            });
+            const { field } = notifyData;
+            const query = field ? this.patchQuery(field) : this.reloadQuery();
+            if (query)
+                ModelBatchRequest.fetch(class_name, query, id).then(data => {
+                    if (this.data)
+                        this.update(data);
+                });
         }
     }
     subscribeAll() {
@@ -292,6 +295,15 @@ class ArSyncRecord extends ArSyncContainerBase {
             for (const key of this.sync_keys)
                 this.subscribe(key + path, pathCallback);
         }
+    }
+    patchQuery(key) {
+        const val = this.query.attributes[key];
+        if (!val)
+            return;
+        if (!val.attributes)
+            return key;
+        if (!val.params && Object.keys(val.attributes).length === 0)
+            return { [key]: val };
     }
     reloadQuery() {
         if (this.reloadQueryCache)

@@ -64,6 +64,11 @@ class Graph::Comment < Graph::BaseRecord
   sync_has_many :myStars, preload: :my_stars_loader do |preloaded|
     preloaded[id] || []
   end
+
+  sync_has_data :editedStarCount, preload: ->(comments) do
+    counts = Graph::Star.where('created_at != updated_at').where(comment_id: comments.map(&:id)).group(:comment_id).count
+    Hash.new(0).merge counts
+  end
 end
 
 class Graph::Star < Graph::BaseRecord
@@ -77,4 +82,5 @@ class Graph::Star < Graph::BaseRecord
   sync_parent :comment, inverse_of: :starCount
   sync_parent :comment, inverse_of: :myStar, only_to: -> { user }
   sync_parent :comment, inverse_of: :myStars, only_to: -> { user }
+  sync_parent :comment, inverse_of: :editedStarCount, watch: :updated_at
 end
