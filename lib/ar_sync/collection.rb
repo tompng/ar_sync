@@ -51,9 +51,9 @@ class ArSync::Collection::Tree < ArSync::Collection
 end
 
 class ArSync::Collection::Graph < ArSync::Collection
-  def _sync_notify_child_changed(_child, _name, _to_user, _owned); end
+  def _sync_notify_child_changed(_name, _to_user); end
 
-  def _sync_notify_child_added(child, _name, to_user, _owned)
+  def _sync_notify_child_added(child, _name, to_user)
     ArSync.sync_graph_send to: self, action: :add, model: child, path: :collection, to_user: to_user
   end
 

@@ -52,9 +52,10 @@ module ArSync
     end
   end
 
-  def self.sync_graph_send(to:, action:, model:, path: nil, to_user: nil)
+  def self.sync_graph_send(to:, action:, model:, path: nil, field: nil, to_user: nil)
     key = sync_graph_key to, to_user, signature: false
     e = { action: action }
+    e[:field] = field if field
     if model
       e[:class_name] = model.class.base_class.name
       e[:id] = model.id

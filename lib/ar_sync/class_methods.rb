@@ -30,11 +30,11 @@ module ArSync::ClassMethodsBase
     superclass._each_sync_child(&block) if superclass < ActiveRecord::Base
   end
 
-  def sync_parent(parent, inverse_of:, only_to: nil)
+  def sync_parent(parent, inverse_of:, only_to: nil, watch: nil)
     _initialize_sync_callbacks
     _sync_parents_info << [
       parent,
-      { inverse_name: inverse_of, only_to: only_to }
+      { inverse_name: inverse_of, only_to: only_to, watch: watch }
     ]
   end
 end
@@ -189,6 +189,7 @@ module ArSync::GraphSync::ClassMethods
     mod = Module.new do
       def write_attribute(attr_name, value)
         self.class.default_scoped.scoping do
+          @_sync_watch_values_before_mutation ||= _sync_current_watch_values
           @_sync_parents_info_before_mutation ||= _sync_current_parents_info
           @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
         end
@@ -196,7 +197,7 @@ module ArSync::GraphSync::ClassMethods
       end
     end
     prepend mod
-    attr_reader :_sync_parents_info_before_mutation, :_sync_belongs_to_info_before_mutation
+    attr_reader :_sync_parents_info_before_mutation, :_sync_belongs_to_info_before_mutation, :_sync_watch_values_before_mutation
 
     _sync_define :id
 
