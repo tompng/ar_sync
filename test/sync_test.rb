@@ -218,3 +218,20 @@ tap do # watch test
   star.update updated_at: star.created_at
   runner.assert_script 'postModel.data.comments[0].editedStarCount', to_be: count
 end
+
+tap do # root array field test
+  post1 = Graph::Post.first
+  post2 = Graph::Post.second
+  runner.eval_script <<~JAVASCRIPT
+    global.postsModel = new ArSyncModel({
+      api: 'Graph::Post',
+      params: { ids: [#{post1.id}, #{post2.id}] },
+      query: ['id', 'title']
+    })
+  JAVASCRIPT
+  runner.assert_script 'postsModel.data'
+  runner.assert_script 'postsModel.data[0].title', to_be: post1.title
+  title2 = "title#{rand}"
+  post1.update title: title2
+  runner.assert_script 'postsModel.data[0].title', to_be: title2
+end
