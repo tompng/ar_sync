@@ -216,9 +216,9 @@ module ArSync::GraphSync::ClassMethods
     end
 
     before_save on: :create do
-      @_sync_parents_info_before_mutation ||= _sync_current_parents_info
-      @_sync_watch_values_before_mutation ||= _sync_current_watch_values
-      @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
+      @_sync_parents_info_before_mutation ||= {}
+      @_sync_watch_values_before_mutation ||= {}
+      @_sync_belongs_to_info_before_mutation ||= {}
     end
 
     %i[create update destroy].each do |action|
