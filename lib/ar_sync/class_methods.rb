@@ -187,7 +187,7 @@ module ArSync::GraphSync::ClassMethods
     return if instance_variable_defined? '@_sync_callbacks_initialized'
     @_sync_callbacks_initialized = true
     mod = Module.new do
-      def write_attribute(attr_name, value)
+      def _write_attribute(attr_name, value)
         self.class.default_scoped.scoping do
           @_sync_watch_values_before_mutation ||= _sync_current_watch_values
           @_sync_parents_info_before_mutation ||= _sync_current_parents_info
@@ -211,11 +211,13 @@ module ArSync::GraphSync::ClassMethods
 
     before_destroy do
       @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+      @_sync_watch_values_before_mutation ||= _sync_current_watch_values
       @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
     end
 
     before_save on: :create do
       @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+      @_sync_watch_values_before_mutation ||= _sync_current_watch_values
       @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
     end
 
@@ -223,6 +225,7 @@ module ArSync::GraphSync::ClassMethods
       after_commit on: action do
         next if ArSync.skip_notification?
         self.class.default_scoped.scoping { _sync_notify action }
+        @_sync_watch_values_before_mutation = nil
         @_sync_parents_info_before_mutation = nil
         @_sync_belongs_to_info_before_mutation = nil
       end

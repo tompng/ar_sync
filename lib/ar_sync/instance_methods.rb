@@ -73,11 +73,7 @@ module ArSync::GraphSync::InstanceMethods
     values = {}
     self.class._each_sync_parent do |_, info|
       [*info[:watch]].each do |watch|
-        if watch.is_a? Proc
-          values[watch.to_s] = instance_exec(&watch)
-        else
-          values[watch.to_s] = send watch
-        end
+        values[watch] = watch.is_a?(Proc) ? instance_exec(&watch) : send(watch)
       end
     end
     values
