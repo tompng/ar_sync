@@ -130,7 +130,7 @@ class ArSyncContainerBase {
     static _load({ api, id, params, query }, root) {
         const parsedQuery = ArSyncRecord.parseQuery(query);
         if (id) {
-            return ModelBatchRequest.fetch(api, query, id).then(data => new ArSyncRecord(parsedQuery, data[0], null, root));
+            return ModelBatchRequest.fetch(api, query, id).then(data => new ArSyncRecord(parsedQuery, data, null, root));
         }
         else {
             const request = { api, query, params };
