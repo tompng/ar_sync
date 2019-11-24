@@ -1,4 +1,4 @@
-import ArSyncAPI from '../core/ArSyncApi'
+import ArSyncAPI from './ArSyncApi'
 
 const ModelBatchRequest = {
   timer: null,

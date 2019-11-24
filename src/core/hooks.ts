@@ -1,20 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import ArSyncAPI from './ArSyncApi'
+import ArSyncModel from './ArSyncModel'
 
 interface ModelStatus { complete: boolean; notfound?: boolean; connected: boolean }
 export type DataAndStatus<T> = [T | null, ModelStatus]
 export interface Request { api: string; params?: any; query: any }
 
-interface ArSyncModel<T> {
-  data: T | null
-  complete: boolean
-  connected: boolean
-  notfound?: boolean
-  release(): void
-  subscribe(type: any, callback: any): any
-}
 const initialResult: DataAndStatus<null> = [null, { complete: false, notfound: undefined, connected: true }]
-export function useArSyncModelWithClass<T>(modelClass: { new<T>(req: Request, option?: any): ArSyncModel<T> }, request: Request | null): DataAndStatus<T> {
+export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
   const [result, setResult] = useState<DataAndStatus<T>>(initialResult)
   const requestString = JSON.stringify(request && request.params)
   useEffect(() => {
@@ -22,7 +15,7 @@ export function useArSyncModelWithClass<T>(modelClass: { new<T>(req: Request, op
       setResult(initialResult)
       return () => {}
     }
-    const model = new modelClass<T>(request, { immutable: true })
+    const model = new ArSyncModel<T>(request, { immutable: true })
     function update() {
       const { complete, notfound, connected, data } = model
       setResult(resultWas => {

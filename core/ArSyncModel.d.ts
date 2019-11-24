@@ -1,3 +1,4 @@
+import ConnectionAdapter from './ConnectionAdapter';
 interface Request {
     api: string;
     query: any;
@@ -13,20 +14,13 @@ declare type LoadCallback = () => void;
 declare type ConnectionCallback = (status: boolean) => void;
 declare type SubscriptionType = 'load' | 'change' | 'connection';
 declare type SubscriptionCallback = ChangeCallback | LoadCallback | ConnectionCallback;
-interface Adapter {
-    subscribe: (key: string, received: (data: any) => void) => {
-        unsubscribe: () => void;
-    };
-    ondisconnect: () => void;
-    onreconnect: () => void;
-}
 declare type PathFirst<P extends Readonly<any[]>> = ((...args: P) => void) extends (first: infer First, ...other: any) => void ? First : never;
 declare type PathRest<U> = U extends Readonly<any[]> ? ((...args: U) => any) extends (head: any, ...args: infer T) => any ? U extends Readonly<[any, any, ...any[]]> ? T : never : never : never;
 declare type DigResult<Data, P extends Readonly<any[]>> = Data extends null | undefined ? Data : PathFirst<P> extends never ? Data : PathFirst<P> extends keyof Data ? (Data extends Readonly<any[]> ? undefined : never) | {
     0: Data[PathFirst<P>];
     1: DigResult<Data[PathFirst<P>], PathRest<P>>;
 }[PathRest<P> extends never ? 0 : 1] : undefined;
-export default abstract class ArSyncModelBase<T> {
+export default class ArSyncModel<T> {
     private _ref;
     private _listenerSerial;
     private _listeners;
@@ -43,10 +37,6 @@ export default abstract class ArSyncModelBase<T> {
         };
     };
     static cacheTimeout: number;
-    abstract refManagerClass(): any;
-    abstract connectionManager(): {
-        networkStatus: boolean;
-    };
     constructor(request: Request, option?: {
         immutable: boolean;
     });
@@ -68,12 +58,9 @@ export default abstract class ArSyncModelBase<T> {
         timer: number | null;
         model: any;
     };
-    static createRefModel(_request: Request, _option?: {
-        immutable: boolean;
-    }): void;
     static _detach(ref: any): void;
     private static _attach;
-    static setConnectionAdapter(_adapter: Adapter): void;
-    static waitForLoad(...models: ArSyncModelBase<{}>[]): Promise<{}>;
+    static setConnectionAdapter(adapter: ConnectionAdapter): void;
+    static waitForLoad(...models: ArSyncModel<{}>[]): Promise<{}>;
 }
 export {};

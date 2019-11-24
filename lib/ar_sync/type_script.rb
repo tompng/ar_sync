@@ -54,7 +54,7 @@ module ArSync::TypeScript
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest } from 'ar_sync/core/DataType'
-      import { default as ArSyncModelBase } from 'ar_sync/ArSyncModel'
+      import { default as ArSyncModelBase } from 'ar_sync/core/ArSyncModel'
       class _ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>> {
         constructor(r: R, option?: { immutable: boolean }) { super(r, option) }
       }
