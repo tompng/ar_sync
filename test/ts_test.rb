@@ -7,6 +7,7 @@ class TsTest < Minitest::Test
     include ArSerializer::Serializable
     serializer_field :currentUser, type: User
     serializer_field :users, type: [User]
+    serializer_field 'User', type: [User], params_type: { ids: [:int] }
   end
 
   def test_ts_type_generate
