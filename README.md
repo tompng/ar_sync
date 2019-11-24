@@ -39,15 +39,14 @@ end
 
 2. Define apis
 ```ruby
-# app/controllers/sync_api_controller.rb
-class SyncApiController < ApplicationController
-  include ArSync::ApiControllerConcern
+# app/models/sync_schema.rb
+class SyncSchema < ArSync::SyncSchemaBase
   # User-defined api
   serializer_field :my_simple_profile_api do |current_user|
     current_user
   end
-  serializer_field :my_simple_user_api do |current_user, id:|
-    User.where(condition).find id
+  serializer_field :my_simple_friends_api do |current_user, age:|
+    current_user.friends.where(age: age)
   end
   # Reload api (field name = classname, params = `ids:`)
   serializer_field :User do |current_user, ids:|
