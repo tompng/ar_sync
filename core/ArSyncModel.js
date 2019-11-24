@@ -1,12 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-class ArSyncModelBase {
+const ArSyncStore_1 = require("./ArSyncStore");
+const ConnectionManager_1 = require("./ConnectionManager");
+class ArSyncModel {
     constructor(request, option) {
-        this._ref = this.refManagerClass().retrieveRef(request, option);
+        this._ref = ArSyncModel.retrieveRef(request, option);
         this._listenerSerial = 0;
         this._listeners = {};
         this.complete = false;
-        this.connected = this.connectionManager().networkStatus;
+        this.connected = ArSyncStore_1.default.connectionManager.networkStatus;
         const setData = () => {
             this.data = this._ref.model.data;
             this.complete = this._ref.model.complete;
@@ -30,7 +32,7 @@ class ArSyncModelBase {
         return subscription;
     }
     dig(path) {
-        return ArSyncModelBase.digData(this.data, path);
+        return ArSyncModel.digData(this.data, path);
     }
     static digData(data, path) {
         if (path.length === 0)
@@ -73,21 +75,18 @@ class ArSyncModelBase {
         for (const id in this._listeners)
             this._listeners[id].unsubscribe();
         this._listeners = {};
-        this.refManagerClass()._detach(this._ref);
+        ArSyncModel._detach(this._ref);
         this._ref = null;
     }
     static retrieveRef(request, option) {
         const key = JSON.stringify([request, option]);
         let ref = this._cache[key];
         if (!ref) {
-            const model = this.createRefModel(request, option);
+            const model = new ArSyncStore_1.default(request, option);
             ref = this._cache[key] = { key, count: 0, timer: null, model };
         }
         this._attach(ref);
         return ref;
-    }
-    static createRefModel(_request, _option) {
-        throw 'abstract method';
     }
     static _detach(ref) {
         ref.count--;
@@ -110,7 +109,9 @@ class ArSyncModelBase {
         if (ref.timer)
             clearTimeout(ref.timer);
     }
-    static setConnectionAdapter(_adapter) { }
+    static setConnectionAdapter(adapter) {
+        ArSyncStore_1.default.connectionManager = new ConnectionManager_1.default(adapter);
+    }
     static waitForLoad(...models) {
         return new Promise((resolve) => {
             let count = 0;
@@ -124,4 +125,6 @@ class ArSyncModelBase {
         });
     }
 }
-exports.default = ArSyncModelBase;
+ArSyncModel._cache = {};
+ArSyncModel.cacheTimeout = 10 * 1000;
+exports.default = ArSyncModel;

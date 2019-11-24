@@ -3,20 +3,20 @@ ENV['DATABASE_NAME'] = database_name
 File.unlink database_name if File.exist? database_name
 require_relative 'seed'
 require_relative 'helper/test_runner'
-require_relative 'model_graph'
+require_relative 'model'
 
 class Schema
   include ArSerializer::Serializable
   serializer_field(:currentUser) { |user| user }
-  serializer_field(:post) { |_user, id:| Graph::Post.find id }
-  serializer_field(:comment) { |_user, id:| Graph::Post.find id }
+  serializer_field(:post) { |_user, id:| Post.find id }
+  serializer_field(:comment) { |_user, id:| Post.find id }
 
-  [Graph::User, Graph::Post, Graph::Comment, Graph::Star].each do |klass|
+  [User, Post, Comment, Star].each do |klass|
     serializer_field(klass.name) { |_user, ids:| klass.where id: ids }
   end
 end
 
-user = Graph::User.second
+user = User.second
 runner = TestRunner.new Schema.new, user
 
 runner.eval_script <<~JAVASCRIPT
@@ -41,7 +41,7 @@ runner.eval_script <<~JAVASCRIPT
   })
 JAVASCRIPT
 
-users = Graph::User.all.to_a
+users = User.all.to_a
 
 tap do # load test
   runner.assert_script 'userModel.data'
@@ -131,7 +131,7 @@ tap do # per-user has_one
 end
 
 tap do # order test
-  post = Graph::Post.first
+  post = Post.first
   post.comments.each do |c|
     c.update body: rand.to_s
   end
@@ -179,8 +179,8 @@ tap do # wildcard update test
 end
 
 tap do # plain-array filed test
-  post1 = Graph::Post.first
-  post2 = Graph::Post.second
+  post1 = Post.first
+  post2 = Post.second
   post1.update title: ''
   post2.update title: 'abc'
   [post1, post2].each do |post|
@@ -200,9 +200,9 @@ tap do # plain-array filed test
 end
 
 tap do # watch test
-  comment = Graph::Comment.first
+  comment = Comment.first
   post = comment.post
-  star = comment.stars.create user: Graph::User.first
+  star = comment.stars.create user: User.first
   count = comment.stars.where('created_at != updated_at').count
   runner.eval_script <<~JAVASCRIPT
     global.postModel = new ArSyncModel({
@@ -220,11 +220,11 @@ tap do # watch test
 end
 
 tap do # root array field test
-  post1 = Graph::Post.first
-  post2 = Graph::Post.second
+  post1 = Post.first
+  post2 = Post.second
   runner.eval_script <<~JAVASCRIPT
     global.postsModel = new ArSyncModel({
-      api: 'Graph::Post',
+      api: 'Post',
       params: { ids: [#{post1.id}, #{post2.id}] },
       query: ['id', 'title']
     })

@@ -4,14 +4,9 @@ require_relative 'class_methods'
 require_relative 'instance_methods'
 
 module ArSync
-  ArSync::TreeSync.module_eval do
+  ArSync::ModelBase.module_eval do
     extend ActiveSupport::Concern
-    include ArSync::TreeSync::InstanceMethods
-  end
-
-  ArSync::GraphSync.module_eval do
-    extend ActiveSupport::Concern
-    include ArSync::GraphSync::InstanceMethods
+    include ArSync::ModelBase::InstanceMethods
   end
 
   def self.on_notification(&block)
@@ -41,19 +36,8 @@ module ArSync
     Thread.current[key] = flag_was
   end
 
-  def self.sync_tree_send(to:, action:, path:, data:, to_user: nil, ordering: nil)
-    key = sync_key to, path.grep(Symbol), to_user, signature: false
-    event = [key, action: action, path: path, data: data, ordering: ordering]
-    buffer = Thread.current[:ar_sync_compact_notifications]
-    if buffer
-      buffer << event
-    else
-      @sync_send_block&.call [event]
-    end
-  end
-
-  def self.sync_graph_send(to:, action:, model:, path: nil, field: nil, to_user: nil)
-    key = sync_graph_key to, to_user, signature: false
+  def self.sync_send(to:, action:, model:, path: nil, field: nil, to_user: nil)
+    key = sync_key to, to_user, signature: false
     e = { action: action }
     e[:field] = field if field
     if model
@@ -69,23 +53,20 @@ module ArSync
     end
   end
 
-  def self.sync_graph_key(model, to_user = nil, signature: true)
-    sync_key(model, :graph_sync, to_user, signature: signature) + ';/'
+  def self.sync_keys(model, user)
+    [sync_key(model), sync_key(model, user)]
   end
 
-  def self.sync_graph_keys(model, user)
-    [sync_graph_key(model), sync_graph_key(model, user)]
-  end
-
-  def self.sync_key(model, path, to_user = nil, signature: true)
+  def self.sync_key(model, to_user = nil, signature: true)
     if model.is_a? ArSync::Collection
-      key = [to_user&.id, model.klass.name, model.name, path].join '/'
+      key = [to_user&.id, model.klass.name, model.name].join '/'
     else
-      key = [to_user&.id, model.class.name, model.id, path].join '/'
+      key = [to_user&.id, model.class.name, model.id].join '/'
     end
     key = Digest::SHA256.hexdigest("#{config.key_secret}#{key}")[0, 32] if config.key_secret
     key = "#{config.key_prefix}#{key}" if config.key_prefix
-    signature && config.key_expires_in ? signed_key(key, Time.now.to_i.to_s) : key
+    key = signature && config.key_expires_in ? signed_key(key, Time.now.to_i.to_s) : key
+    key + ';/'
   end
 
   def self.validate_expiration(signed_key)
@@ -100,64 +81,22 @@ module ArSync
     "#{key};#{time};#{Digest::SHA256.hexdigest("#{config.key_secret}#{key};#{time}")[0, 16]}"
   end
 
-  def self.sync_collection_api(collection, current_user, args)
-    paths = _extract_paths args
-    keys = paths.flat_map do |path|
-      [sync_key(collection, path), sync_key(collection, path, current_user)]
-    end
-    {
-      keys: keys,
-      data: serialize(collection.to_a, args, user: current_user)
-    }
-  end
-
-  def self.sync_api(model, current_user, args)
-    paths = _extract_paths args
-    keys = paths.flat_map do |path|
-      [sync_key(model, path), sync_key(model, path, current_user)]
-    end
-    {
-      keys: keys,
-      data: serialize(model, args, user: current_user)
-    }
-  end
-
-  def self._extract_paths(args)
-    parsed = ArSerializer::Serializer.parse_args args
-    paths = []
-    extract = lambda do |path, attributes|
-      paths << path
-      attributes.each do |key, value|
-        sub_attributes = value[:attributes]
-        next unless sub_attributes
-        sub_path = [*path, key]
-        extract.call sub_path, sub_attributes
-      end
-    end
-    extract.call [], parsed[:attributes]
-    paths
-  end
-
   def self.serialize(record_or_records, query, user: nil)
     ArSerializer.serialize record_or_records, query, context: user, include_id: true, use: :sync
   end
 
   def self.sync_serialize(target, user, query)
     case target
-    when ArSync::Collection::Graph, ArSync::GraphSync
+    when ArSync::Collection, ArSync::ModelBase
       serialized = ArSerializer.serialize target, query, context: user, include_id: true, use: :sync
-      return serialized if target.is_a? ArSync::GraphSync
+      return serialized if target.is_a? ArSync::ModelBase
       {
-        sync_keys: ArSync.sync_graph_keys(target, user),
+        sync_keys: ArSync.sync_keys(target, user),
         order: { mode: target.order, limit: target.limit },
         collection: serialized
       }
-    when ArSync::Collection::Tree
-      ArSync.sync_collection_api target, user, query
     when ActiveRecord::Relation, Array
       ArSync.serialize target.to_a, query, user: user
-    when ActiveRecord::Base
-      ArSync.sync_api target, user, query
     when ArSerializer::Serializable
       ArSync.serialize target, query, user: user
     else

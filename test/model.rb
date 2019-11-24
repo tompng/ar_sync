@@ -1,14 +1,12 @@
 require_relative 'db'
 require 'ar_sync'
 
-module Graph
-  class BaseRecord < ActiveRecord::Base
-    self.abstract_class = true
-  end
+class BaseRecord < ActiveRecord::Base
+  include ArSync::ModelBase
+  self.abstract_class = true
 end
-ArSync.use :graph, klass: Graph::BaseRecord
 
-class Graph::User < Graph::BaseRecord
+class User < BaseRecord
   self.table_name = :users
   has_many :posts, dependent: :destroy
   sync_has_data :id, :name
@@ -16,7 +14,7 @@ class Graph::User < Graph::BaseRecord
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
 end
 
-class Graph::Post < Graph::BaseRecord
+class Post < BaseRecord
   self.table_name = :posts
   belongs_to :user
   has_many :comments, dependent: :destroy
@@ -33,13 +31,13 @@ class Graph::Post < Graph::BaseRecord
   sync_has_many :comments
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
   sync_has_many :myComments, preload: lambda { |posts, user|
-    Graph::Comment.where(post_id: posts.map(&:id), user: user).group_by(&:post_id)
+    Comment.where(post_id: posts.map(&:id), user: user).group_by(&:post_id)
   } do |preloaded|
     preloaded[id] || []
   end
 end
 
-class Graph::Comment < Graph::BaseRecord
+class Comment < BaseRecord
   self.table_name = :comments
   belongs_to :user
   belongs_to :post
@@ -50,12 +48,12 @@ class Graph::Comment < Graph::BaseRecord
   sync_has_data :id, :body
   sync_has_one :user, only: [:id, :name]
   sync_has_data(:starCount, preload: lambda { |comments|
-    Graph::Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
+    Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   }) { |preload| preload[id] || 0 }
   sync_has_data(:do_not_call_after_destroyed) { raise if destroyed? }
 
   define_preloader :my_stars_loader do |comments, user|
-    Graph::Star.where(user: user, comment_id: comments.map(&:id)).group_by(&:comment_id)
+    Star.where(user: user, comment_id: comments.map(&:id)).group_by(&:comment_id)
   end
 
   sync_has_one :myStar, preload: :my_stars_loader do |preloaded|
@@ -66,12 +64,12 @@ class Graph::Comment < Graph::BaseRecord
   end
 
   sync_has_data :editedStarCount, preload: ->(comments) do
-    counts = Graph::Star.where('created_at != updated_at').where(comment_id: comments.map(&:id)).group(:comment_id).count
+    counts = Star.where('created_at != updated_at').where(comment_id: comments.map(&:id)).group(:comment_id).count
     Hash.new(0).merge counts
   end
 end
 
-class Graph::Star < Graph::BaseRecord
+class Star < BaseRecord
   self.table_name = :stars
   belongs_to :user
   belongs_to :comment

@@ -2,7 +2,7 @@
 const readline = require('readline')
 const input = readline.createInterface({ input: process.stdin })
 const ConnectionAdapter = new require('./connection_adapter')
-const ArSyncModel = require('../../graph/ArSyncModel').default
+const ArSyncModel = require('../../core/ArSyncModel').default
 const ArSyncApi = require('../../core/ArSyncApi').default
 const connectionAdapter = new ConnectionAdapter
 ArSyncModel.setConnectionAdapter(connectionAdapter)

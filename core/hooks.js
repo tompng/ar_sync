@@ -2,8 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = require("react");
 const ArSyncApi_1 = require("./ArSyncApi");
+const ArSyncModel_1 = require("./ArSyncModel");
 const initialResult = [null, { complete: false, notfound: undefined, connected: true }];
-function useArSyncModelWithClass(modelClass, request) {
+function useArSyncModel(request) {
     const [result, setResult] = react_1.useState(initialResult);
     const requestString = JSON.stringify(request && request.params);
     react_1.useEffect(() => {
@@ -11,7 +12,7 @@ function useArSyncModelWithClass(modelClass, request) {
             setResult(initialResult);
             return () => { };
         }
-        const model = new modelClass(request, { immutable: true });
+        const model = new ArSyncModel_1.default(request, { immutable: true });
         function update() {
             const { complete, notfound, connected, data } = model;
             setResult(resultWas => {
@@ -33,7 +34,7 @@ function useArSyncModelWithClass(modelClass, request) {
     }, [requestString]);
     return result;
 }
-exports.useArSyncModelWithClass = useArSyncModelWithClass;
+exports.useArSyncModel = useArSyncModel;
 const initialFetchState = { data: null, status: { complete: false, notfound: undefined } };
 function useArSyncFetch(request) {
     const [state, setState] = react_1.useState(initialFetchState);

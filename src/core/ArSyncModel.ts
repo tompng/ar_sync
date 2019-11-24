@@ -1,3 +1,7 @@
+import ArSyncStore from './ArSyncStore'
+import ArSyncConnectionManager from './ConnectionManager'
+import ConnectionAdapter from './ConnectionAdapter'
+
 interface Request { api: string; query: any; params?: any }
 type Path = Readonly<(string | number)[]>
 interface Change { path: Path; value: any }
@@ -6,11 +10,6 @@ type LoadCallback = () => void
 type ConnectionCallback = (status: boolean) => void
 type SubscriptionType = 'load' | 'change' | 'connection'
 type SubscriptionCallback = ChangeCallback | LoadCallback | ConnectionCallback
-interface Adapter {
-  subscribe: (key: string, received: (data: any) => void) => { unsubscribe: () => void }
-  ondisconnect: () => void
-  onreconnect: () => void
-}
 
 type PathFirst<P extends Readonly<any[]>> = ((...args: P) => void) extends (first: infer First, ...other: any) => void ? First : never
 
@@ -30,7 +29,7 @@ type DigResult<Data, P extends Readonly<any[]>> =
   }[PathRest<P> extends never ? 0 : 1]
   : undefined
 
-export default abstract class ArSyncModelBase<T> {
+export default class ArSyncModel<T> {
   private _ref
   private _listenerSerial: number
   private _listeners
@@ -38,16 +37,14 @@ export default abstract class ArSyncModelBase<T> {
   notfound?: boolean
   connected: boolean
   data: T | null
-  static _cache: { [key: string]: { key: string; count: number; timer: number | null; model } }
-  static cacheTimeout: number
-  abstract refManagerClass(): any
-  abstract connectionManager(): { networkStatus: boolean }
+  static _cache: { [key: string]: { key: string; count: number; timer: number | null; model } } = {}
+  static cacheTimeout: number = 10 * 1000
   constructor(request: Request, option?: { immutable: boolean }) {
-    this._ref = this.refManagerClass().retrieveRef(request, option)
+    this._ref = ArSyncModel.retrieveRef(request, option)
     this._listenerSerial = 0
     this._listeners = {}
     this.complete = false
-    this.connected = this.connectionManager().networkStatus
+    this.connected = ArSyncStore.connectionManager.networkStatus
     const setData = () => {
       this.data = this._ref.model.data
       this.complete = this._ref.model.complete
@@ -71,7 +68,7 @@ export default abstract class ArSyncModelBase<T> {
     return subscription
   }
   dig<P extends Path>(path: P) {
-    return ArSyncModelBase.digData(this.data, path)
+    return ArSyncModel.digData(this.data, path)
   }
   static digData<Data, P extends Path>(data: Data, path: P): DigResult<Data, P> {
     if (path.length === 0) return data as any
@@ -106,7 +103,7 @@ export default abstract class ArSyncModelBase<T> {
   release() {
     for (const id in this._listeners) this._listeners[id].unsubscribe()
     this._listeners = {}
-    this.refManagerClass()._detach(this._ref)
+    ArSyncModel._detach(this._ref)
     this._ref = null
   }
   static retrieveRef(
@@ -116,14 +113,11 @@ export default abstract class ArSyncModelBase<T> {
     const key = JSON.stringify([request, option])
     let ref = this._cache[key]
     if (!ref) {
-      const model = this.createRefModel(request, option)
+      const model = new ArSyncStore(request, option)
       ref = this._cache[key] = { key, count: 0, timer: null, model }
     }
     this._attach(ref)
     return ref
-  }
-  static createRefModel(_request: Request, _option?: { immutable: boolean }) {
-    throw 'abstract method'
   }
   static _detach(ref) {
     ref.count--
@@ -143,8 +137,10 @@ export default abstract class ArSyncModelBase<T> {
     ref.count++
     if (ref.timer) clearTimeout(ref.timer)
   }
-  static setConnectionAdapter(_adapter: Adapter) {}
-  static waitForLoad(...models: ArSyncModelBase<{}>[]) {
+  static setConnectionAdapter(adapter: ConnectionAdapter) {
+    ArSyncStore.connectionManager = new ArSyncConnectionManager(adapter)
+  }
+  static waitForLoad(...models: ArSyncModel<{}>[]) {
     return new Promise((resolve) => {
       let count = 0
       for (const model of models) {

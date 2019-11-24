@@ -5,13 +5,12 @@
   <% require = -> (path) { path = File.dirname(__FILE__) + "/../../../#{path}"; depend_on path; File.read path } %>
   <%= require.call 'core/ArSyncApi.js' %>
   window.ArSyncAPI = exports.default
-  modules['../core/ArSyncApi'] = { default: exports.default }
+  modules['./ArSyncApi'] = { default: exports.default }
   <%= require.call 'core/ConnectionManager.js' %>
-  modules['../core/ConnectionManager'] = { default: exports.default }
-  <%= require.call 'core/ArSyncModelBase.js' %>
-  modules['../core/ArSyncModelBase'] = { default: exports.default }
-  <%= require.call 'tree/ArSyncStore.js' %>
+  modules['./ConnectionManager'] = { default: exports.default }
+  <%= require.call 'core/ArSyncStore.js' %>
   modules['./ArSyncStore'] = { default: exports.default }
-  <%= require.call 'tree/ArSyncModel.js' %>
-  window.ArSyncModel = ArSyncModel
+  <%= require.call 'core/ArSyncModel.js' %>
+  modules['./ArSyncModel'] = { default: exports.default }
+  window.ArSyncModel = exports.default
 }())

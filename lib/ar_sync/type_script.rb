@@ -1,13 +1,10 @@
 module ArSync::TypeScript
-  def self.generate_typed_files(api_class, dir:, mode: nil, comment: nil)
-    mode ||= :graph if ActiveRecord::Base.include? ArSync::GraphSync
-    mode ||= :tree if ActiveRecord::Base.include? ArSync::TreeSync
-    raise 'ar_sync mode: graph or tree, is not specified.' unless mode
+  def self.generate_typed_files(api_class, dir:, comment: nil)
     {
       'types.ts' => generate_type_definition(api_class),
-      'ArSyncModel.ts' => generate_model_script(mode),
-      'ArSyncApi.ts' => generate_api_script(mode),
-      'hooks.ts' => generate_hooks_script(mode)
+      'ArSyncModel.ts' => generate_model_script,
+      'ArSyncApi.ts' => generate_api_script,
+      'hooks.ts' => generate_hooks_script
     }.each { |file, code| File.write File.join(dir, file), "#{comment}#{code}" }
   end
 
@@ -53,11 +50,11 @@ module ArSync::TypeScript
     ].join("\n")
   end
 
-  def self.generate_model_script(mode)
+  def self.generate_model_script
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest } from 'ar_sync/core/DataType'
-      import ArSyncModelBase from 'ar_sync/#{mode}/ArSyncModel'
+      import { default as ArSyncModelBase } from 'ar_sync/core/ArSyncModel'
       class _ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>> {
         constructor(r: R, option?: { immutable: boolean }) { super(r, option) }
       }
@@ -66,7 +63,7 @@ module ArSync::TypeScript
     CODE
   end
 
-  def self.generate_api_script(mode)
+  def self.generate_api_script
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest } from 'ar_sync/core/DataType'
@@ -77,11 +74,11 @@ module ArSync::TypeScript
     CODE
   end
 
-  def self.generate_hooks_script(mode)
+  def self.generate_hooks_script
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest } from 'ar_sync/core/DataType'
-      import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/#{mode}/hooks'
+      import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/hooks'
       export function useArSyncModel<R extends TypeRequest>(request: R | null) {
         return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
       }
