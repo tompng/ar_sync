@@ -78,7 +78,7 @@ module ArSync::TypeScript
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest } from 'ar_sync/core/DataType'
-      import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/hooks'
+      import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/core/hooks'
       export function useArSyncModel<R extends TypeRequest>(request: R | null) {
         return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
       }
