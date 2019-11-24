@@ -73,8 +73,14 @@ type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Values<Extra>> ext
   : { error: { extraFields: SelectString<Values<Extra>> } }
 type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>
 
-type RequestBase = { api: string; query: any; params?: any; _meta?: { data: any } }
-type DataTypeBaseFromRequestType<R> = R extends { _meta?: { data: infer DataType } } ? DataType : never
+type RequestBase = { api: string; query: any; id?: number; params?: any; _meta?: { data: any } }
+type DataTypeBaseFromRequestType<R extends RequestBase, ID> = R extends { _meta?: { data: infer DataType } }
+  ? (
+      ID extends number
+      ? ([DataType, R['params']] extends [(infer DT)[], { ids: number[] } | undefined] ? DT : never)
+      : DataType
+    )
+  : never
 export type DataTypeFromRequest<Req extends RequestBase, R extends RequestBase> = ValidateDataTypeExtraFileds<
-  DataTypeFromQuery<DataTypeBaseFromRequestType<Req>, R['query']>
+  DataTypeFromQuery<DataTypeBaseFromRequestType<Req, R['id']>, R['query']>
 >
