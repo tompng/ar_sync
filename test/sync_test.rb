@@ -235,3 +235,20 @@ tap do # root array field test
   post1.update title: title2
   runner.assert_script 'postsModel.data[0].title', to_be: title2
 end
+
+tap do # model load from id
+  post1 = Post.first
+  post2 = Post.second
+  runner.eval_script <<~JAVASCRIPT
+    global.p1 = new ArSyncModel({ api: 'Post', id: #{post1.id}, query: 'title' })
+    global.p2 = new ArSyncModel({ api: 'Post', id: #{post2.id}, query: 'title' })
+  JAVASCRIPT
+  runner.assert_script 'p1.data && p2.data'
+  runner.assert_script '[p1.data.title, p2.data.title]', to_be: [post1.title, post2.title]
+  p1title = "P1#{rand}"
+  post1.update title: p1title
+  runner.assert_script '[p1.data.title, p2.data.title]', to_be: [p1title, post2.title]
+  p2title = "P2#{rand}"
+  post2.update title: p2title
+  runner.assert_script '[p1.data.title, p2.data.title]', to_be: [p1title, p2title]
+end

@@ -41,6 +41,8 @@ const data14 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: {
 data14.posts[0].title
 const data15 = new ArSyncModel({ api: 'currentUser', query: { posts: ['id', 'title'] } } as const).data!
 data15.posts[0].title
+const data16 = new ArSyncModel({ api: 'User', id: 1, query: 'name' }).data!
+data16.name
 
 const model = new ArSyncModel({ api: 'currentUser', query: { posts: ['id', 'title'] } } as const)
 let digId = model.dig(['posts', 0, 'id'] as const)

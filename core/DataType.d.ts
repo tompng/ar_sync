@@ -46,15 +46,18 @@ declare type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<Co
 declare type RequestBase = {
     api: string;
     query: any;
+    id?: number;
     params?: any;
     _meta?: {
         data: any;
     };
 };
-declare type DataTypeBaseFromRequestType<R> = R extends {
+declare type DataTypeBaseFromRequestType<R extends RequestBase, ID> = R extends {
     _meta?: {
         data: infer DataType;
     };
-} ? DataType : never;
-export declare type DataTypeFromRequest<Req extends RequestBase, R extends RequestBase> = ValidateDataTypeExtraFileds<DataTypeFromQuery<DataTypeBaseFromRequestType<Req>, R['query']>>;
+} ? (ID extends number ? ([DataType, R['params']] extends [(infer DT)[], {
+    ids: number[];
+} | undefined] ? DT : never) : DataType) : never;
+export declare type DataTypeFromRequest<Req extends RequestBase, R extends RequestBase> = ValidateDataTypeExtraFileds<DataTypeFromQuery<DataTypeBaseFromRequestType<Req, R['id']>, R['query']>>;
 export {};
