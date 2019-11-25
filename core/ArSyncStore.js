@@ -87,7 +87,59 @@ class ArSyncContainerBase {
             l.unsubscribe();
         this.listeners = [];
     }
-    static parseQuery(query, attrsonly = false) {
+    static compactQuery(query) {
+        function compactAttributes(attributes) {
+            const attrs = {};
+            const keys = [];
+            for (const key in attributes) {
+                const c = compactQuery(attributes[key]);
+                if (c === true) {
+                    keys.push(key);
+                }
+                else {
+                    attrs[key] = c;
+                }
+            }
+            if (Object.keys(attrs).length === 0) {
+                if (keys.length === 0)
+                    return [true, false];
+                if (keys.length === 1)
+                    return [keys[0], false];
+                return [keys];
+            }
+            const needsEscape = attrs['attributes'] || attrs['params'] || attrs['as'];
+            if (keys.length === 0)
+                return [attrs, needsEscape];
+            return [[...keys, attrs], needsEscape];
+        }
+        function compactQuery(query) {
+            if (!('attributes' in query))
+                return true;
+            const { as, params } = query;
+            const [attributes, needsEscape] = compactAttributes(query.attributes);
+            if (as == null && params == null) {
+                if (needsEscape)
+                    return { attributes };
+                return attributes;
+            }
+            const result = {};
+            if (as)
+                result.as = as;
+            if (params)
+                result.params = params;
+            if (attributes !== true)
+                result.attributes = attributes;
+            return result;
+        }
+        try {
+            const result = compactQuery(query);
+            return result === true ? {} : result;
+        }
+        catch (e) {
+            throw JSON.stringify(query) + e.stack;
+        }
+    }
+    static parseQuery(query, attrsonly) {
         const attributes = {};
         let column = null;
         let params = null;
@@ -129,11 +181,12 @@ class ArSyncContainerBase {
     }
     static _load({ api, id, params, query }, root) {
         const parsedQuery = ArSyncRecord.parseQuery(query);
+        const compactQuery = ArSyncRecord.compactQuery(parsedQuery);
         if (id) {
-            return ModelBatchRequest.fetch(api, query, id).then(data => new ArSyncRecord(parsedQuery, data, null, root));
+            return ModelBatchRequest.fetch(api, compactQuery, id).then(data => new ArSyncRecord(parsedQuery, data, null, root));
         }
         else {
-            const request = { api, query, params };
+            const request = { api, query: compactQuery, params };
             return ArSyncApi_1.default.syncFetch(request).then((response) => {
                 if (response.collection && response.order) {
                     return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root);
@@ -263,7 +316,7 @@ class ArSyncRecord extends ArSyncContainerBase {
         else if (action === 'add') {
             if (this.data[aliasName] && this.data[aliasName].id === id)
                 return;
-            ModelBatchRequest.fetch(class_name, query, id).then(data => {
+            ModelBatchRequest.fetch(class_name, ArSyncRecord.compactQuery(query), id).then(data => {
                 if (!data || !this.data)
                     return;
                 const model = new ArSyncRecord(query, data, null, this.root);
@@ -303,10 +356,19 @@ class ArSyncRecord extends ArSyncContainerBase {
         const val = this.query.attributes[key];
         if (!val)
             return;
-        if (!val.attributes)
+        let { attributes, as, params } = val;
+        if (attributes && Object.keys(val.attributes).length === 0)
+            attributes = null;
+        if (!attributes && !as && !params)
             return key;
-        if (!val.params && Object.keys(val.attributes).length === 0)
-            return { [key]: val };
+        const result = {};
+        if (attributes)
+            result.attributes = attributes;
+        if (as)
+            result.as = as;
+        if (params)
+            result.params = params;
+        return result;
     }
     reloadQuery() {
         if (this.reloadQueryCache)
@@ -358,6 +420,7 @@ class ArSyncCollection extends ArSyncContainerBase {
         this.root = root;
         this.path = path;
         this.query = query;
+        this.compactQuery = ArSyncRecord.compactQuery(query);
         if (request)
             this.initForReload(request);
         if (query.params && (query.params.order || query.params.limit)) {
@@ -460,7 +523,7 @@ class ArSyncCollection extends ArSyncContainerBase {
                     return;
             }
         }
-        ModelBatchRequest.fetch(className, this.query, id).then(data => {
+        ModelBatchRequest.fetch(className, this.compactQuery, id).then(data => {
             if (!data || !this.data)
                 return;
             const model = new ArSyncRecord(this.query, data, null, this.root);

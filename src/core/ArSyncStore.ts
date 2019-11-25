@@ -51,6 +51,12 @@ const ModelBatchRequest = {
   }
 }
 
+type ParsedQuery = {
+  attributes: Record<string, ParsedQuery>
+  as?: string
+  params: any
+} | {}
+
 class ArSyncContainerBase {
   data
   listeners
@@ -97,8 +103,50 @@ class ArSyncContainerBase {
     for (const l of this.listeners) l.unsubscribe()
     this.listeners = []
   }
-  static parseQuery(query, attrsonly = false){
-    const attributes = {}
+  static compactQuery(query: ParsedQuery) {
+    function compactAttributes(attributes: Record<string, ParsedQuery>) {
+      const attrs = {}
+      const keys: string[] = []
+      for (const key in attributes) {
+        const c = compactQuery(attributes[key])
+        if (c === true) {
+          keys.push(key)
+        } else {
+          attrs[key] = c
+        }
+      }
+      if (Object.keys(attrs).length === 0) {
+        if (keys.length === 0) return [true, false]
+        if (keys.length === 1) return [keys[0], false]
+        return [keys]
+      }
+      const needsEscape = attrs['attributes'] || attrs['params'] || attrs['as']
+      if (keys.length === 0) return [attrs, needsEscape]
+      return [[...keys, attrs], needsEscape]
+    }
+    function compactQuery(query: ParsedQuery) {
+      if (!('attributes' in query)) return true
+      const { as, params } = query
+      const [attributes, needsEscape] = compactAttributes(query.attributes)
+      if (as == null && params == null){
+        if (needsEscape) return { attributes }
+        return attributes
+      }
+      const result: { as?: string; params?: any; attributes?: any } = {}
+      if (as) result.as = as
+      if (params) result.params = params
+      if (attributes !== true) result.attributes = attributes
+      return result
+    }
+    try{
+    const result = compactQuery(query)
+    return result === true ? {} : result
+  }catch(e){throw JSON.stringify(query)+e.stack}
+  }
+  static parseQuery(query, attrsonly: true): Record<string, ParsedQuery>
+  static parseQuery(query): ParsedQuery
+  static parseQuery(query, attrsonly?: true) {
+    const attributes: Record<string, ParsedQuery> = {}
     let column = null
     let params = null
     if (!query) query = []
@@ -131,10 +179,11 @@ class ArSyncContainerBase {
   }
   static _load({ api, id, params, query }, root) {
     const parsedQuery = ArSyncRecord.parseQuery(query)
+    const compactQuery = ArSyncRecord.compactQuery(parsedQuery)
     if (id) {
-      return ModelBatchRequest.fetch(api, query, id).then(data => new ArSyncRecord(parsedQuery, data, null, root))
+      return ModelBatchRequest.fetch(api, compactQuery, id).then(data => new ArSyncRecord(parsedQuery, data, null, root))
     } else {
-      const request = { api, query, params }
+      const request = { api, query: compactQuery, params }
       return ArSyncAPI.syncFetch(request).then((response: any) => {
         if (response.collection && response.order) {
           return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root)
@@ -265,7 +314,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.onChange([aliasName], null)
     } else if (action === 'add') {
       if (this.data[aliasName] && this.data[aliasName].id === id) return
-      ModelBatchRequest.fetch(class_name, query, id).then(data => {
+      ModelBatchRequest.fetch(class_name, ArSyncRecord.compactQuery(query), id).then(data => {
         if (!data || !this.data) return
         const model = new ArSyncRecord(query, data, null, this.root)
         const child = this.children[aliasName]
@@ -298,8 +347,14 @@ class ArSyncRecord extends ArSyncContainerBase {
   patchQuery(key: string) {
     const val = this.query.attributes[key]
     if (!val) return
-    if (!val.attributes) return key
-    if (!val.params && Object.keys(val.attributes).length === 0) return { [key]: val }
+    let { attributes, as, params } = val
+    if (attributes && Object.keys(val.attributes).length === 0) attributes = null
+    if (!attributes && !as && !params) return key
+    const result: { attributes?; as?; params? } = {}
+    if (attributes) result.attributes = attributes
+    if (as) result.as = as
+    if (params) result.params = params
+    return result
   }
   reloadQuery() {
     if (this.reloadQueryCache) return this.reloadQueryCache
@@ -342,6 +397,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   path: string
   order: { limit: number | null; key: string; mode: 'asc' | 'desc' } = { limit: null, mode: 'asc', key: 'id' }
   query
+  compactQuery
   data: any[]
   children: ArSyncRecord[]
   aliasOrderKey = 'id'
@@ -350,6 +406,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.root = root
     this.path = path
     this.query = query
+    this.compactQuery = ArSyncRecord.compactQuery(query)
     if (request) this.initForReload(request)
     if (query.params && (query.params.order || query.params.limit)) {
       this.setOrdering(query.params.limit, query.params.order)
@@ -433,7 +490,7 @@ class ArSyncCollection extends ArSyncContainerBase {
         if (last && last.id > id) return
       }
     }
-    ModelBatchRequest.fetch(className, this.query, id).then(data => {
+    ModelBatchRequest.fetch(className, this.compactQuery, id).then(data => {
       if (!data || !this.data) return
       const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parentModel = this
