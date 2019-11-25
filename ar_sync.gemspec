@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'activerecord'
-  spec.add_dependency 'ar_serializer'
+  spec.add_dependency 'ar_serializer', '1.0.0'
   %w[rake pry sqlite3 activerecord-import].each do |gem_name|
     spec.add_development_dependency gem_name
   end

@@ -3,7 +3,7 @@ PATH
   specs:
     ar_sync (1.0.1)
       activerecord
-      ar_serializer
+      ar_serializer (= 1.0.0)
 
 GEM
   remote: https://rubygems.org/
