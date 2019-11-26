@@ -35,18 +35,21 @@ class ArSyncModel {
         return ArSyncModel.digData(this.data, path);
     }
     static digData(data, path) {
-        if (path.length === 0)
-            return data;
-        if (data == null)
-            return data;
-        const key = path[0];
-        const other = path.slice(1);
-        if (Array.isArray(data)) {
-            return this.digData(data.find(el => el.id === key), other);
+        function dig(data, path) {
+            if (path.length === 0)
+                return data;
+            if (data == null)
+                return data;
+            const key = path[0];
+            const other = path.slice(1);
+            if (Array.isArray(data)) {
+                return this.digData(data.find(el => el.id === key), other);
+            }
+            else {
+                return this.digData(data[key], other);
+            }
         }
-        else {
-            return this.digData(data[key], other);
-        }
+        return dig(data, path);
     }
     subscribe(event, callback) {
         const id = this._listenerSerial++;

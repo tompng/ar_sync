@@ -71,15 +71,18 @@ export default class ArSyncModel<T> {
     return ArSyncModel.digData(this.data, path)
   }
   static digData<Data, P extends Path>(data: Data, path: P): DigResult<Data, P> {
-    if (path.length === 0) return data as any
-    if (data == null) return data
-    const key = path[0]
-    const other = path.slice(1)
-    if (Array.isArray(data)) {
-      return this.digData(data.find(el => el.id === key), other)
-    } else {
-      return this.digData(data[key], other)
+    function dig(data: Data, path: Path) {
+      if (path.length === 0) return data as any
+      if (data == null) return data
+      const key = path[0]
+      const other = path.slice(1)
+      if (Array.isArray(data)) {
+        return this.digData(data.find(el => el.id === key), other)
+      } else {
+        return this.digData(data[key], other)
+      }
     }
+    return dig(data, path)
   }
   subscribe(event: SubscriptionType, callback: SubscriptionCallback): { unsubscribe: () => void } {
     const id = this._listenerSerial++
