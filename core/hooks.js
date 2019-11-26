@@ -1,13 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = require("react");
 const ArSyncApi_1 = require("./ArSyncApi");
 const ArSyncModel_1 = require("./ArSyncModel");
+let useState;
+let useEffect;
+let useMemo;
+function setHooks(hooks) {
+    useState = hooks.useState;
+    useEffect = hooks.useEffect;
+    useMemo = hooks.useMemo;
+}
+exports.setHooks = setHooks;
+function checkHooks() {
+    if (!useState)
+        throw 'uninitialized. needs `setHooks({ useState, useEffect, useMemo })`';
+}
 const initialResult = [null, { complete: false, notfound: undefined, connected: true }];
 function useArSyncModel(request) {
-    const [result, setResult] = react_1.useState(initialResult);
+    checkHooks();
+    const [result, setResult] = useState(initialResult);
     const requestString = JSON.stringify(request && request.params);
-    react_1.useEffect(() => {
+    useEffect(() => {
         if (!request) {
             setResult(initialResult);
             return () => { };
@@ -37,9 +50,10 @@ function useArSyncModel(request) {
 exports.useArSyncModel = useArSyncModel;
 const initialFetchState = { data: null, status: { complete: false, notfound: undefined } };
 function useArSyncFetch(request) {
-    const [state, setState] = react_1.useState(initialFetchState);
+    checkHooks();
+    const [state, setState] = useState(initialFetchState);
     const requestString = JSON.stringify(request && request.params);
-    const loader = react_1.useMemo(() => {
+    const loader = useMemo(() => {
         let lastLoadId = 0;
         let timer = null;
         function cancel() {
@@ -81,7 +95,7 @@ function useArSyncFetch(request) {
         }
         return { update, cancel };
     }, [requestString]);
-    react_1.useEffect(() => {
+    useEffect(() => {
         setState(initialFetchState);
         loader.update();
         return () => loader.cancel();

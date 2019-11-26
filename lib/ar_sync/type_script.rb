@@ -76,9 +76,11 @@ module ArSync::TypeScript
 
   def self.generate_hooks_script
     <<~CODE
+      import { useState, useEffect, useMemo } from 'react'
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest } from 'ar_sync/core/DataType'
-      import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/core/hooks'
+      import { initializeHooks, useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/core/hooks'
+      initializeHooks({ useState, useEffect, useMemo })
       export function useArSyncModel<R extends TypeRequest>(request: R | null) {
         return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
       }
