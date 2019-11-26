@@ -1,11 +1,12 @@
-import * as ActionCable from 'actioncable'
 import ConnectionAdapter from './ConnectionAdapter'
 
 export default class ActionCableAdapter implements ConnectionAdapter {
   connected: boolean
-  _cable: ActionCable.Cable
-  constructor() {
+  _cable: any
+  actionCableClass: any
+  constructor(actionCableClass: any) {
     this.connected = true
+    this.actionCableClass = actionCableClass
     this.subscribe(Math.random().toString(), () => {})
   }
   subscribe(key: string, received: (data: any) => void) {
@@ -19,7 +20,7 @@ export default class ActionCableAdapter implements ConnectionAdapter {
       this.connected = true
       this.onreconnect()
     }
-    if (!this._cable) this._cable = ActionCable.createConsumer()
+    if (!this._cable) this._cable = this.actionCableClass.createConsumer()
     return this._cable.subscriptions.create(
       { channel: 'SyncChannel', key },
       { received, disconnected, connected }

@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const ActionCable = require("actioncable");
 class ActionCableAdapter {
-    constructor() {
+    constructor(actionCableClass) {
         this.connected = true;
+        this.actionCableClass = actionCableClass;
         this.subscribe(Math.random().toString(), () => { });
     }
     subscribe(key, received) {
@@ -20,7 +20,7 @@ class ActionCableAdapter {
             this.onreconnect();
         };
         if (!this._cable)
-            this._cable = ActionCable.createConsumer();
+            this._cable = this.actionCableClass.createConsumer();
         return this._cable.subscriptions.create({ channel: 'SyncChannel', key }, { received, disconnected, connected });
     }
     ondisconnect() { }
