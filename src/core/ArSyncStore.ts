@@ -490,7 +490,7 @@ class ArSyncCollection extends ArSyncContainerBase {
         if (last && last.id > id) return
       }
     }
-    ModelBatchRequest.fetch(className, this.compactQuery, id).then(data => {
+    ModelBatchRequest.fetch(className, this.compactQuery, id).then((data: any) => {
       if (!data || !this.data) return
       const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parentModel = this

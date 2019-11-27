@@ -18,7 +18,7 @@ class TsTest < Minitest::Test
     dir = 'test/generated_typed_files'
     Dir.mkdir dif unless Dir.exist? dir
     ArSync::TypeScript.generate_typed_files Schema, dir: dir
-    ['hooks.ts', 'ArSyncModel.ts'].each do |file|
+    %w[ArSyncApi.ts ArSyncModel.ts DataTypeFromRequest.ts hooks.ts].each do |file|
       path = File.join dir, file
       File.write path, File.read(path).gsub('ar_sync/', '../../src/')
     end

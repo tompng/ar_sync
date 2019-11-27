@@ -1,5 +1,8 @@
 import ArSyncModel from './generated_typed_files/ArSyncModel'
 import { useArSyncModel, useArSyncFetch } from './generated_typed_files/hooks'
+import ActionCableAdapter from '../src/core/ActionCableAdapter'
+import * as ActionCable from 'actioncable'
+ArSyncModel.setConnectionAdapter(new ActionCableAdapter(ActionCable))
 
 const [hooksData1] = useArSyncModel({ api: 'currentUser', query: 'id' })
 hooksData1!.id

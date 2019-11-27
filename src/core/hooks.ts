@@ -1,13 +1,30 @@
-import { useState, useEffect, useMemo } from 'react'
 import ArSyncAPI from './ArSyncApi'
 import ArSyncModel from './ArSyncModel'
+
+let useState: <T>(t: T | (() => T)) => [T, (t: T | ((t: T) => T)) => void]
+let useEffect: (f: (() => void) | (() => (() => void)), deps: any[]) => void
+let useMemo: <T>(f: () => T, deps: any[]) => T
+type SetHooksParams = {
+  useState: typeof useState
+  useEffect: typeof useEffect
+  useMemo: typeof useMemo
+}
+export function setHooks(hooks: SetHooksParams) {
+  useState = hooks.useState
+  useEffect = hooks.useEffect
+  useMemo = hooks.useMemo
+}
+function checkHooks() {
+  if (!useState) throw 'uninitialized. needs `setHooks({ useState, useEffect, useMemo })`'
+}
 
 interface ModelStatus { complete: boolean; notfound?: boolean; connected: boolean }
 export type DataAndStatus<T> = [T | null, ModelStatus]
 export interface Request { api: string; params?: any; query: any }
 
-const initialResult: DataAndStatus<null> = [null, { complete: false, notfound: undefined, connected: true }]
+const initialResult: DataAndStatus<any> = [null, { complete: false, notfound: undefined, connected: true }]
 export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
+  checkHooks()
   const [result, setResult] = useState<DataAndStatus<T>>(initialResult)
   const requestString = JSON.stringify(request && request.params)
   useEffect(() => {
@@ -40,8 +57,9 @@ export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
 interface FetchStatus { complete: boolean; notfound?: boolean }
 type DataStatusUpdate<T> = [T | null, FetchStatus, () => void]
 type FetchState<T> = { data: T | null; status: FetchStatus }
-const initialFetchState: FetchState<null> = { data: null, status: { complete: false, notfound: undefined } }
+const initialFetchState: FetchState<any> = { data: null, status: { complete: false, notfound: undefined } }
 export function useArSyncFetch<T>(request: Request | null): DataStatusUpdate<T> {
+  checkHooks()
   const [state, setState] = useState<FetchState<T>>(initialFetchState)
   const requestString = JSON.stringify(request && request.params)
   const loader = useMemo(() => {

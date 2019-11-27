@@ -102,7 +102,8 @@ rails g ar_sync:types path_to_generated_code_dir/
 ```ts
 import ArSyncModel from 'path_to_generated_code_dir/ArSyncModel'
 import ActionCableAdapter from 'ar_sync/core/ActionCableAdapter'
-ArSyncModel.setConnectionAdapter(new ActionCableAdapter)
+import * as ActionCable from 'actioncable'
+ArSyncModel.setConnectionAdapter(new ActionCableAdapter(ActionCable))
 // ArSyncModel.setConnectionAdapter(new MyCustomConnectionAdapter) // If you are using other transports
 ```
 

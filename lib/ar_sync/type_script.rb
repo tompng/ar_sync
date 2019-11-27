@@ -4,7 +4,8 @@ module ArSync::TypeScript
       'types.ts' => generate_type_definition(api_class),
       'ArSyncModel.ts' => generate_model_script,
       'ArSyncApi.ts' => generate_api_script,
-      'hooks.ts' => generate_hooks_script
+      'hooks.ts' => generate_hooks_script,
+      'DataTypeFromRequest.ts' => generate_type_util_script
     }.each { |file, code| File.write File.join(dir, file), "#{comment}#{code}" }
   end
 
@@ -52,38 +53,48 @@ module ArSync::TypeScript
 
   def self.generate_model_script
     <<~CODE
-      import { TypeRequest, ApiNameRequests } from './types'
-      import { DataTypeFromRequest } from 'ar_sync/core/DataType'
+      import { TypeRequest } from './types'
+      import DataTypeFromRequest from './DataTypeFromRequest'
       import { default as ArSyncModelBase } from 'ar_sync/core/ArSyncModel'
-      class _ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>> {
-        constructor(r: R, option?: { immutable: boolean }) { super(r, option) }
+      declare class ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<DataTypeFromRequest<R>> {
+        constructor(r: R, option?: { immutable: boolean })
       }
-      const ArSyncModel: typeof _ArSyncModel = ArSyncModelBase as any
-      export default ArSyncModel
+      export default ArSyncModelBase as typeof ArSyncModel
     CODE
   end
 
   def self.generate_api_script
     <<~CODE
-      import { TypeRequest, ApiNameRequests } from './types'
-      import { DataTypeFromRequest } from 'ar_sync/core/DataType'
+      import { TypeRequest } from './types'
+      import DataTypeFromRequest from './DataTypeFromRequest'
       import ArSyncApi from 'ar_sync/core/ArSyncApi'
       export function fetch<R extends TypeRequest>(request: R) {
-        return ArSyncApi.fetch(request) as Promise<DataTypeFromRequest<ApiNameRequests[R['api']], R>>
+        return ArSyncApi.fetch(request) as Promise<DataTypeFromRequest<R>>
       }
+    CODE
+  end
+
+  def self.generate_type_util_script
+    <<~CODE
+      import { TypeRequest, ApiNameRequests } from './types'
+      import { DataTypeFromRequest as DataTypeFromRequestPair } from 'ar_sync/core/DataType'
+      type DataTypeFromRequest<R extends TypeRequest> = DataTypeFromRequestPair<ApiNameRequests[R['api']], R>
+      export default DataTypeFromRequest
     CODE
   end
 
   def self.generate_hooks_script
     <<~CODE
-      import { TypeRequest, ApiNameRequests } from './types'
-      import { DataTypeFromRequest } from 'ar_sync/core/DataType'
-      import { useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/core/hooks'
+      import { useState, useEffect, useMemo } from 'react'
+      import { TypeRequest } from './types'
+      import DataTypeFromRequest from './DataTypeFromRequest'
+      import { initializeHooks, useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/core/hooks'
+      initializeHooks({ useState, useEffect, useMemo })
       export function useArSyncModel<R extends TypeRequest>(request: R | null) {
-        return useArSyncModelBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
+        return useArSyncModelBase<DataTypeFromRequest<R>>(request)
       }
       export function useArSyncFetch<R extends TypeRequest>(request: R | null) {
-        return useArSyncFetchBase<DataTypeFromRequest<ApiNameRequests[R['api']], R>>(request)
+        return useArSyncFetchBase<DataTypeFromRequest<R>>(request)
       }
     CODE
   end
