@@ -52,13 +52,14 @@ type CheckAttributesField<P, Q> = Q extends { attributes: infer R }
 
 type IsAnyCompareLeftType = { __any: never }
 
-type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type
+type CollectExtraFields<Type, Path> = Exclude<
+  IsAnyCompareLeftType extends Type
   ? null
   : Type extends ExtraFieldErrorType
   ? Path
   : Type extends (infer R)[]
   ? _CollectExtraFields<R>
-  : _CollectExtraFields<Type>
+  : _CollectExtraFields<Type>, null>
 
 type _CollectExtraFields<Type> = Type extends object
   ? (keyof (Type) extends never

@@ -8,7 +8,7 @@ type IsEqual<T, U> = [T, U] extends [U, T] ? true : false
 function isOK<T extends true>(): T | undefined { return }
 type IsStrictMode = string | null extends string ? false : true
 type TypeIncludes<T extends {}, U extends {}> = IsEqual<Pick<T, keyof T & keyof U>, U>
-type HasExtraField<T extends { error: { extraFields: any } }, U> = IsEqual<T['error']['extraFields'], U>
+type HasExtraField<T extends { error: { extraFields: any } } | null, U> = IsEqual<Exclude<T, null>['error']['extraFields'], U>
 isOK<IsStrictMode>()
 
 const [hooksData1] = useArSyncModel({ api: 'currentUser', query: 'id' })

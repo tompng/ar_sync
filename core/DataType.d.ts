@@ -32,7 +32,7 @@ declare type CheckAttributesField<P, Q> = Q extends {
 declare type IsAnyCompareLeftType = {
     __any: never;
 };
-declare type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : _CollectExtraFields<Type>;
+declare type CollectExtraFields<Type, Path> = Exclude<IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : _CollectExtraFields<Type>, null>;
 declare type _CollectExtraFields<Type> = Type extends object ? (keyof (Type) extends never ? null : Values<{
     [key in keyof Type]: CollectExtraFields<Type[key], [key]>;
 }>) : null;
