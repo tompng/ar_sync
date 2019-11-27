@@ -11,6 +11,7 @@ class User < BaseRecord
   has_many :posts, dependent: :destroy
   sync_has_data :id, :name
   sync_has_many :posts
+  sync_has_one(:postOrNull, type: ->{ [Post, nil] }) { nil }
 end
 
 class Post < BaseRecord

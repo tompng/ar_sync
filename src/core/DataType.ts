@@ -1,6 +1,6 @@
 type RecordType = { _meta?: { query: any } }
 type Values<T> = T extends { [K in keyof T]: infer U } ? U : never
-type DataTypeExtractField<BaseType, Key extends keyof BaseType> = BaseType[Key] extends RecordType
+type DataTypeExtractField<BaseType, Key extends keyof BaseType> = Exclude<BaseType[Key], null> extends RecordType
   ? (null extends BaseType[Key] ? {} | null : {})
   : BaseType[Key] extends RecordType[]
   ? {}[]
