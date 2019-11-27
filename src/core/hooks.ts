@@ -4,18 +4,18 @@ import ArSyncModel from './ArSyncModel'
 let useState: <T>(t: T | (() => T)) => [T, (t: T | ((t: T) => T)) => void]
 let useEffect: (f: (() => void) | (() => (() => void)), deps: any[]) => void
 let useMemo: <T>(f: () => T, deps: any[]) => T
-type SetHooksParams = {
+type InitializeHooksParams = {
   useState: typeof useState
   useEffect: typeof useEffect
   useMemo: typeof useMemo
 }
-export function setHooks(hooks: SetHooksParams) {
+export function initializeHooks(hooks: InitializeHooksParams) {
   useState = hooks.useState
   useEffect = hooks.useEffect
   useMemo = hooks.useMemo
 }
 function checkHooks() {
-  if (!useState) throw 'uninitialized. needs `setHooks({ useState, useEffect, useMemo })`'
+  if (!useState) throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo })`'
 }
 
 interface ModelStatus { complete: boolean; notfound?: boolean; connected: boolean }

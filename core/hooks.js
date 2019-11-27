@@ -5,15 +5,15 @@ const ArSyncModel_1 = require("./ArSyncModel");
 let useState;
 let useEffect;
 let useMemo;
-function setHooks(hooks) {
+function initializeHooks(hooks) {
     useState = hooks.useState;
     useEffect = hooks.useEffect;
     useMemo = hooks.useMemo;
 }
-exports.setHooks = setHooks;
+exports.initializeHooks = initializeHooks;
 function checkHooks() {
     if (!useState)
-        throw 'uninitialized. needs `setHooks({ useState, useEffect, useMemo })`';
+        throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo })`';
 }
 const initialResult = [null, { complete: false, notfound: undefined, connected: true }];
 function useArSyncModel(request) {
