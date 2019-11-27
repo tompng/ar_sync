@@ -53,7 +53,7 @@ class ApiFetcher {
                             }
                             else {
                                 const error = result.error || { type: 'Unknown Error' };
-                                callback.reject(Object.assign({}, error, { retry: false }));
+                                callback.reject(Object.assign(Object.assign({}, error), { retry: false }));
                             }
                         }
                     }

@@ -2,7 +2,7 @@ declare function apiBatchFetch(endpoint: string, requests: object[]): Promise<an
 declare const ArSyncApi: {
     domain: string | null;
     _batchFetch: typeof apiBatchFetch;
-    fetch: (request: object) => Promise<{}>;
-    syncFetch: (request: object) => Promise<{}>;
+    fetch: (request: object) => Promise<unknown>;
+    syncFetch: (request: object) => Promise<unknown>;
 };
 export default ArSyncApi;
