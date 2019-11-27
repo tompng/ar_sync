@@ -51,26 +51,26 @@ type CheckAttributesField<P, Q> = Q extends { attributes: infer R }
 
 type IsAnyCompareLeftType = { __any: never }
 
-type CollectExtraFields<Type, Path> = Exclude<
+type CollectExtraFields<Type, Path> =
   IsAnyCompareLeftType extends Type
   ? null
   : Type extends ExtraFieldErrorType
   ? Path
   : Type extends (infer R)[]
   ? _CollectExtraFields<R>
-  : _CollectExtraFields<Type>, null>
+  : _CollectExtraFields<Type>
 
 type _CollectExtraFields<Type> = Type extends object
   ? (keyof (Type) extends never
     ? null
-    : Values<{ [key in keyof Type]: CollectExtraFields<Type[key], [key]> }>
+    : Values<{ [key in keyof Type]: CollectExtraFields<Type[key], key> }>
   )
   : null
 
 type SelectString<T> = T extends string ? T : never
-type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Values<Extra>> extends never
+type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Extra> extends never
   ? Type
-  : { error: { extraFields: SelectString<Values<Extra>> } }
+  : { error: { extraFields: SelectString<Extra> } }
 type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>
 
 type RequestBase = { api: string; query: any; id?: number; params?: any; _meta?: { data: any } }

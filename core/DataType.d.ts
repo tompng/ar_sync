@@ -33,14 +33,14 @@ declare type CheckAttributesField<P, Q> = Q extends {
 declare type IsAnyCompareLeftType = {
     __any: never;
 };
-declare type CollectExtraFields<Type, Path> = Exclude<IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : _CollectExtraFields<Type>, null>;
+declare type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : _CollectExtraFields<Type>;
 declare type _CollectExtraFields<Type> = Type extends object ? (keyof (Type) extends never ? null : Values<{
-    [key in keyof Type]: CollectExtraFields<Type[key], [key]>;
+    [key in keyof Type]: CollectExtraFields<Type[key], key>;
 }>) : null;
 declare type SelectString<T> = T extends string ? T : never;
-declare type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Values<Extra>> extends never ? Type : {
+declare type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Extra> extends never ? Type : {
     error: {
-        extraFields: SelectString<Values<Extra>>;
+        extraFields: SelectString<Extra>;
     };
 };
 declare type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>;
