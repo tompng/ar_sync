@@ -53,6 +53,12 @@ const data15 = new ArSyncModel({ api: 'currentUser', query: { posts: ['id', 'tit
 isOK<IsEqual<(typeof data15.posts)[0], { id: number; title: string | null }>>()
 const data16 = new ArSyncModel({ api: 'User', id: 1, query: 'name' }).data!
 isOK<IsEqual<typeof data16, { name: string | null }>>()
+const data17 = new ArSyncModel({ api: 'currentUser', query: 'postOrNull' }).data!
+isOK<IsEqual<typeof data17, { postOrNull: {} | null }>>()
+const data18 = new ArSyncModel({ api: 'currentUser', query: { postOrNull: 'title' } }).data!
+isOK<IsEqual<typeof data18, { postOrNull: { title: string | null } | null }>>()
+const data19 = new ArSyncModel({ api: 'currentUser', query: { '*': true, postOrNull: 'title' } }).data!
+isOK<TypeIncludes<typeof data19, { postOrNull: { title: string | null } | null }>>()
 
 const model = new ArSyncModel({ api: 'currentUser', query: { posts: ['id', 'title'] } } as const)
 let digId = model.dig(['posts', 0, 'id'] as const)
