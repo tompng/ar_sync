@@ -1,7 +1,8 @@
 type RecordType = { _meta?: { query: any } }
 type Values<T> = T extends { [K in keyof T]: infer U } ? U : never
-type DataTypeExtractField<BaseType, Key extends keyof BaseType> = BaseType[Key] extends RecordType
-  ? (null extends BaseType[Key] ? {} | null : {})
+type AddNullable<Test, Type> = null extends Test ? Type | null : Type
+type DataTypeExtractField<BaseType, Key extends keyof BaseType> = Exclude<BaseType[Key], null> extends RecordType
+  ? AddNullable<BaseType[Key], {}>
   : BaseType[Key] extends RecordType[]
   ? {}[]
   : BaseType[Key]
@@ -20,7 +21,7 @@ type DataTypeExtractFromQueryHash<BaseType, QueryType> = '*' extends keyof Query
         ? (key extends keyof QueryType
             ? (QueryType[key] extends true
                 ? DataTypeExtractField<BaseType, key>
-                : DataTypeFromQuery<BaseType[key] & {}, QueryType[key]>)
+                : AddNullable<BaseType[key], DataTypeFromQuery<BaseType[key] & {}, QueryType[key]>>)
             : DataTypeExtractField<BaseType, key>)
         : ExtraFieldErrorType)
     }
@@ -28,7 +29,7 @@ type DataTypeExtractFromQueryHash<BaseType, QueryType> = '*' extends keyof Query
       [key in keyof QueryType]: (key extends keyof BaseType
         ? (QueryType[key] extends true
             ? DataTypeExtractField<BaseType, key>
-            : DataTypeFromQuery<BaseType[key] & {}, QueryType[key]>)
+            : AddNullable<BaseType[key], DataTypeFromQuery<BaseType[key] & {}, QueryType[key]>>)
         : ExtraFieldErrorType)
     }
 
@@ -42,9 +43,7 @@ type _DataTypeFromQuery<BaseType, QueryType> = QueryType extends keyof BaseType 
 
 export type DataTypeFromQuery<BaseType, QueryType> = BaseType extends any[]
   ? CheckAttributesField<BaseType[0], QueryType>[]
-  : null extends BaseType
-  ? CheckAttributesField<BaseType & {}, QueryType> | null
-  : CheckAttributesField<BaseType & {}, QueryType>
+  : AddNullable<BaseType, CheckAttributesField<BaseType & {}, QueryType>>
 
 type CheckAttributesField<P, Q> = Q extends { attributes: infer R }
   ? _DataTypeFromQuery<P, R>
@@ -52,13 +51,14 @@ type CheckAttributesField<P, Q> = Q extends { attributes: infer R }
 
 type IsAnyCompareLeftType = { __any: never }
 
-type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type
+type CollectExtraFields<Type, Path> = Exclude<
+  IsAnyCompareLeftType extends Type
   ? null
   : Type extends ExtraFieldErrorType
   ? Path
   : Type extends (infer R)[]
   ? _CollectExtraFields<R>
-  : _CollectExtraFields<Type>
+  : _CollectExtraFields<Type>, null>
 
 type _CollectExtraFields<Type> = Type extends object
   ? (keyof (Type) extends never

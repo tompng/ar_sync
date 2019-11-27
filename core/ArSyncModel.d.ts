@@ -61,6 +61,6 @@ export default class ArSyncModel<T> {
     static _detach(ref: any): void;
     private static _attach;
     static setConnectionAdapter(adapter: ConnectionAdapter): void;
-    static waitForLoad(...models: ArSyncModel<{}>[]): Promise<{}>;
+    static waitForLoad(...models: ArSyncModel<{}>[]): Promise<unknown>;
 }
 export {};

@@ -128,6 +128,6 @@ class ArSyncModel {
         });
     }
 }
+exports.default = ArSyncModel;
 ArSyncModel._cache = {};
 ArSyncModel.cacheTimeout = 10 * 1000;
-exports.default = ArSyncModel;
