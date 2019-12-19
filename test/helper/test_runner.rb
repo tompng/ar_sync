@@ -26,7 +26,7 @@ class TestRunner
       info = @schema.class._serializer_field_info api_name
       api_params = (request['params'] || {}).transform_keys(&:to_sym)
       user = @current_user.reload
-      model = instance_exec(user, api_params, &info.data_block)
+      model = instance_exec(user, **api_params, &info.data_block)
       { data: ArSync.sync_serialize(model, user, request['query']) }
     end
   end
