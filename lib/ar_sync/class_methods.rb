@@ -21,7 +21,7 @@ module ArSync::ModelBase::ClassMethods
   end
 
   def _each_sync_parent(&block)
-    _sync_parents_info.each(&block)
+    _sync_parents_info.each { |parent, options| block.call(parent, **options) }
     superclass._each_sync_parent(&block) if superclass < ActiveRecord::Base
   end
 
@@ -46,18 +46,18 @@ module ArSync::ModelBase::ClassMethods
     @_sync_self = true
     names.each do |name|
       _sync_children_info[name] = nil
-      _sync_define name, option, &data_block
+      _sync_define name, **option, &data_block
     end
   end
 
   def sync_has_many(name, **option, &data_block)
     _sync_children_info[name] = [:many, option, data_block]
-    _sync_has_many name, option, &data_block
+    _sync_has_many name, **option, &data_block
   end
 
   def sync_has_one(name, **option, &data_block)
     _sync_children_info[name] = [:one, option, data_block]
-    _sync_define name, option, &data_block
+    _sync_define name, **option, &data_block
   end
 
   def _sync_has_many(name, order: :asc, limit: nil, preload: nil, association: nil, **option, &data_block)
