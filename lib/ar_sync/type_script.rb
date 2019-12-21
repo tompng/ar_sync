@@ -10,18 +10,12 @@ module ArSync::TypeScript
   end
 
   def self.generate_type_definition(api_class)
-    classes = api_related_classes api_class
-    types = ArSerializer::TypeScript.related_serializer_types classes.flatten
+    types = ArSerializer::TypeScript.related_serializer_types([api_class]).reject { |t| t.type == api_class }
     [
       types.map { |t| data_type_definition t },
       types.map { |t| query_type_definition t },
       request_type_definition(api_class)
     ].join "\n"
-  end
-
-  def self.api_related_classes(api_class)
-    classes = ArSerializer::TypeScript.related_serializer_types([api_class]).map(&:type)
-    classes - [api_class]
   end
 
   def self.request_type_definition(api_class)
