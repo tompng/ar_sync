@@ -19,6 +19,11 @@ end
 user = User.second
 runner = TestRunner.new Schema.new, user
 
+# _sync_xxx_before_mutation can be nil
+post = Post.last
+post.update title: post.title + '!'
+post.save
+
 runner.eval_script <<~JAVASCRIPT
   global.userModel = new ArSyncModel({
     api: 'currentUser',

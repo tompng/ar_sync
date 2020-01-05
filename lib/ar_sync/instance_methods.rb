@@ -69,9 +69,10 @@ module ArSync::ModelBase::InstanceMethods
     else
       parents_was = _sync_parents_info_before_mutation
       parents = _sync_current_parents_info
-      column_values_was = _sync_watch_values_before_mutation
+      column_values_was = _sync_watch_values_before_mutation || {}
       column_values = _sync_current_watch_values
     end
+    return unless parents_was
     parents_was.zip(parents).each do |(parent_was, info_was), (parent, info)|
       name, to_user, owned, watch = info
       name_was, to_user_was, owned_was = info_was
@@ -109,6 +110,7 @@ module ArSync::ModelBase::InstanceMethods
 
   def _sync_notify_self
     belongs_was = _sync_belongs_to_info_before_mutation
+    return unless belongs_was
     belongs = _sync_current_belongs_to_info
     belongs.each do |name, info|
       next if belongs_was[name] == info
