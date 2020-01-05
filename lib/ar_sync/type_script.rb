@@ -102,12 +102,12 @@ module ArSync::TypeScript
       if association_type
         qname = "Type#{association_type.name}Query"
         if field.args.empty?
-          "#{field.name}?: true | #{qname} | { as?: string; attributes?: #{qname} }"
+          "#{field.name}?: true | #{qname} | { attributes?: #{qname} }"
         else
-          "#{field.name}?: true | #{qname} | { as?: string; params: #{field.args_ts_type}; attributes?: #{qname} }"
+          "#{field.name}?: true | #{qname} | { params: #{field.args_ts_type}; attributes?: #{qname} }"
         end
       else
-        "#{field.name}?: true | { as: string }"
+        "#{field.name}?: true"
       end
     end
     field_definitions << "'*'?: true"
