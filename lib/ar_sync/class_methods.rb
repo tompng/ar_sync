@@ -64,14 +64,14 @@ module ArSync::ModelBase::ClassMethods
     raise "order not in [:asc, :desc] : #{order}" unless %i[asc desc].include? order
     if data_block.nil? && preload.nil?
       underscore_name = name.to_s.underscore.to_sym
-      preload = lambda do |records, _context, params|
+      preload = lambda do |records, _context, **params|
         ArSerializer::Field.preload_association(
           self, records, association || underscore_name,
           order: (!limit && params && params[:order]) || order,
           limit: [params && params[:limit]&.to_i, limit].compact.min
         )
       end
-      data_block = lambda do |preloaded, _context, params|
+      data_block = lambda do |preloaded, _context, **params|
         records = preloaded ? preloaded[id] || [] : send(name)
         next records unless limit || order == :asc
         ArSync::CollectionWithOrder.new(
@@ -80,7 +80,7 @@ module ArSync::ModelBase::ClassMethods
           limit: [params && params[:limit]&.to_i, limit].compact.min
         )
       end
-      serializer_data_block = lambda do |preloaded, _context, _params|
+      serializer_data_block = lambda do |preloaded, _context, **_params|
         preloaded ? preloaded[id] || [] : send(name)
       end
       params_type = { limit?: :int, order?: [{ :* => %w[asc desc] }, 'asc', 'desc'] }
