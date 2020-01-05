@@ -33,10 +33,10 @@ module ArSync::ModelBase::InstanceMethods
   def _serializer_field_value(name)
     field = self.class._serializer_field_info name
     preloadeds = field.preloaders.map do |preloader|
-      args = [[self], nil, {}]
+      args = [[self], nil]
       preloader.call(*(preloader.arity < 0 ? args : args.take(preloader.arity)))
     end
-    instance_exec(*preloadeds, nil, {}, &field.data_block)
+    instance_exec(*preloadeds, nil, &field.data_block)
   end
 
   def _sync_current_belongs_to_info
