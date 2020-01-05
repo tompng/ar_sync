@@ -65,11 +65,13 @@ module ArSync::ModelBase::InstanceMethods
       parents_was = parents.map { nil }
     elsif action == :destroy
       parents_was = _sync_parents_info_before_mutation
+      return unless parents_was
       parents = parents_was.map { nil }
     else
       parents_was = _sync_parents_info_before_mutation
+      return unless parents_was
       parents = _sync_current_parents_info
-      column_values_was = _sync_watch_values_before_mutation
+      column_values_was = _sync_watch_values_before_mutation || {}
       column_values = _sync_current_watch_values
     end
     parents_was.zip(parents).each do |(parent_was, info_was), (parent, info)|
@@ -109,6 +111,7 @@ module ArSync::ModelBase::InstanceMethods
 
   def _sync_notify_self
     belongs_was = _sync_belongs_to_info_before_mutation
+    return unless belongs_was
     belongs = _sync_current_belongs_to_info
     belongs.each do |name, info|
       next if belongs_was[name] == info
