@@ -78,7 +78,7 @@ module ArSync
         [
           '//= require ar_sync',
           '//= require action_cable',
-          '//= require ar_sync_actioncable_adapter',
+          '//= require ar_sync_action_cable_adapter',
           'ArSyncModel.setConnectionAdapter(new ArSyncActionCableAdapter(ActionCable))'
         ].join("\n") + "\n",
         before: '//= require_tree .'
