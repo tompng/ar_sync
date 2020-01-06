@@ -36,8 +36,9 @@ export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
     function update() {
       const { complete, notfound, connected, data } = model
       setResult(resultWas => {
-        const [, statusWas] = resultWas
+        const [dataWas, statusWas] = resultWas
         const statusPersisted = statusWas.complete === complete && statusWas.notfound === notfound && statusWas.connected === connected
+        if (dataWas === data && statusPersisted) return resultWas
         const status = statusPersisted ? statusWas : { complete, notfound, connected }
         return [data, status]
       })
@@ -47,6 +48,7 @@ export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
     } else {
       setResult(initialResult)
     }
+    model.subscribe('load', update)
     model.subscribe('change', update)
     model.subscribe('connection', update)
     return () => model.release()
