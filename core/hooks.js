@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const ArSyncApi_1 = require("./ArSyncApi");
-const ArSyncModel_1 = require("./ArSyncModel");
-let useState;
-let useEffect;
-let useMemo;
+var ArSyncApi_1 = require("./ArSyncApi");
+var ArSyncModel_1 = require("./ArSyncModel");
+var useState;
+var useEffect;
+var useMemo;
 function initializeHooks(hooks) {
     useState = hooks.useState;
     useEffect = hooks.useEffect;
@@ -15,25 +15,25 @@ function checkHooks() {
     if (!useState)
         throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo })`';
 }
-const initialResult = [null, { complete: false, notfound: undefined, connected: true }];
+var initialResult = [null, { complete: false, notfound: undefined, connected: true }];
 function useArSyncModel(request) {
     checkHooks();
-    const [result, setResult] = useState(initialResult);
-    const requestString = JSON.stringify(request && request.params);
-    useEffect(() => {
+    var _a = useState(initialResult), result = _a[0], setResult = _a[1];
+    var requestString = JSON.stringify(request && request.params);
+    useEffect(function () {
         if (!request) {
             setResult(initialResult);
-            return () => { };
+            return function () { };
         }
-        const model = new ArSyncModel_1.default(request, { immutable: true });
+        var model = new ArSyncModel_1.default(request, { immutable: true });
         function update() {
-            const { complete, notfound, connected, data } = model;
-            setResult(resultWas => {
-                const [dataWas, statusWas] = resultWas;
-                const statusPersisted = statusWas.complete === complete && statusWas.notfound === notfound && statusWas.connected === connected;
+            var complete = model.complete, notfound = model.notfound, connected = model.connected, data = model.data;
+            setResult(function (resultWas) {
+                var dataWas = resultWas[0], statusWas = resultWas[1];
+                var statusPersisted = statusWas.complete === complete && statusWas.notfound === notfound && statusWas.connected === connected;
                 if (dataWas === data && statusPersisted)
                     return resultWas;
-                const status = statusPersisted ? statusWas : { complete, notfound, connected };
+                var status = statusPersisted ? statusWas : { complete: complete, notfound: notfound, connected: connected };
                 return [data, status];
             });
         }
@@ -46,19 +46,19 @@ function useArSyncModel(request) {
         model.subscribe('load', update);
         model.subscribe('change', update);
         model.subscribe('connection', update);
-        return () => model.release();
+        return function () { return model.release(); };
     }, [requestString]);
     return result;
 }
 exports.useArSyncModel = useArSyncModel;
-const initialFetchState = { data: null, status: { complete: false, notfound: undefined } };
+var initialFetchState = { data: null, status: { complete: false, notfound: undefined } };
 function useArSyncFetch(request) {
     checkHooks();
-    const [state, setState] = useState(initialFetchState);
-    const requestString = JSON.stringify(request && request.params);
-    const loader = useMemo(() => {
-        let lastLoadId = 0;
-        let timer = null;
+    var _a = useState(initialFetchState), state = _a[0], setState = _a[1];
+    var requestString = JSON.stringify(request && request.params);
+    var loader = useMemo(function () {
+        var lastLoadId = 0;
+        var timer = null;
         function cancel() {
             if (timer)
                 clearTimeout(timer);
@@ -67,28 +67,28 @@ function useArSyncFetch(request) {
         }
         function fetch(request, retryCount) {
             cancel();
-            const currentLoadingId = lastLoadId;
-            ArSyncApi_1.default.fetch(request).then((response) => {
+            var currentLoadingId = lastLoadId;
+            ArSyncApi_1.default.fetch(request).then(function (response) {
                 if (currentLoadingId !== lastLoadId)
                     return;
                 setState({ data: response, status: { complete: true, notfound: false } });
-            }).catch(e => {
+            }).catch(function (e) {
                 if (currentLoadingId !== lastLoadId)
                     return;
                 if (!e.retry) {
                     setState({ data: null, status: { complete: true, notfound: true } });
                     return;
                 }
-                timer = setTimeout(() => fetch(request, retryCount + 1), 1000 * Math.min(4 ** retryCount, 30));
+                timer = setTimeout(function () { return fetch(request, retryCount + 1); }, 1000 * Math.min(Math.pow(4, retryCount), 30));
             });
         }
         function update() {
             if (request) {
-                setState(state => {
-                    const { data, status } = state;
+                setState(function (state) {
+                    var data = state.data, status = state.status;
                     if (!status.complete && status.notfound === undefined)
                         return state;
-                    return { data, status: { complete: false, notfound: undefined } };
+                    return { data: data, status: { complete: false, notfound: undefined } };
                 });
                 fetch(request, 0);
             }
@@ -96,12 +96,12 @@ function useArSyncFetch(request) {
                 setState(initialFetchState);
             }
         }
-        return { update, cancel };
+        return { update: update, cancel: cancel };
     }, [requestString]);
-    useEffect(() => {
+    useEffect(function () {
         setState(initialFetchState);
         loader.update();
-        return () => loader.cancel();
+        return function () { return loader.cancel(); };
     }, [requestString]);
     return [state.data, state.status, loader.update];
 }

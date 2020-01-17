@@ -1,75 +1,80 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-class ConnectionManager {
-    constructor(adapter) {
+var ConnectionManager = /** @class */ (function () {
+    function ConnectionManager(adapter) {
+        var _this = this;
         this.subscriptions = {};
         this.adapter = adapter;
         this.networkListeners = {};
         this.networkListenerSerial = 0;
         this.networkStatus = true;
-        adapter.ondisconnect = () => {
-            this.unsubscribeAll();
-            this.triggerNetworkChange(false);
+        adapter.ondisconnect = function () {
+            _this.unsubscribeAll();
+            _this.triggerNetworkChange(false);
         };
-        adapter.onreconnect = () => this.triggerNetworkChange(true);
+        adapter.onreconnect = function () { return _this.triggerNetworkChange(true); };
     }
-    triggerNetworkChange(status) {
+    ConnectionManager.prototype.triggerNetworkChange = function (status) {
         if (this.networkStatus == status)
             return;
         this.networkStatus = status;
-        for (const id in this.networkListeners)
+        for (var id in this.networkListeners)
             this.networkListeners[id](status);
-    }
-    unsubscribeAll() {
-        for (const id in this.subscriptions) {
-            const subscription = this.subscriptions[id];
+    };
+    ConnectionManager.prototype.unsubscribeAll = function () {
+        for (var id in this.subscriptions) {
+            var subscription = this.subscriptions[id];
             subscription.listeners = {};
             subscription.connection.unsubscribe();
         }
         this.subscriptions = {};
-    }
-    subscribeNetwork(func) {
-        const id = this.networkListenerSerial++;
+    };
+    ConnectionManager.prototype.subscribeNetwork = function (func) {
+        var _this = this;
+        var id = this.networkListenerSerial++;
         this.networkListeners[id] = func;
-        const unsubscribe = () => {
-            delete this.networkListeners[id];
+        var unsubscribe = function () {
+            delete _this.networkListeners[id];
         };
-        return { unsubscribe };
-    }
-    subscribe(key, func) {
-        const subscription = this.connect(key);
-        const id = subscription.serial++;
+        return { unsubscribe: unsubscribe };
+    };
+    ConnectionManager.prototype.subscribe = function (key, func) {
+        var _this = this;
+        var subscription = this.connect(key);
+        var id = subscription.serial++;
         subscription.ref++;
         subscription.listeners[id] = func;
-        const unsubscribe = () => {
+        var unsubscribe = function () {
             if (!subscription.listeners[id])
                 return;
             delete subscription.listeners[id];
             subscription.ref--;
             if (subscription.ref === 0)
-                this.disconnect(key);
+                _this.disconnect(key);
         };
-        return { unsubscribe };
-    }
-    connect(key) {
+        return { unsubscribe: unsubscribe };
+    };
+    ConnectionManager.prototype.connect = function (key) {
+        var _this = this;
         if (this.subscriptions[key])
             return this.subscriptions[key];
-        const connection = this.adapter.subscribe(key, data => this.received(key, data));
-        return this.subscriptions[key] = { connection, listeners: {}, ref: 0, serial: 0 };
-    }
-    disconnect(key) {
-        const subscription = this.subscriptions[key];
+        var connection = this.adapter.subscribe(key, function (data) { return _this.received(key, data); });
+        return this.subscriptions[key] = { connection: connection, listeners: {}, ref: 0, serial: 0 };
+    };
+    ConnectionManager.prototype.disconnect = function (key) {
+        var subscription = this.subscriptions[key];
         if (!subscription || subscription.ref !== 0)
             return;
         delete this.subscriptions[key];
         subscription.connection.unsubscribe();
-    }
-    received(key, data) {
-        const subscription = this.subscriptions[key];
+    };
+    ConnectionManager.prototype.received = function (key, data) {
+        var subscription = this.subscriptions[key];
         if (!subscription)
             return;
-        for (const id in subscription.listeners)
+        for (var id in subscription.listeners)
             subscription.listeners[id](data);
-    }
-}
+    };
+    return ConnectionManager;
+}());
 exports.default = ConnectionManager;
