@@ -1,98 +1,147 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const ArSyncApi_1 = require("./ArSyncApi");
-const ModelBatchRequest = {
+var ArSyncApi_1 = require("./ArSyncApi");
+var ModelBatchRequest = {
     timer: null,
     apiRequests: {},
-    fetch(api, query, id) {
+    fetch: function (api, query, id) {
+        var _this = this;
         this.setTimer();
-        return new Promise(resolve => {
-            const queryJSON = JSON.stringify(query);
-            const apiRequest = this.apiRequests[api] = this.apiRequests[api] || {};
-            const queryRequests = apiRequest[queryJSON] = apiRequest[queryJSON] || { query, requests: {} };
-            const request = queryRequests.requests[id] = queryRequests.requests[id] || { id, callbacks: [] };
+        return new Promise(function (resolve) {
+            var queryJSON = JSON.stringify(query);
+            var apiRequest = _this.apiRequests[api] = _this.apiRequests[api] || {};
+            var queryRequests = apiRequest[queryJSON] = apiRequest[queryJSON] || { query: query, requests: {} };
+            var request = queryRequests.requests[id] = queryRequests.requests[id] || { id: id, callbacks: [] };
             request.callbacks.push(resolve);
         });
     },
-    batchFetch() {
-        const { apiRequests } = this;
-        for (const api in apiRequests) {
-            const apiRequest = apiRequests[api];
-            for (const { query, requests } of Object.values(apiRequest)) {
-                const ids = Object.values(requests).map(({ id }) => id);
-                ArSyncApi_1.default.syncFetch({ api, query, params: { ids } }).then((models) => {
-                    for (const model of models)
+    batchFetch: function () {
+        var apiRequests = this.apiRequests;
+        for (var api in apiRequests) {
+            var apiRequest = apiRequests[api];
+            var _loop_1 = function (query, requests) {
+                var ids = Object.values(requests).map(function (_a) {
+                    var id = _a.id;
+                    return id;
+                });
+                ArSyncApi_1.default.syncFetch({ api: api, query: query, params: { ids: ids } }).then(function (models) {
+                    for (var _i = 0, models_1 = models; _i < models_1.length; _i++) {
+                        var model = models_1[_i];
                         requests[model.id].model = model;
-                    for (const { model, callbacks } of Object.values(requests)) {
-                        for (const callback of callbacks)
+                    }
+                    for (var _a = 0, _b = Object.values(requests); _a < _b.length; _a++) {
+                        var _c = _b[_a], model = _c.model, callbacks = _c.callbacks;
+                        for (var _d = 0, callbacks_1 = callbacks; _d < callbacks_1.length; _d++) {
+                            var callback = callbacks_1[_d];
                             callback(model);
+                        }
                     }
                 });
+            };
+            for (var _i = 0, _a = Object.values(apiRequest); _i < _a.length; _i++) {
+                var _b = _a[_i], query = _b.query, requests = _b.requests;
+                _loop_1(query, requests);
             }
         }
         this.apiRequests = {};
     },
-    setTimer() {
+    setTimer: function () {
+        var _this = this;
         if (this.timer)
             return;
-        this.timer = setTimeout(() => {
-            this.timer = null;
-            this.batchFetch();
+        this.timer = setTimeout(function () {
+            _this.timer = null;
+            _this.batchFetch();
         }, 20);
     }
 };
-class ArSyncContainerBase {
-    constructor() {
+var ArSyncContainerBase = /** @class */ (function () {
+    function ArSyncContainerBase() {
         this.listeners = [];
     }
-    replaceData(_data, _sync_keys) { }
-    initForReload(request) {
-        this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork((state) => {
+    ArSyncContainerBase.prototype.replaceData = function (_data, _sync_keys) { };
+    ArSyncContainerBase.prototype.initForReload = function (request) {
+        var _this = this;
+        this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork(function (state) {
             if (state) {
-                ArSyncApi_1.default.syncFetch(request).then(data => {
-                    if (this.data) {
-                        this.replaceData(data);
-                        if (this.onConnectionChange)
-                            this.onConnectionChange(true);
-                        if (this.onChange)
-                            this.onChange([], this.data);
+                ArSyncApi_1.default.syncFetch(request).then(function (data) {
+                    if (_this.data) {
+                        _this.replaceData(data);
+                        if (_this.onConnectionChange)
+                            _this.onConnectionChange(true);
+                        if (_this.onChange)
+                            _this.onChange([], _this.data);
                     }
                 });
             }
             else {
-                if (this.onConnectionChange)
-                    this.onConnectionChange(false);
+                if (_this.onConnectionChange)
+                    _this.onConnectionChange(false);
             }
         });
-    }
-    release() {
+    };
+    ArSyncContainerBase.prototype.release = function () {
         if (this.networkSubscriber)
             this.networkSubscriber.unsubscribe();
         this.unsubscribeAll();
-        for (const child of Object.values(this.children)) {
+        for (var _i = 0, _a = Object.values(this.children); _i < _a.length; _i++) {
+            var child = _a[_i];
             if (child)
                 child.release();
         }
         this.data = null;
-    }
-    onChange(path, data) {
+    };
+    ArSyncContainerBase.prototype.onChange = function (path, data) {
         if (this.parentModel)
-            this.parentModel.onChange([this.parentKey, ...path], data);
-    }
-    subscribe(key, listener) {
+            this.parentModel.onChange(__spreadArrays([this.parentKey], path), data);
+    };
+    ArSyncContainerBase.prototype.subscribe = function (key, listener) {
         this.listeners.push(ArSyncStore.connectionManager.subscribe(key, listener));
-    }
-    unsubscribeAll() {
-        for (const l of this.listeners)
+    };
+    ArSyncContainerBase.prototype.unsubscribeAll = function () {
+        for (var _i = 0, _a = this.listeners; _i < _a.length; _i++) {
+            var l = _a[_i];
             l.unsubscribe();
+        }
         this.listeners = [];
-    }
-    static compactQuery(query) {
+    };
+    ArSyncContainerBase.compactQuery = function (query) {
         function compactAttributes(attributes) {
-            const attrs = {};
-            const keys = [];
-            for (const key in attributes) {
-                const c = compactQuery(attributes[key]);
+            var attrs = {};
+            var keys = [];
+            for (var key in attributes) {
+                var c = compactQuery(attributes[key]);
                 if (c === true) {
                     keys.push(key);
                 }
@@ -107,22 +156,22 @@ class ArSyncContainerBase {
                     return [keys[0], false];
                 return [keys];
             }
-            const needsEscape = attrs['attributes'] || attrs['params'] || attrs['as'];
+            var needsEscape = attrs['attributes'] || attrs['params'] || attrs['as'];
             if (keys.length === 0)
                 return [attrs, needsEscape];
-            return [[...keys, attrs], needsEscape];
+            return [__spreadArrays(keys, [attrs]), needsEscape];
         }
         function compactQuery(query) {
             if (!('attributes' in query))
                 return true;
-            const { as, params } = query;
-            const [attributes, needsEscape] = compactAttributes(query.attributes);
+            var as = query.as, params = query.params;
+            var _a = compactAttributes(query.attributes), attributes = _a[0], needsEscape = _a[1];
             if (as == null && params == null) {
                 if (needsEscape)
-                    return { attributes };
+                    return { attributes: attributes };
                 return attributes;
             }
-            const result = {};
+            var result = {};
             if (as)
                 result.as = as;
             if (params)
@@ -132,35 +181,36 @@ class ArSyncContainerBase {
             return result;
         }
         try {
-            const result = compactQuery(query);
+            var result = compactQuery(query);
             return result === true ? {} : result;
         }
         catch (e) {
             throw JSON.stringify(query) + e.stack;
         }
-    }
-    static parseQuery(query, attrsonly) {
-        const attributes = {};
-        let column = null;
-        let params = null;
+    };
+    ArSyncContainerBase.parseQuery = function (query, attrsonly) {
+        var attributes = {};
+        var column = null;
+        var params = null;
         if (!query)
             query = [];
         if (query.constructor !== Array)
             query = [query];
-        for (const arg of query) {
+        for (var _i = 0, query_1 = query; _i < query_1.length; _i++) {
+            var arg = query_1[_i];
             if (typeof (arg) === 'string') {
                 attributes[arg] = {};
             }
             else if (typeof (arg) === 'object') {
-                for (const key in arg) {
-                    const value = arg[key];
+                for (var key in arg) {
+                    var value = arg[key];
                     if (attrsonly) {
                         attributes[key] = this.parseQuery(value);
                         continue;
                     }
                     if (key === 'attributes') {
-                        const child = this.parseQuery(value, true);
-                        for (const k in child)
+                        var child = this.parseQuery(value, true);
+                        for (var k in child)
                             attributes[k] = child[k];
                     }
                     else if (key === 'as') {
@@ -177,37 +227,39 @@ class ArSyncContainerBase {
         }
         if (attrsonly)
             return attributes;
-        return { attributes, as: column, params };
-    }
-    static _load({ api, id, params, query }, root) {
-        const parsedQuery = ArSyncRecord.parseQuery(query);
-        const compactQuery = ArSyncRecord.compactQuery(parsedQuery);
+        return { attributes: attributes, as: column, params: params };
+    };
+    ArSyncContainerBase._load = function (_a, root) {
+        var api = _a.api, id = _a.id, params = _a.params, query = _a.query;
+        var parsedQuery = ArSyncRecord.parseQuery(query);
+        var compactQuery = ArSyncRecord.compactQuery(parsedQuery);
         if (id) {
-            return ModelBatchRequest.fetch(api, compactQuery, id).then(data => new ArSyncRecord(parsedQuery, data, null, root));
+            return ModelBatchRequest.fetch(api, compactQuery, id).then(function (data) { return new ArSyncRecord(parsedQuery, data, null, root); });
         }
         else {
-            const request = { api, query: compactQuery, params };
-            return ArSyncApi_1.default.syncFetch(request).then((response) => {
+            var request_1 = { api: api, query: compactQuery, params: params };
+            return ArSyncApi_1.default.syncFetch(request_1).then(function (response) {
                 if (response.collection && response.order) {
-                    return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root);
+                    return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request_1, root);
                 }
                 else if (response instanceof Array) {
-                    return new ArSyncCollection([], '', parsedQuery, response, request, root);
+                    return new ArSyncCollection([], '', parsedQuery, response, request_1, root);
                 }
                 else {
-                    return new ArSyncRecord(parsedQuery, response, request, root);
+                    return new ArSyncRecord(parsedQuery, response, request_1, root);
                 }
             });
         }
-    }
-    static load(apiParams, root) {
+    };
+    ArSyncContainerBase.load = function (apiParams, root) {
+        var _this = this;
         if (!(apiParams instanceof Array))
             return this._load(apiParams, root);
-        return new Promise((resolve, _reject) => {
-            const resultModels = [];
-            let countdown = apiParams.length;
-            apiParams.forEach((param, i) => {
-                this._load(param, root).then(model => {
+        return new Promise(function (resolve, _reject) {
+            var resultModels = [];
+            var countdown = apiParams.length;
+            apiParams.forEach(function (param, i) {
+                _this._load(param, root).then(function (model) {
                     resultModels[i] = model;
                     countdown--;
                     if (countdown === 0)
@@ -215,26 +267,29 @@ class ArSyncContainerBase {
                 });
             });
         });
-    }
-}
-class ArSyncRecord extends ArSyncContainerBase {
-    constructor(query, data, request, root) {
-        super();
-        this.root = root;
+    };
+    return ArSyncContainerBase;
+}());
+var ArSyncRecord = /** @class */ (function (_super) {
+    __extends(ArSyncRecord, _super);
+    function ArSyncRecord(query, data, request, root) {
+        var _this = _super.call(this) || this;
+        _this.root = root;
         if (request)
-            this.initForReload(request);
-        this.query = query;
-        this.data = {};
-        this.children = {};
-        this.replaceData(data);
+            _this.initForReload(request);
+        _this.query = query;
+        _this.data = {};
+        _this.children = {};
+        _this.replaceData(data);
+        return _this;
     }
-    setSyncKeys(sync_keys) {
+    ArSyncRecord.prototype.setSyncKeys = function (sync_keys) {
         this.sync_keys = sync_keys;
         if (!this.sync_keys) {
             this.sync_keys = [];
         }
-    }
-    replaceData(data) {
+    };
+    ArSyncRecord.prototype.replaceData = function (data) {
         this.setSyncKeys(data.sync_keys);
         this.unsubscribeAll();
         if (this.data.id !== data.id) {
@@ -242,11 +297,11 @@ class ArSyncRecord extends ArSyncContainerBase {
             this.data.id = data.id;
         }
         this.paths = [];
-        for (const key in this.query.attributes) {
-            const subQuery = this.query.attributes[key];
-            const aliasName = subQuery.as || key;
-            const subData = data[aliasName];
-            const child = this.children[aliasName];
+        for (var key in this.query.attributes) {
+            var subQuery = this.query.attributes[key];
+            var aliasName = subQuery.as || key;
+            var subData = data[aliasName];
+            var child = this.children[aliasName];
             if (key === 'sync_keys')
                 continue;
             if (subData instanceof Array || (subData && subData.collection && subData.order)) {
@@ -254,7 +309,7 @@ class ArSyncRecord extends ArSyncContainerBase {
                     child.replaceData(subData, this.sync_keys);
                 }
                 else {
-                    const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root);
+                    var collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root);
                     this.mark();
                     this.children[aliasName] = collection;
                     this.data[aliasName] = collection.data;
@@ -270,7 +325,7 @@ class ArSyncRecord extends ArSyncContainerBase {
                         child.replaceData(subData);
                     }
                     else {
-                        const model = new ArSyncRecord(subQuery, subData, null, this.root);
+                        var model = new ArSyncRecord(subQuery, subData, null, this.root);
                         this.mark();
                         this.children[aliasName] = model;
                         this.data[aliasName] = model.data;
@@ -291,7 +346,7 @@ class ArSyncRecord extends ArSyncContainerBase {
             }
         }
         if (this.query.attributes['*']) {
-            for (const key in data) {
+            for (var key in data) {
                 if (!this.query.attributes[key] && this.data[key] !== data[key]) {
                     this.mark();
                     this.data[key] = data[key];
@@ -299,13 +354,14 @@ class ArSyncRecord extends ArSyncContainerBase {
             }
         }
         this.subscribeAll();
-    }
-    onNotify(notifyData, path) {
-        const { action, class_name, id } = notifyData;
-        const query = path && this.query.attributes[path];
-        const aliasName = (query && query.as) || path;
+    };
+    ArSyncRecord.prototype.onNotify = function (notifyData, path) {
+        var _this = this;
+        var action = notifyData.action, class_name = notifyData.class_name, id = notifyData.id;
+        var query = path && this.query.attributes[path];
+        var aliasName = (query && query.as) || path;
         if (action === 'remove') {
-            const child = this.children[aliasName];
+            var child = this.children[aliasName];
             if (child)
                 child.release();
             this.children[aliasName] = null;
@@ -316,52 +372,61 @@ class ArSyncRecord extends ArSyncContainerBase {
         else if (action === 'add') {
             if (this.data[aliasName] && this.data[aliasName].id === id)
                 return;
-            ModelBatchRequest.fetch(class_name, ArSyncRecord.compactQuery(query), id).then(data => {
-                if (!data || !this.data)
+            ModelBatchRequest.fetch(class_name, ArSyncRecord.compactQuery(query), id).then(function (data) {
+                if (!data || !_this.data)
                     return;
-                const model = new ArSyncRecord(query, data, null, this.root);
-                const child = this.children[aliasName];
+                var model = new ArSyncRecord(query, data, null, _this.root);
+                var child = _this.children[aliasName];
                 if (child)
                     child.release();
-                this.children[aliasName] = model;
-                this.mark();
-                this.data[aliasName] = model.data;
-                model.parentModel = this;
+                _this.children[aliasName] = model;
+                _this.mark();
+                _this.data[aliasName] = model.data;
+                model.parentModel = _this;
                 model.parentKey = aliasName;
-                this.onChange([aliasName], model.data);
+                _this.onChange([aliasName], model.data);
             });
         }
         else {
-            const { field } = notifyData;
-            const query = field ? this.patchQuery(field) : this.reloadQuery();
-            if (query)
-                ModelBatchRequest.fetch(class_name, query, id).then(data => {
-                    if (this.data)
-                        this.update(data);
+            var field = notifyData.field;
+            var query_2 = field ? this.patchQuery(field) : this.reloadQuery();
+            if (query_2)
+                ModelBatchRequest.fetch(class_name, query_2, id).then(function (data) {
+                    if (_this.data)
+                        _this.update(data);
                 });
         }
-    }
-    subscribeAll() {
-        const callback = data => this.onNotify(data);
-        for (const key of this.sync_keys) {
+    };
+    ArSyncRecord.prototype.subscribeAll = function () {
+        var _this = this;
+        var callback = function (data) { return _this.onNotify(data); };
+        for (var _i = 0, _a = this.sync_keys; _i < _a.length; _i++) {
+            var key = _a[_i];
             this.subscribe(key, callback);
         }
-        for (const path of this.paths) {
-            const pathCallback = data => this.onNotify(data, path);
-            for (const key of this.sync_keys)
-                this.subscribe(key + path, pathCallback);
+        var _loop_2 = function (path) {
+            var pathCallback = function (data) { return _this.onNotify(data, path); };
+            for (var _i = 0, _a = this_1.sync_keys; _i < _a.length; _i++) {
+                var key = _a[_i];
+                this_1.subscribe(key + path, pathCallback);
+            }
+        };
+        var this_1 = this;
+        for (var _b = 0, _c = this.paths; _b < _c.length; _b++) {
+            var path = _c[_b];
+            _loop_2(path);
         }
-    }
-    patchQuery(key) {
-        const val = this.query.attributes[key];
+    };
+    ArSyncRecord.prototype.patchQuery = function (key) {
+        var val = this.query.attributes[key];
         if (!val)
             return;
-        let { attributes, as, params } = val;
+        var attributes = val.attributes, as = val.as, params = val.params;
         if (attributes && Object.keys(val.attributes).length === 0)
             attributes = null;
         if (!attributes && !as && !params)
             return key;
-        const result = {};
+        var result = {};
         if (attributes)
             result.attributes = attributes;
         if (as)
@@ -369,27 +434,28 @@ class ArSyncRecord extends ArSyncContainerBase {
         if (params)
             result.params = params;
         return result;
-    }
-    reloadQuery() {
+    };
+    ArSyncRecord.prototype.reloadQuery = function () {
+        var _a;
         if (this.reloadQueryCache)
             return this.reloadQueryCache;
-        const reloadQuery = this.reloadQueryCache = { attributes: [] };
-        for (const key in this.query.attributes) {
+        var reloadQuery = this.reloadQueryCache = { attributes: [] };
+        for (var key in this.query.attributes) {
             if (key === 'sync_keys')
                 continue;
-            const val = this.query.attributes[key];
+            var val = this.query.attributes[key];
             if (!val || !val.attributes) {
                 reloadQuery.attributes.push(key);
             }
             else if (!val.params && Object.keys(val.attributes).length === 0) {
-                reloadQuery.attributes.push({ [key]: val });
+                reloadQuery.attributes.push((_a = {}, _a[key] = val, _a));
             }
         }
         return reloadQuery;
-    }
-    update(data) {
-        for (const key in data) {
-            const subQuery = this.query.attributes[key];
+    };
+    ArSyncRecord.prototype.update = function (data) {
+        for (var key in data) {
+            var subQuery = this.query.attributes[key];
             if (subQuery && subQuery.attributes && Object.keys(subQuery.attributes).length > 0)
                 continue;
             if (this.data[key] === data[key])
@@ -398,73 +464,79 @@ class ArSyncRecord extends ArSyncContainerBase {
             this.data[key] = data[key];
             this.onChange([key], data[key]);
         }
-    }
-    markAndSet(key, data) {
+    };
+    ArSyncRecord.prototype.markAndSet = function (key, data) {
         this.mark();
         this.data[key] = data;
-    }
-    mark() {
+    };
+    ArSyncRecord.prototype.mark = function () {
         if (!this.root || !this.root.immutable || !Object.isFrozen(this.data))
             return;
-        this.data = Object.assign({}, this.data);
+        this.data = __assign({}, this.data);
         this.root.mark(this.data);
         if (this.parentModel)
             this.parentModel.markAndSet(this.parentKey, this.data);
-    }
-}
-class ArSyncCollection extends ArSyncContainerBase {
-    constructor(sync_keys, path, query, data, request, root) {
-        super();
-        this.order = { limit: null, mode: 'asc', key: 'id' };
-        this.aliasOrderKey = 'id';
-        this.root = root;
-        this.path = path;
-        this.query = query;
-        this.compactQuery = ArSyncRecord.compactQuery(query);
+    };
+    return ArSyncRecord;
+}(ArSyncContainerBase));
+var ArSyncCollection = /** @class */ (function (_super) {
+    __extends(ArSyncCollection, _super);
+    function ArSyncCollection(sync_keys, path, query, data, request, root) {
+        var _this = _super.call(this) || this;
+        _this.order = { limit: null, mode: 'asc', key: 'id' };
+        _this.aliasOrderKey = 'id';
+        _this.root = root;
+        _this.path = path;
+        _this.query = query;
+        _this.compactQuery = ArSyncRecord.compactQuery(query);
         if (request)
-            this.initForReload(request);
+            _this.initForReload(request);
         if (query.params && (query.params.order || query.params.limit)) {
-            this.setOrdering(query.params.limit, query.params.order);
+            _this.setOrdering(query.params.limit, query.params.order);
         }
-        this.data = [];
-        this.children = [];
-        this.replaceData(data, sync_keys);
+        _this.data = [];
+        _this.children = [];
+        _this.replaceData(data, sync_keys);
+        return _this;
     }
-    setOrdering(limit, order) {
-        let mode = 'asc';
-        let key = 'id';
+    ArSyncCollection.prototype.setOrdering = function (limit, order) {
+        var mode = 'asc';
+        var key = 'id';
         if (order === 'asc' || order === 'desc') {
             mode = order;
         }
         else if (typeof order === 'object' && order) {
-            const keys = Object.keys(order);
+            var keys = Object.keys(order);
             if (keys.length > 1)
                 throw 'multiple order keys are not supported';
             if (keys.length === 1)
                 key = keys[0];
             mode = order[key] === 'asc' ? 'asc' : 'desc';
         }
-        const limitNumber = (typeof limit === 'number') ? limit : null;
+        var limitNumber = (typeof limit === 'number') ? limit : null;
         if (limitNumber !== null && key !== 'id')
             throw 'limit with custom order key is not supported';
-        const subQuery = this.query.attributes[key];
+        var subQuery = this.query.attributes[key];
         this.aliasOrderKey = (subQuery && subQuery.as) || key;
-        this.order = { limit: limitNumber, mode, key };
-    }
-    setSyncKeys(sync_keys) {
+        this.order = { limit: limitNumber, mode: mode, key: key };
+    };
+    ArSyncCollection.prototype.setSyncKeys = function (sync_keys) {
+        var _this = this;
         if (sync_keys) {
-            this.sync_keys = sync_keys.map(key => key + this.path);
+            this.sync_keys = sync_keys.map(function (key) { return key + _this.path; });
         }
         else {
             this.sync_keys = [];
         }
-    }
-    replaceData(data, sync_keys) {
+    };
+    ArSyncCollection.prototype.replaceData = function (data, sync_keys) {
         this.setSyncKeys(sync_keys);
-        const existings = {};
-        for (const child of this.children)
+        var existings = {};
+        for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
+            var child = _a[_i];
             existings[child.data.id] = child;
-        let collection;
+        }
+        var collection;
         if ('collection' in data && 'order' in data) {
             collection = data.collection;
             this.setOrdering(data.order.limit, data.order.mode);
@@ -472,13 +544,14 @@ class ArSyncCollection extends ArSyncContainerBase {
         else {
             collection = data;
         }
-        const newChildren = [];
-        const newData = [];
-        for (const subData of collection) {
-            let model = null;
+        var newChildren = [];
+        var newData = [];
+        for (var _b = 0, collection_1 = collection; _b < collection_1.length; _b++) {
+            var subData = collection_1[_b];
+            var model = null;
             if (typeof (subData) === 'object' && subData && 'id' in subData)
                 model = existings[subData.id];
-            let data = subData;
+            var data_1 = subData;
             if (model) {
                 model.replaceData(subData);
             }
@@ -489,12 +562,12 @@ class ArSyncCollection extends ArSyncContainerBase {
             }
             if (model) {
                 newChildren.push(model);
-                data = model.data;
+                data_1 = model.data;
             }
-            newData.push(data);
+            newData.push(data_1);
         }
         while (this.children.length) {
-            const child = this.children.pop();
+            var child = this.children.pop();
             if (!existings[child.data.id])
                 child.release();
         }
@@ -502,80 +575,85 @@ class ArSyncCollection extends ArSyncContainerBase {
             this.mark();
         while (this.data.length)
             this.data.pop();
-        for (const child of newChildren)
+        for (var _c = 0, newChildren_1 = newChildren; _c < newChildren_1.length; _c++) {
+            var child = newChildren_1[_c];
             this.children.push(child);
-        for (const el of newData)
+        }
+        for (var _d = 0, newData_1 = newData; _d < newData_1.length; _d++) {
+            var el = newData_1[_d];
             this.data.push(el);
+        }
         this.subscribeAll();
-    }
-    consumeAdd(className, id) {
-        if (this.data.findIndex(a => a.id === id) >= 0)
+    };
+    ArSyncCollection.prototype.consumeAdd = function (className, id) {
+        var _this = this;
+        if (this.data.findIndex(function (a) { return a.id === id; }) >= 0)
             return;
         if (this.order.limit === this.data.length) {
             if (this.order.mode === 'asc') {
-                const last = this.data[this.data.length - 1];
+                var last = this.data[this.data.length - 1];
                 if (last && last.id < id)
                     return;
             }
             else {
-                const last = this.data[this.data.length - 1];
+                var last = this.data[this.data.length - 1];
                 if (last && last.id > id)
                     return;
             }
         }
-        ModelBatchRequest.fetch(className, this.compactQuery, id).then((data) => {
-            if (!data || !this.data)
+        ModelBatchRequest.fetch(className, this.compactQuery, id).then(function (data) {
+            if (!data || !_this.data)
                 return;
-            const model = new ArSyncRecord(this.query, data, null, this.root);
-            model.parentModel = this;
+            var model = new ArSyncRecord(_this.query, data, null, _this.root);
+            model.parentModel = _this;
             model.parentKey = id;
-            const overflow = this.order.limit && this.order.limit === this.data.length;
-            let rmodel;
-            this.mark();
-            const orderKey = this.aliasOrderKey;
-            if (this.order.mode === 'asc') {
-                const last = this.data[this.data.length - 1];
-                this.children.push(model);
-                this.data.push(model.data);
+            var overflow = _this.order.limit && _this.order.limit === _this.data.length;
+            var rmodel;
+            _this.mark();
+            var orderKey = _this.aliasOrderKey;
+            if (_this.order.mode === 'asc') {
+                var last = _this.data[_this.data.length - 1];
+                _this.children.push(model);
+                _this.data.push(model.data);
                 if (last && last[orderKey] > data[orderKey])
-                    this.markAndSort();
+                    _this.markAndSort();
                 if (overflow) {
-                    rmodel = this.children.shift();
+                    rmodel = _this.children.shift();
                     rmodel.release();
-                    this.data.shift();
+                    _this.data.shift();
                 }
             }
             else {
-                const first = this.data[0];
-                this.children.unshift(model);
-                this.data.unshift(model.data);
+                var first = _this.data[0];
+                _this.children.unshift(model);
+                _this.data.unshift(model.data);
                 if (first && first[orderKey] > data[orderKey])
-                    this.markAndSort();
+                    _this.markAndSort();
                 if (overflow) {
-                    rmodel = this.children.pop();
+                    rmodel = _this.children.pop();
                     rmodel.release();
-                    this.data.pop();
+                    _this.data.pop();
                 }
             }
-            this.onChange([model.id], model.data);
+            _this.onChange([model.id], model.data);
             if (rmodel)
-                this.onChange([rmodel.id], null);
+                _this.onChange([rmodel.id], null);
         });
-    }
-    markAndSort() {
+    };
+    ArSyncCollection.prototype.markAndSort = function () {
         this.mark();
-        const orderKey = this.aliasOrderKey;
+        var orderKey = this.aliasOrderKey;
         if (this.order.mode === 'asc') {
-            this.children.sort((a, b) => a.data[orderKey] < b.data[orderKey] ? -1 : +1);
-            this.data.sort((a, b) => a[orderKey] < b[orderKey] ? -1 : +1);
+            this.children.sort(function (a, b) { return a.data[orderKey] < b.data[orderKey] ? -1 : +1; });
+            this.data.sort(function (a, b) { return a[orderKey] < b[orderKey] ? -1 : +1; });
         }
         else {
-            this.children.sort((a, b) => a.data[orderKey] > b.data[orderKey] ? -1 : +1);
-            this.data.sort((a, b) => a[orderKey] > b[orderKey] ? -1 : +1);
+            this.children.sort(function (a, b) { return a.data[orderKey] > b.data[orderKey] ? -1 : +1; });
+            this.data.sort(function (a, b) { return a[orderKey] > b[orderKey] ? -1 : +1; });
         }
-    }
-    consumeRemove(id) {
-        const idx = this.data.findIndex(a => a.id === id);
+    };
+    ArSyncCollection.prototype.consumeRemove = function (id) {
+        var idx = this.data.findIndex(function (a) { return a.id === id; });
         if (idx < 0)
             return;
         this.mark();
@@ -583,42 +661,47 @@ class ArSyncCollection extends ArSyncContainerBase {
         this.children.splice(idx, 1);
         this.data.splice(idx, 1);
         this.onChange([id], null);
-    }
-    onNotify(notifyData) {
+    };
+    ArSyncCollection.prototype.onNotify = function (notifyData) {
         if (notifyData.action === 'add') {
             this.consumeAdd(notifyData.class_name, notifyData.id);
         }
         else if (notifyData.action === 'remove') {
             this.consumeRemove(notifyData.id);
         }
-    }
-    subscribeAll() {
-        const callback = data => this.onNotify(data);
-        for (const key of this.sync_keys)
+    };
+    ArSyncCollection.prototype.subscribeAll = function () {
+        var _this = this;
+        var callback = function (data) { return _this.onNotify(data); };
+        for (var _i = 0, _a = this.sync_keys; _i < _a.length; _i++) {
+            var key = _a[_i];
             this.subscribe(key, callback);
-    }
-    onChange(path, data) {
-        super.onChange(path, data);
+        }
+    };
+    ArSyncCollection.prototype.onChange = function (path, data) {
+        _super.prototype.onChange.call(this, path, data);
         if (path[1] === this.aliasOrderKey)
             this.markAndSort();
-    }
-    markAndSet(id, data) {
+    };
+    ArSyncCollection.prototype.markAndSet = function (id, data) {
         this.mark();
-        const idx = this.data.findIndex(a => a.id === id);
+        var idx = this.data.findIndex(function (a) { return a.id === id; });
         if (idx >= 0)
             this.data[idx] = data;
-    }
-    mark() {
+    };
+    ArSyncCollection.prototype.mark = function () {
         if (!this.root || !this.root.immutable || !Object.isFrozen(this.data))
             return;
-        this.data = [...this.data];
+        this.data = __spreadArrays(this.data);
         this.root.mark(this.data);
         if (this.parentModel)
             this.parentModel.markAndSet(this.parentKey, this.data);
-    }
-}
-class ArSyncStore {
-    constructor(request, { immutable } = {}) {
+    };
+    return ArSyncCollection;
+}(ArSyncContainerBase));
+var ArSyncStore = /** @class */ (function () {
+    function ArSyncStore(request, _a) {
+        var immutable = (_a === void 0 ? {} : _a).immutable;
         this.immutable = !!immutable;
         this.markedForFreezeObjects = [];
         this.changes = [];
@@ -628,87 +711,90 @@ class ArSyncStore {
         this.data = null;
         this.load(0);
     }
-    load(retryCount) {
-        ArSyncContainerBase.load(this.request, this).then((container) => {
-            if (this.markForRelease) {
+    ArSyncStore.prototype.load = function (retryCount) {
+        var _this = this;
+        ArSyncContainerBase.load(this.request, this).then(function (container) {
+            if (_this.markForRelease) {
                 container.release();
                 return;
             }
-            this.container = container;
-            this.data = container.data;
-            if (this.immutable)
-                this.freezeRecursive(this.data);
-            this.complete = true;
-            this.notfound = false;
-            this.trigger('load');
-            this.trigger('change', { path: [], value: this.data });
-            container.onChange = (path, value) => {
-                this.changes.push({ path, value });
-                this.setChangesBufferTimer();
+            _this.container = container;
+            _this.data = container.data;
+            if (_this.immutable)
+                _this.freezeRecursive(_this.data);
+            _this.complete = true;
+            _this.notfound = false;
+            _this.trigger('load');
+            _this.trigger('change', { path: [], value: _this.data });
+            container.onChange = function (path, value) {
+                _this.changes.push({ path: path, value: value });
+                _this.setChangesBufferTimer();
             };
-            container.onConnectionChange = state => {
-                this.trigger('connection', state);
+            container.onConnectionChange = function (state) {
+                _this.trigger('connection', state);
             };
-        }).catch(e => {
+        }).catch(function (e) {
             if (!e || e.retry === undefined)
                 throw e;
-            if (this.markForRelease)
+            if (_this.markForRelease)
                 return;
             if (!e.retry) {
-                this.complete = true;
-                this.notfound = true;
-                this.trigger('load');
+                _this.complete = true;
+                _this.notfound = true;
+                _this.trigger('load');
                 return;
             }
-            const sleepSeconds = Math.min(Math.pow(2, retryCount), 30);
-            this.retryLoadTimer = setTimeout(() => {
-                this.retryLoadTimer = null;
-                this.load(retryCount + 1);
+            var sleepSeconds = Math.min(Math.pow(2, retryCount), 30);
+            _this.retryLoadTimer = setTimeout(function () {
+                _this.retryLoadTimer = null;
+                _this.load(retryCount + 1);
             }, sleepSeconds * 1000);
         });
-    }
-    setChangesBufferTimer() {
+    };
+    ArSyncStore.prototype.setChangesBufferTimer = function () {
+        var _this = this;
         if (this.changesBufferTimer)
             return;
-        this.changesBufferTimer = setTimeout(() => {
-            this.changesBufferTimer = null;
-            const changes = this.changes;
-            this.changes = [];
-            this.freezeMarked();
-            this.data = this.container.data;
-            changes.forEach(patch => this.trigger('change', patch));
+        this.changesBufferTimer = setTimeout(function () {
+            _this.changesBufferTimer = null;
+            var changes = _this.changes;
+            _this.changes = [];
+            _this.freezeMarked();
+            _this.data = _this.container.data;
+            changes.forEach(function (patch) { return _this.trigger('change', patch); });
         }, 20);
-    }
-    subscribe(event, callback) {
-        let listeners = this.eventListeners.events[event];
+    };
+    ArSyncStore.prototype.subscribe = function (event, callback) {
+        var listeners = this.eventListeners.events[event];
         if (!listeners)
             this.eventListeners.events[event] = listeners = {};
-        const id = this.eventListeners.serial++;
+        var id = this.eventListeners.serial++;
         listeners[id] = callback;
-        return { unsubscribe: () => { delete listeners[id]; } };
-    }
-    trigger(event, arg) {
-        const listeners = this.eventListeners.events[event];
+        return { unsubscribe: function () { delete listeners[id]; } };
+    };
+    ArSyncStore.prototype.trigger = function (event, arg) {
+        var listeners = this.eventListeners.events[event];
         if (!listeners)
             return;
-        for (const id in listeners)
+        for (var id in listeners)
             listeners[id](arg);
-    }
-    mark(object) {
+    };
+    ArSyncStore.prototype.mark = function (object) {
         this.markedForFreezeObjects.push(object);
-    }
-    freezeRecursive(obj) {
+    };
+    ArSyncStore.prototype.freezeRecursive = function (obj) {
         if (Object.isFrozen(obj))
             return obj;
-        for (const key in obj)
+        for (var key in obj)
             this.freezeRecursive(obj[key]);
         Object.freeze(obj);
-    }
-    freezeMarked() {
-        this.markedForFreezeObjects.forEach(obj => this.freezeRecursive(obj));
+    };
+    ArSyncStore.prototype.freezeMarked = function () {
+        var _this = this;
+        this.markedForFreezeObjects.forEach(function (obj) { return _this.freezeRecursive(obj); });
         this.markedForFreezeObjects = [];
-    }
-    release() {
+    };
+    ArSyncStore.prototype.release = function () {
         if (this.retryLoadTimer)
             clearTimeout(this.retryLoadTimer);
         if (this.changesBufferTimer)
@@ -719,6 +805,7 @@ class ArSyncStore {
         else {
             this.markForRelease = true;
         }
-    }
-}
+    };
+    return ArSyncStore;
+}());
 exports.default = ArSyncStore;
