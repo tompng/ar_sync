@@ -75,7 +75,8 @@ module ArSync::TypeScript
     <<~CODE
       import { TypeRequest, ApiNameRequests } from './types'
       import { DataTypeFromRequest as DataTypeFromRequestPair } from 'ar_sync/core/DataType'
-      type DataTypeFromRequest<R extends TypeRequest> = DataTypeFromRequestPair<ApiNameRequests[R['api']], R>
+      export type NeverMatchArgument = { __nevermatch: never }
+      type DataTypeFromRequest<R extends TypeRequest | NeverMatchArgument> = NeverMatchArgument extends R ? never : R extends TypeRequest ? DataTypeFromRequestPair<ApiNameRequests[R['api']], R> : never
       export default DataTypeFromRequest
     CODE
   end
@@ -84,14 +85,14 @@ module ArSync::TypeScript
     <<~CODE
       import { useState, useEffect, useMemo } from 'react'
       import { TypeRequest } from './types'
-      import DataTypeFromRequest from './DataTypeFromRequest'
+      import DataTypeFromRequest, { NeverMatchArgument } from './DataTypeFromRequest'
       import { initializeHooks, useArSyncModel as useArSyncModelBase, useArSyncFetch as useArSyncFetchBase } from 'ar_sync/core/hooks'
       initializeHooks({ useState, useEffect, useMemo })
-      export function useArSyncModel<R extends TypeRequest>(request: R | null) {
-        return useArSyncModelBase<DataTypeFromRequest<R>>(request)
+      export function useArSyncModel<R extends TypeRequest | NeverMatchArgument>(request: R | null) {
+        return useArSyncModelBase<DataTypeFromRequest<R>>(request as TypeRequest)
       }
-      export function useArSyncFetch<R extends TypeRequest>(request: R | null) {
-        return useArSyncFetchBase<DataTypeFromRequest<R>>(request)
+      export function useArSyncFetch<R extends TypeRequest | NeverMatchArgument>(request: R | null) {
+        return useArSyncFetchBase<DataTypeFromRequest<R>>(request as TypeRequest)
       }
     CODE
   end
