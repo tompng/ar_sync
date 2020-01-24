@@ -5,22 +5,26 @@ var ArSyncModel_1 = require("./ArSyncModel");
 var useState;
 var useEffect;
 var useMemo;
+var useRef;
 function initializeHooks(hooks) {
     useState = hooks.useState;
     useEffect = hooks.useEffect;
     useMemo = hooks.useMemo;
+    useRef = hooks.useRef;
 }
 exports.initializeHooks = initializeHooks;
 function checkHooks() {
     if (!useState)
-        throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo })`';
+        throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo, useRef })`';
 }
 var initialResult = [null, { complete: false, notfound: undefined, connected: true }];
 function useArSyncModel(request) {
     checkHooks();
     var _a = useState(initialResult), result = _a[0], setResult = _a[1];
     var requestString = JSON.stringify(request && request.params);
+    var prevRequestStringRef = useRef(requestString);
     useEffect(function () {
+        prevRequestStringRef.current = requestString;
         if (!request) {
             setResult(initialResult);
             return function () { };
@@ -48,14 +52,30 @@ function useArSyncModel(request) {
         model.subscribe('connection', update);
         return function () { return model.release(); };
     }, [requestString]);
-    return result;
+    return prevRequestStringRef.current === requestString ? result : initialResult;
 }
 exports.useArSyncModel = useArSyncModel;
 var initialFetchState = { data: null, status: { complete: false, notfound: undefined } };
+function extractParams(query, output) {
+    if (output === void 0) { output = []; }
+    if (typeof (query) !== 'object' || query == null || Array.isArray(query))
+        return output;
+    if ('params' in query)
+        output.push(query.params);
+    for (var key in query) {
+        extractParams(query[key], output);
+    }
+    return output;
+}
 function useArSyncFetch(request) {
     checkHooks();
     var _a = useState(initialFetchState), state = _a[0], setState = _a[1];
-    var requestString = JSON.stringify(request && request.params);
+    var query = request && request.query;
+    var params = request && request.params;
+    var requestString = useMemo(function () {
+        return JSON.stringify(extractParams(query, [params]));
+    }, [query, params]);
+    var prevRequestStringRef = useRef(requestString);
     var loader = useMemo(function () {
         var lastLoadId = 0;
         var timer = null;
@@ -99,10 +119,12 @@ function useArSyncFetch(request) {
         return { update: update, cancel: cancel };
     }, [requestString]);
     useEffect(function () {
+        prevRequestStringRef.current = requestString;
         setState(initialFetchState);
         loader.update();
         return function () { return loader.cancel(); };
     }, [requestString]);
-    return [state.data, state.status, loader.update];
+    var responseState = prevRequestStringRef.current === requestString ? state : initialFetchState;
+    return [responseState.data, responseState.status, loader.update];
 }
 exports.useArSyncFetch = useArSyncFetch;

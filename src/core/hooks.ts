@@ -4,18 +4,21 @@ import ArSyncModel from './ArSyncModel'
 let useState: <T>(t: T | (() => T)) => [T, (t: T | ((t: T) => T)) => void]
 let useEffect: (f: (() => void) | (() => (() => void)), deps: any[]) => void
 let useMemo: <T>(f: () => T, deps: any[]) => T
+let useRef: <T>(value: T) => { current: T }
 type InitializeHooksParams = {
   useState: typeof useState
   useEffect: typeof useEffect
   useMemo: typeof useMemo
+  useRef: typeof useRef
 }
 export function initializeHooks(hooks: InitializeHooksParams) {
   useState = hooks.useState
   useEffect = hooks.useEffect
   useMemo = hooks.useMemo
+  useRef = hooks.useRef
 }
 function checkHooks() {
-  if (!useState) throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo })`'
+  if (!useState) throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo, useRef })`'
 }
 
 interface ModelStatus { complete: boolean; notfound?: boolean; connected: boolean }
@@ -27,7 +30,9 @@ export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
   checkHooks()
   const [result, setResult] = useState<DataAndStatus<T>>(initialResult)
   const requestString = JSON.stringify(request && request.params)
+  const prevRequestStringRef = useRef(requestString)
   useEffect(() => {
+    prevRequestStringRef.current = requestString
     if (!request) {
       setResult(initialResult)
       return () => {}
@@ -53,17 +58,32 @@ export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
     model.subscribe('connection', update)
     return () => model.release()
   }, [requestString])
-  return result
+  return prevRequestStringRef.current === requestString ? result : initialResult
 }
 
 interface FetchStatus { complete: boolean; notfound?: boolean }
 type DataStatusUpdate<T> = [T | null, FetchStatus, () => void]
 type FetchState<T> = { data: T | null; status: FetchStatus }
 const initialFetchState: FetchState<any> = { data: null, status: { complete: false, notfound: undefined } }
+
+function extractParams(query: unknown, output: any[] = []): any[] {
+  if (typeof(query) !== 'object' || query == null || Array.isArray(query)) return output
+  if ('params' in query) output.push((query as { params: any }).params)
+  for (const key in query) {
+    extractParams(query[key], output)
+  }
+  return output
+}
+
 export function useArSyncFetch<T>(request: Request | null): DataStatusUpdate<T> {
   checkHooks()
   const [state, setState] = useState<FetchState<T>>(initialFetchState)
-  const requestString = JSON.stringify(request && request.params)
+  const query = request && request.query
+  const params = request && request.params
+  const requestString = useMemo(() => {
+    return JSON.stringify(extractParams(query, [params]))
+  }, [query, params])
+  const prevRequestStringRef = useRef(requestString)
   const loader = useMemo(() => {
     let lastLoadId = 0
     let timer: null | number = null
@@ -102,9 +122,11 @@ export function useArSyncFetch<T>(request: Request | null): DataStatusUpdate<T> 
     return { update, cancel }
   }, [requestString])
   useEffect(() => {
+    prevRequestStringRef.current = requestString
     setState(initialFetchState)
     loader.update()
     return () => loader.cancel()
   }, [requestString])
-  return [state.data, state.status, loader.update]
+  const responseState = prevRequestStringRef.current === requestString ? state : initialFetchState
+  return [responseState.data, responseState.status, loader.update]
 }
