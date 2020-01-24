@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "incremental": true,
     "outDir": ".",
     "rootDir": "./src",
     "module": "commonjs",
