@@ -1,10 +1,14 @@
 declare let useState: <T>(t: T | (() => T)) => [T, (t: T | ((t: T) => T)) => void];
 declare let useEffect: (f: (() => void) | (() => (() => void)), deps: any[]) => void;
 declare let useMemo: <T>(f: () => T, deps: any[]) => T;
+declare let useRef: <T>(value: T) => {
+    current: T;
+};
 declare type InitializeHooksParams = {
     useState: typeof useState;
     useEffect: typeof useEffect;
     useMemo: typeof useMemo;
+    useRef: typeof useRef;
 };
 export declare function initializeHooks(hooks: InitializeHooksParams): void;
 interface ModelStatus {
