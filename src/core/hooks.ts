@@ -68,7 +68,7 @@ const initialFetchState: FetchState<any> = { data: null, status: { complete: fal
 
 function extractParams(query: unknown, output: any[] = []): any[] {
   if (typeof(query) !== 'object' || query == null || Array.isArray(query)) return output
-  if ('params' in query) output.push((query as { params }).params)
+  if ('params' in query) output.push((query as { params: any }).params)
   for (const key in query) {
     extractParams(query[key], output)
   }
@@ -78,7 +78,11 @@ function extractParams(query: unknown, output: any[] = []): any[] {
 export function useArSyncFetch<T>(request: Request | null): DataStatusUpdate<T> {
   checkHooks()
   const [state, setState] = useState<FetchState<T>>(initialFetchState)
-  const requestString = useMemo(() => JSON.stringify(extractParams(request)), [request])
+  const query = request && request.query
+  const params = request && request.params
+  const requestString = useMemo(() => {
+    return JSON.stringify(extractParams(query, [params]))
+  }, [query, params])
   const prevRequestStringRef = useRef(requestString)
   const loader = useMemo(() => {
     let lastLoadId = 0
