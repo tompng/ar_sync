@@ -1,5 +1,5 @@
 type RecordType = { _meta?: { query: any } }
-type Values<T> = T extends { [K in keyof T]: infer U } ? U : never
+type Values<T> = T[keyof T]
 type AddNullable<Test, Type> = null extends Test ? Type | null : Type
 type DataTypeExtractField<BaseType, Key extends keyof BaseType> = Exclude<BaseType[Key], null> extends RecordType
   ? AddNullable<BaseType[Key], {}>
@@ -51,27 +51,26 @@ type CheckAttributesField<P, Q> = Q extends { attributes: infer R }
 
 type IsAnyCompareLeftType = { __any: never }
 
-type CollectExtraFields<Type, Path> =
+type CollectExtraFields<Type, Key> =
   IsAnyCompareLeftType extends Type
-  ? null
+  ? never
   : Type extends ExtraFieldErrorType
-  ? Path
+  ? Key
   : Type extends (infer R)[]
-  ? _CollectExtraFields<R>
-  : _CollectExtraFields<Type>
-
-type _CollectExtraFields<Type> = Type extends object
-  ? (keyof (Type) extends never
-    ? null
-    : Values<{ [key in keyof Type]: CollectExtraFields<Type[key], key> }>
-  )
-  : null
+  ? {
+    0: Values<{ [key in keyof R]: CollectExtraFields<R[key], key> }>
+    1: never
+  }[R extends object ? 0 : 1]
+  : {
+    0: Values<{ [key in keyof Type]: CollectExtraFields<Type[key], key> }>
+    1: never
+  }[Type extends object ? 0 : 1]
 
 type SelectString<T> = T extends string ? T : never
 type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Extra> extends never
   ? Type
-  : { error: { extraFields: SelectString<Extra> } }
-type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>
+  : { error: { extraFields: Extra } }
+type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, never>, Type>
 
 type RequestBase = { api: string; query: any; id?: number; params?: any; _meta?: { data: any } }
 type DataTypeBaseFromRequestType<R extends RequestBase, ID> = R extends { _meta?: { data: infer DataType } }

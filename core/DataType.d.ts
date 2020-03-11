@@ -3,9 +3,7 @@ declare type RecordType = {
         query: any;
     };
 };
-declare type Values<T> = T extends {
-    [K in keyof T]: infer U;
-} ? U : never;
+declare type Values<T> = T[keyof T];
 declare type AddNullable<Test, Type> = null extends Test ? Type | null : Type;
 declare type DataTypeExtractField<BaseType, Key extends keyof BaseType> = Exclude<BaseType[Key], null> extends RecordType ? AddNullable<BaseType[Key], {}> : BaseType[Key] extends RecordType[] ? {}[] : BaseType[Key];
 declare type DataTypeExtractFieldsFromQuery<BaseType, Fields> = '*' extends Fields ? {
@@ -33,17 +31,24 @@ declare type CheckAttributesField<P, Q> = Q extends {
 declare type IsAnyCompareLeftType = {
     __any: never;
 };
-declare type CollectExtraFields<Type, Path> = IsAnyCompareLeftType extends Type ? null : Type extends ExtraFieldErrorType ? Path : Type extends (infer R)[] ? _CollectExtraFields<R> : _CollectExtraFields<Type>;
-declare type _CollectExtraFields<Type> = Type extends object ? (keyof (Type) extends never ? null : Values<{
-    [key in keyof Type]: CollectExtraFields<Type[key], key>;
-}>) : null;
+declare type CollectExtraFields<Type, Key> = IsAnyCompareLeftType extends Type ? never : Type extends ExtraFieldErrorType ? Key : Type extends (infer R)[] ? {
+    0: Values<{
+        [key in keyof R]: CollectExtraFields<R[key], key>;
+    }>;
+    1: never;
+}[R extends object ? 0 : 1] : {
+    0: Values<{
+        [key in keyof Type]: CollectExtraFields<Type[key], key>;
+    }>;
+    1: never;
+}[Type extends object ? 0 : 1];
 declare type SelectString<T> = T extends string ? T : never;
 declare type _ValidateDataTypeExtraFileds<Extra, Type> = SelectString<Extra> extends never ? Type : {
     error: {
-        extraFields: SelectString<Extra>;
+        extraFields: Extra;
     };
 };
-declare type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, []>, Type>;
+declare type ValidateDataTypeExtraFileds<Type> = _ValidateDataTypeExtraFileds<CollectExtraFields<Type, never>, Type>;
 declare type RequestBase = {
     api: string;
     query: any;
