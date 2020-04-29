@@ -119,11 +119,11 @@ module ArSync::ModelBase::ClassMethods
       end
     end
     def _write_attribute(attr_name, value)
-      _initialize_sync_info_before_mutation
+      _initialize_sync_info_before_mutation if self[attr_name] != value
       super attr_name, value
     end
     def write_attribute(attr_name, value)
-      _initialize_sync_info_before_mutation
+      _initialize_sync_info_before_mutation if self[attr_name] != value
       super attr_name, value
     end
   end
