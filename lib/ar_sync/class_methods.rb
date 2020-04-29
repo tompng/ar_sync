@@ -112,6 +112,7 @@ module ArSync::ModelBase::ClassMethods
 
   module WriteHook
     def _initialize_sync_info_before_mutation
+      return unless instance_variable_defined? '@_initialized'
       if new_record?
         @_sync_watch_values_before_mutation ||= {}
         @_sync_parents_info_before_mutation ||= {}
@@ -125,11 +126,11 @@ module ArSync::ModelBase::ClassMethods
       end
     end
     def _write_attribute(attr_name, value)
-      _initialize_sync_info_before_mutation if self[attr_name] != value
+      _initialize_sync_info_before_mutation
       super attr_name, value
     end
     def write_attribute(attr_name, value)
-      _initialize_sync_info_before_mutation if self[attr_name] != value
+      _initialize_sync_info_before_mutation
       super attr_name, value
     end
   end
@@ -148,6 +149,10 @@ module ArSync::ModelBase::ClassMethods
 
     _sync_define :defaults, namespace: :sync do |current_user|
       { sync_keys: ArSync.sync_keys(self, current_user) }
+    end
+
+    after_initialize do
+      @_initialized = true
     end
 
     before_destroy do
