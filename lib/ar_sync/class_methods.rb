@@ -112,10 +112,16 @@ module ArSync::ModelBase::ClassMethods
 
   module WriteHook
     def _initialize_sync_info_before_mutation
-      self.class.default_scoped.scoping do
-        @_sync_watch_values_before_mutation ||= _sync_current_watch_values
-        @_sync_parents_info_before_mutation ||= _sync_current_parents_info
-        @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
+      if new_record?
+        @_sync_watch_values_before_mutation ||= {}
+        @_sync_parents_info_before_mutation ||= {}
+        @_sync_belongs_to_info_before_mutation ||= {}
+      else
+        self.class.default_scoped.scoping do
+          @_sync_watch_values_before_mutation ||= _sync_current_watch_values
+          @_sync_parents_info_before_mutation ||= _sync_current_parents_info
+          @_sync_belongs_to_info_before_mutation ||= _sync_current_belongs_to_info
+        end
       end
     end
     def _write_attribute(attr_name, value)
