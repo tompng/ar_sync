@@ -42,7 +42,7 @@ class ModelBatchRequest {
           requests.forEach(({ model, callbacks }) => {
             callbacks.forEach(cb => cb.resolve(model))
           })
-        }).catch(() => {
+        }).catch(e => {
           requests.forEach(({ callbacks }) => {
             callbacks.forEach(cb => cb.reject(e))
           })
@@ -88,6 +88,8 @@ class ArSyncContainerBase {
             if (this.onConnectionChange) this.onConnectionChange(true)
             if (this.onChange) this.onChange([], this.data)
           }
+        }).catch(e => {
+          console.error(`failed to reload. ${e}`)
         })
       } else {
         if (this.onConnectionChange) this.onConnectionChange(false)
@@ -309,7 +311,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.subscribeAll()
   }
   onNotify(notifyData: NotifyData, path?: string) {
-    const { action, class_name, id } = notifyData
+    const { action, class_name: className, id } = notifyData
     const query = path && this.query.attributes[path]
     const aliasName = (query && query.as) || path;
     if (action === 'remove') {
@@ -321,7 +323,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.onChange([aliasName], null)
     } else if (action === 'add') {
       if (this.data[aliasName] && this.data[aliasName].id === id) return
-      modelBatchRequest.fetch(class_name, ArSyncRecord.compactQuery(query), id).then(data => {
+      modelBatchRequest.fetch(className, ArSyncRecord.compactQuery(query), id).then(data => {
         if (!data || !this.data) return
         const model = new ArSyncRecord(query, data, null, this.root)
         const child = this.children[aliasName]
@@ -332,12 +334,17 @@ class ArSyncRecord extends ArSyncContainerBase {
         model.parentModel = this
         model.parentKey = aliasName
         this.onChange([aliasName], model.data)
+      }).catch(e => {
+        console.error(`failed to load ${className}:${id} ${e}`)
       })
     } else {
       const { field } = notifyData
       const query = field ? this.patchQuery(field) : this.reloadQuery()
-      if (query) modelBatchRequest.fetch(class_name, query, id).then(data => {
+      if (!query) return
+      modelBatchRequest.fetch(className, query, id).then(data => {
         if (this.data) this.update(data)
+      }).catch(e => {
+        console.error(`failed to load patch ${className}:${id} ${e}`)
       })
     }
   }
@@ -529,6 +536,8 @@ class ArSyncCollection extends ArSyncContainerBase {
       }
       this.onChange([model.id], model.data)
       if (rmodel) this.onChange([rmodel.id], null)
+    }).catch(e => {
+      console.error(`failed to load ${className}:${id} ${e}`)
     })
   }
   markAndSort() {
