@@ -104,7 +104,7 @@ class ArSyncContainerBase {
     this.listeners = []
   }
   static compactQuery(query: ParsedQuery) {
-    function compactAttributes(attributes: Record<string, ParsedQuery>) {
+    function compactAttributes(attributes: Record<string, ParsedQuery>): [ParsedQuery, boolean] {
       const attrs = {}
       const keys: string[] = []
       for (const key in attributes) {
@@ -118,13 +118,13 @@ class ArSyncContainerBase {
       if (Object.keys(attrs).length === 0) {
         if (keys.length === 0) return [true, false]
         if (keys.length === 1) return [keys[0], false]
-        return [keys]
+        return [keys, false]
       }
       const needsEscape = attrs['attributes'] || attrs['params'] || attrs['as']
       if (keys.length === 0) return [attrs, needsEscape]
       return [[...keys, attrs], needsEscape]
     }
-    function compactQuery(query: ParsedQuery) {
+    function compactQuery(query: ParsedQuery): ParsedQuery {
       if (!('attributes' in query)) return true
       const { as, params } = query
       const [attributes, needsEscape] = compactAttributes(query.attributes)
@@ -138,10 +138,8 @@ class ArSyncContainerBase {
       if (attributes !== true) result.attributes = attributes
       return result
     }
-    try{
     const result = compactQuery(query)
     return result === true ? {} : result
-  }catch(e){throw JSON.stringify(query)+e.stack}
   }
   static parseQuery(query, attrsonly: true): Record<string, ParsedQuery>
   static parseQuery(query): ParsedQuery
