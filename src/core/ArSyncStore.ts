@@ -1,47 +1,56 @@
 import ArSyncAPI from './ArSyncApi'
 
-const ModelBatchRequest = {
-  timer: null,
-  apiRequests: {} as {
-    [api: string]: {
-      [queryJSON: string]: {
-        query
-        requests: {
-          [id: number]: {
-            id: number
-            model?
-            callbacks: ((model) => void)[]
-          }
-        }
+class ModelBatchRequest {
+  timer: number | null = null
+  apiRequests = new Map<string,
+    Map<string,
+      {
+        query,
+        requests: Map<number, {
+          id: number
+          model?
+          callbacks: {
+            resolve: (model: any) => void
+            reject: (error?: any) => void
+          }[]
+        }>
       }
-    }
-  },
+    >
+  >()
   fetch(api: string, query, id: number) {
     this.setTimer()
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       const queryJSON = JSON.stringify(query)
-      const apiRequest = this.apiRequests[api] = this.apiRequests[api] || {}
-      const queryRequests = apiRequest[queryJSON] = apiRequest[queryJSON] || { query, requests: {} }
-      const request = queryRequests.requests[id] = queryRequests.requests[id] || { id, callbacks: [] }
-      request.callbacks.push(resolve)
+      let apiRequest = this.apiRequests.get(api)
+      if (!apiRequest) this.apiRequests.set(api, apiRequest = new Map())
+      let queryRequests = apiRequest.get(queryJSON)
+      if (!queryRequests) apiRequest.set(queryJSON, queryRequests = { query, requests: new Map() })
+      let request = queryRequests.requests.get(id)
+      if (!request) queryRequests.requests.set(id, request = { id, callbacks: [] })
+      request.callbacks.push({ resolve, reject })
     })
-  },
+  }
   batchFetch() {
-    const { apiRequests } = this as typeof ModelBatchRequest
-    for (const api in apiRequests) {
-      const apiRequest = apiRequests[api]
-      for (const { query, requests } of Object.values(apiRequest)) {
-        const ids = Object.values(requests).map(({ id }) => id)
+    this.apiRequests.forEach((apiRequest, api) => {
+      apiRequest.forEach(({ query, requests }) => {
+        const ids = Array.from(requests.keys())
         ArSyncAPI.syncFetch({ api, query, params: { ids } }).then((models: any[]) => {
-          for (const model of models) requests[model.id].model = model
-          for (const { model, callbacks } of Object.values(requests)) {
-            for (const callback of callbacks) callback(model)
+          for (const model of models) {
+            const req = requests.get(model.id)
+            if (req) req.model = model
           }
+          requests.forEach(({ model, callbacks }) => {
+            callbacks.forEach(cb => cb.resolve(model))
+          })
+        }).catch(() => {
+          requests.forEach(({ callbacks }) => {
+            callbacks.forEach(cb => cb.reject(e))
+          })
         })
-      }
-    }
-    this.apiRequests = {}
-  },
+      })
+    })
+    this.apiRequests.clear()
+  }
   setTimer() {
     if (this.timer) return
     this.timer = setTimeout(() => {
@@ -50,6 +59,7 @@ const ModelBatchRequest = {
     }, 20)
   }
 }
+const modelBatchRequest = new ModelBatchRequest
 
 type ParsedQuery = {
   attributes: Record<string, ParsedQuery>
@@ -57,18 +67,17 @@ type ParsedQuery = {
   params: any
 } | {}
 
+type Unsubscribable = { unsubscribe: () => void }
+
 class ArSyncContainerBase {
   data
-  listeners
-  networkSubscriber
+  listeners: Unsubscribable[] = []
+  networkSubscriber?: Unsubscribable
   parentModel
   parentKey
   children: ArSyncContainerBase[] | { [key: string]: ArSyncContainerBase | null }
   sync_keys: string[]
-  onConnectionChange
-  constructor() {
-    this.listeners = []
-  }
+  onConnectionChange?: (status: boolean) => void
   replaceData(_data, _sync_keys?) {}
   initForReload(request) {
     this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork((state) => {
@@ -179,7 +188,7 @@ class ArSyncContainerBase {
     const parsedQuery = ArSyncRecord.parseQuery(query)
     const compactQuery = ArSyncRecord.compactQuery(parsedQuery)
     if (id) {
-      return ModelBatchRequest.fetch(api, compactQuery, id).then(data => new ArSyncRecord(parsedQuery, data, null, root))
+      return modelBatchRequest.fetch(api, compactQuery, id).then(data => new ArSyncRecord(parsedQuery, data, null, root))
     } else {
       const request = { api, query: compactQuery, params }
       return ArSyncAPI.syncFetch(request).then((response: any) => {
@@ -312,7 +321,7 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.onChange([aliasName], null)
     } else if (action === 'add') {
       if (this.data[aliasName] && this.data[aliasName].id === id) return
-      ModelBatchRequest.fetch(class_name, ArSyncRecord.compactQuery(query), id).then(data => {
+      modelBatchRequest.fetch(class_name, ArSyncRecord.compactQuery(query), id).then(data => {
         if (!data || !this.data) return
         const model = new ArSyncRecord(query, data, null, this.root)
         const child = this.children[aliasName]
@@ -327,7 +336,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     } else {
       const { field } = notifyData
       const query = field ? this.patchQuery(field) : this.reloadQuery()
-      if (query) ModelBatchRequest.fetch(class_name, query, id).then(data => {
+      if (query) modelBatchRequest.fetch(class_name, query, id).then(data => {
         if (this.data) this.update(data)
       })
     }
@@ -439,8 +448,8 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
   replaceData(data: any[] | { collection: any[]; order: any }, sync_keys: string[]) {
     this.setSyncKeys(sync_keys)
-    const existings: { [key: string]: ArSyncRecord } = {}
-    for (const child of this.children) existings[child.data.id] = child
+    const existings = new Map<number, ArSyncRecord>()
+    for (const child of this.children) existings.set(child.data.id, child)
     let collection: any[]
     if ('collection' in data && 'order' in data) {
       collection = data.collection
@@ -451,8 +460,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     const newChildren: any[] = []
     const newData: any[] = []
     for (const subData of collection) {
-      let model: ArSyncRecord | null = null
-      if (typeof(subData) === 'object' && subData && 'id' in subData) model = existings[subData.id]
+      let model: ArSyncRecord | undefined = undefined
+      if (typeof(subData) === 'object' && subData && 'id' in subData) model = existings.get(subData.id)
       let data = subData
       if (model) {
         model.replaceData(subData)
@@ -469,7 +478,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
     while (this.children.length) {
       const child = this.children.pop()!
-      if (!existings[child.data.id]) child.release()
+      if (!existings.has(child.data.id)) child.release()
     }
     if (this.data.length || newChildren.length) this.mark()
     while (this.data.length) this.data.pop()
@@ -488,7 +497,7 @@ class ArSyncCollection extends ArSyncContainerBase {
         if (last && last.id > id) return
       }
     }
-    ModelBatchRequest.fetch(className, this.compactQuery, id).then((data: any) => {
+    modelBatchRequest.fetch(className, this.compactQuery, id).then((data: any) => {
       if (!data || !this.data) return
       const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parentModel = this
