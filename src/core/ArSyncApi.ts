@@ -10,10 +10,14 @@ async function apiBatchFetch(endpoint: string, requests: object[]) {
   if (res.status === 200) return res.json()
   throw new Error(res.statusText)
 }
-
+type FetchError = {
+  type: string
+  message: string
+  retry: boolean
+}
 interface PromiseCallback {
-  resolve: (data: object) => void
-  reject: (error: object) => void
+  resolve: (data: any) => void
+  reject: (error: FetchError) => void
 }
 
 class ApiFetcher {

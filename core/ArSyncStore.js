@@ -32,51 +32,55 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var ArSyncApi_1 = require("./ArSyncApi");
-var ModelBatchRequest = {
-    timer: null,
-    apiRequests: {},
-    fetch: function (api, query, id) {
+var ModelBatchRequest = /** @class */ (function () {
+    function ModelBatchRequest() {
+        this.timer = null;
+        this.apiRequests = new Map();
+    }
+    ModelBatchRequest.prototype.fetch = function (api, query, id) {
         var _this = this;
         this.setTimer();
-        return new Promise(function (resolve) {
+        return new Promise(function (resolve, reject) {
             var queryJSON = JSON.stringify(query);
-            var apiRequest = _this.apiRequests[api] = _this.apiRequests[api] || {};
-            var queryRequests = apiRequest[queryJSON] = apiRequest[queryJSON] || { query: query, requests: {} };
-            var request = queryRequests.requests[id] = queryRequests.requests[id] || { id: id, callbacks: [] };
-            request.callbacks.push(resolve);
+            var apiRequest = _this.apiRequests.get(api);
+            if (!apiRequest)
+                _this.apiRequests.set(api, apiRequest = new Map());
+            var queryRequests = apiRequest.get(queryJSON);
+            if (!queryRequests)
+                apiRequest.set(queryJSON, queryRequests = { query: query, requests: new Map() });
+            var request = queryRequests.requests.get(id);
+            if (!request)
+                queryRequests.requests.set(id, request = { id: id, callbacks: [] });
+            request.callbacks.push({ resolve: resolve, reject: reject });
         });
-    },
-    batchFetch: function () {
-        var apiRequests = this.apiRequests;
-        for (var api in apiRequests) {
-            var apiRequest = apiRequests[api];
-            var _loop_1 = function (query, requests) {
-                var ids = Object.values(requests).map(function (_a) {
-                    var id = _a.id;
-                    return id;
-                });
+    };
+    ModelBatchRequest.prototype.batchFetch = function () {
+        this.apiRequests.forEach(function (apiRequest, api) {
+            apiRequest.forEach(function (_a) {
+                var query = _a.query, requests = _a.requests;
+                var ids = Array.from(requests.keys());
                 ArSyncApi_1.default.syncFetch({ api: api, query: query, params: { ids: ids } }).then(function (models) {
                     for (var _i = 0, models_1 = models; _i < models_1.length; _i++) {
                         var model = models_1[_i];
-                        requests[model.id].model = model;
+                        var req = requests.get(model.id);
+                        if (req)
+                            req.model = model;
                     }
-                    for (var _a = 0, _b = Object.values(requests); _a < _b.length; _a++) {
-                        var _c = _b[_a], model = _c.model, callbacks = _c.callbacks;
-                        for (var _d = 0, callbacks_1 = callbacks; _d < callbacks_1.length; _d++) {
-                            var callback = callbacks_1[_d];
-                            callback(model);
-                        }
-                    }
+                    requests.forEach(function (_a) {
+                        var model = _a.model, callbacks = _a.callbacks;
+                        callbacks.forEach(function (cb) { return cb.resolve(model); });
+                    });
+                }).catch(function (e) {
+                    requests.forEach(function (_a) {
+                        var callbacks = _a.callbacks;
+                        callbacks.forEach(function (cb) { return cb.reject(e); });
+                    });
                 });
-            };
-            for (var _i = 0, _a = Object.values(apiRequest); _i < _a.length; _i++) {
-                var _b = _a[_i], query = _b.query, requests = _b.requests;
-                _loop_1(query, requests);
-            }
-        }
-        this.apiRequests = {};
-    },
-    setTimer: function () {
+            });
+        });
+        this.apiRequests.clear();
+    };
+    ModelBatchRequest.prototype.setTimer = function () {
         var _this = this;
         if (this.timer)
             return;
@@ -84,8 +88,10 @@ var ModelBatchRequest = {
             _this.timer = null;
             _this.batchFetch();
         }, 20);
-    }
-};
+    };
+    return ModelBatchRequest;
+}());
+var modelBatchRequest = new ModelBatchRequest;
 var ArSyncContainerBase = /** @class */ (function () {
     function ArSyncContainerBase() {
         this.listeners = [];
@@ -103,6 +109,8 @@ var ArSyncContainerBase = /** @class */ (function () {
                         if (_this.onChange)
                             _this.onChange([], _this.data);
                     }
+                }).catch(function (e) {
+                    console.error("failed to reload. " + e);
                 });
             }
             else {
@@ -154,7 +162,7 @@ var ArSyncContainerBase = /** @class */ (function () {
                     return [true, false];
                 if (keys.length === 1)
                     return [keys[0], false];
-                return [keys];
+                return [keys, false];
             }
             var needsEscape = attrs['attributes'] || attrs['params'] || attrs['as'];
             if (keys.length === 0)
@@ -180,13 +188,8 @@ var ArSyncContainerBase = /** @class */ (function () {
                 result.attributes = attributes;
             return result;
         }
-        try {
-            var result = compactQuery(query);
-            return result === true ? {} : result;
-        }
-        catch (e) {
-            throw JSON.stringify(query) + e.stack;
-        }
+        var result = compactQuery(query);
+        return result === true ? {} : result;
     };
     ArSyncContainerBase.parseQuery = function (query, attrsonly) {
         var attributes = {};
@@ -234,7 +237,7 @@ var ArSyncContainerBase = /** @class */ (function () {
         var parsedQuery = ArSyncRecord.parseQuery(query);
         var compactQuery = ArSyncRecord.compactQuery(parsedQuery);
         if (id) {
-            return ModelBatchRequest.fetch(api, compactQuery, id).then(function (data) { return new ArSyncRecord(parsedQuery, data, null, root); });
+            return modelBatchRequest.fetch(api, compactQuery, id).then(function (data) { return new ArSyncRecord(parsedQuery, data, null, root); });
         }
         else {
             var request_1 = { api: api, query: compactQuery, params: params };
@@ -357,7 +360,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
     };
     ArSyncRecord.prototype.onNotify = function (notifyData, path) {
         var _this = this;
-        var action = notifyData.action, class_name = notifyData.class_name, id = notifyData.id;
+        var action = notifyData.action, className = notifyData.class_name, id = notifyData.id;
         var query = path && this.query.attributes[path];
         var aliasName = (query && query.as) || path;
         if (action === 'remove') {
@@ -372,7 +375,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         else if (action === 'add') {
             if (this.data[aliasName] && this.data[aliasName].id === id)
                 return;
-            ModelBatchRequest.fetch(class_name, ArSyncRecord.compactQuery(query), id).then(function (data) {
+            modelBatchRequest.fetch(className, ArSyncRecord.compactQuery(query), id).then(function (data) {
                 if (!data || !_this.data)
                     return;
                 var model = new ArSyncRecord(query, data, null, _this.root);
@@ -385,16 +388,21 @@ var ArSyncRecord = /** @class */ (function (_super) {
                 model.parentModel = _this;
                 model.parentKey = aliasName;
                 _this.onChange([aliasName], model.data);
+            }).catch(function (e) {
+                console.error("failed to load " + className + ":" + id + " " + e);
             });
         }
         else {
             var field = notifyData.field;
             var query_2 = field ? this.patchQuery(field) : this.reloadQuery();
-            if (query_2)
-                ModelBatchRequest.fetch(class_name, query_2, id).then(function (data) {
-                    if (_this.data)
-                        _this.update(data);
-                });
+            if (!query_2)
+                return;
+            modelBatchRequest.fetch(className, query_2, id).then(function (data) {
+                if (_this.data)
+                    _this.update(data);
+            }).catch(function (e) {
+                console.error("failed to load patch " + className + ":" + id + " " + e);
+            });
         }
     };
     ArSyncRecord.prototype.subscribeAll = function () {
@@ -404,7 +412,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
             var key = _a[_i];
             this.subscribe(key, callback);
         }
-        var _loop_2 = function (path) {
+        var _loop_1 = function (path) {
             var pathCallback = function (data) { return _this.onNotify(data, path); };
             for (var _i = 0, _a = this_1.sync_keys; _i < _a.length; _i++) {
                 var key = _a[_i];
@@ -414,7 +422,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         var this_1 = this;
         for (var _b = 0, _c = this.paths; _b < _c.length; _b++) {
             var path = _c[_b];
-            _loop_2(path);
+            _loop_1(path);
         }
     };
     ArSyncRecord.prototype.patchQuery = function (key) {
@@ -531,10 +539,10 @@ var ArSyncCollection = /** @class */ (function (_super) {
     };
     ArSyncCollection.prototype.replaceData = function (data, sync_keys) {
         this.setSyncKeys(sync_keys);
-        var existings = {};
+        var existings = new Map();
         for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
             var child = _a[_i];
-            existings[child.data.id] = child;
+            existings.set(child.data.id, child);
         }
         var collection;
         if ('collection' in data && 'order' in data) {
@@ -548,9 +556,9 @@ var ArSyncCollection = /** @class */ (function (_super) {
         var newData = [];
         for (var _b = 0, collection_1 = collection; _b < collection_1.length; _b++) {
             var subData = collection_1[_b];
-            var model = null;
+            var model = undefined;
             if (typeof (subData) === 'object' && subData && 'id' in subData)
-                model = existings[subData.id];
+                model = existings.get(subData.id);
             var data_1 = subData;
             if (model) {
                 model.replaceData(subData);
@@ -568,7 +576,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
         }
         while (this.children.length) {
             var child = this.children.pop();
-            if (!existings[child.data.id])
+            if (!existings.has(child.data.id))
                 child.release();
         }
         if (this.data.length || newChildren.length)
@@ -601,7 +609,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
                     return;
             }
         }
-        ModelBatchRequest.fetch(className, this.compactQuery, id).then(function (data) {
+        modelBatchRequest.fetch(className, this.compactQuery, id).then(function (data) {
             if (!data || !_this.data)
                 return;
             var model = new ArSyncRecord(_this.query, data, null, _this.root);
@@ -638,6 +646,8 @@ var ArSyncCollection = /** @class */ (function (_super) {
             _this.onChange([model.id], model.data);
             if (rmodel)
                 _this.onChange([rmodel.id], null);
+        }).catch(function (e) {
+            console.error("failed to load " + className + ":" + id + " " + e);
         });
     };
     ArSyncCollection.prototype.markAndSort = function () {
