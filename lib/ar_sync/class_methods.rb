@@ -3,7 +3,7 @@ require_relative 'collection'
 
 module ArSync::ModelBase::ClassMethods
   def _sync_self?
-    instance_variable_defined? '@_sync_self'
+    defined? @_sync_self
   end
 
   def _sync_parents_info
@@ -112,7 +112,7 @@ module ArSync::ModelBase::ClassMethods
 
   module WriteHook
     def _initialize_sync_info_before_mutation
-      return unless instance_variable_defined? '@_initialized'
+      return unless defined? @_initialized
       if new_record?
         @_sync_watch_values_before_mutation ||= {}
         @_sync_parents_info_before_mutation ||= {}
@@ -136,7 +136,7 @@ module ArSync::ModelBase::ClassMethods
   end
 
   def _initialize_sync_callbacks
-    return if instance_variable_defined? '@_sync_callbacks_initialized'
+    return if defined? @_sync_callbacks_initialized
     @_sync_callbacks_initialized = true
     prepend WriteHook
     attr_reader :_sync_parents_info_before_mutation, :_sync_belongs_to_info_before_mutation, :_sync_watch_values_before_mutation
