@@ -169,6 +169,17 @@ tap do # order test
   runner.eval_script 'postModel.release(); postModel = null'
 end
 
+tap do # no subquery test
+  runner.eval_script <<~JAVASCRIPT
+    global.noSubqueryTestModel = new ArSyncModel({
+      api: 'currentUser',
+      query: ['id', 'posts']
+    })
+  JAVASCRIPT
+  runner.assert_script 'noSubqueryTestModel.data'
+  runner.assert_script 'noSubqueryTestModel.data.posts[0].id >= 1'
+end
+
 tap do # wildcard update test
   runner.eval_script <<~JAVASCRIPT
     global.wildCardTestModel = new ArSyncModel({
