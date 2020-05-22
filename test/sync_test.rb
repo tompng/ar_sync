@@ -180,6 +180,18 @@ tap do # no subquery test
   runner.assert_script 'noSubqueryTestModel.data.posts[0].id >= 1'
 end
 
+tap do # object field test
+  runner.eval_script <<~JAVASCRIPT
+    global.objectFieldTestModel = new ArSyncModel({
+      api: 'currentUser',
+      query: ['itemWithId', 'itemsWithId']
+    })
+  JAVASCRIPT
+  runner.assert_script 'objectFieldTestModel.data'
+  runner.assert_script 'objectFieldTestModel.data.itemWithId', to_be: { 'id' => 1, 'value' => 'data' }
+  runner.assert_script 'objectFieldTestModel.data.itemsWithId', to_be: [{ 'id' => 1, 'value' => 'data' }]
+end
+
 tap do # wildcard update test
   runner.eval_script <<~JAVASCRIPT
     global.wildCardTestModel = new ArSyncModel({
