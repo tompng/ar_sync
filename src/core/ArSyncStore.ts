@@ -231,6 +231,7 @@ class ArSyncRecord extends ArSyncContainerBase {
   id: number
   root
   query
+  queryAttributes
   data
   children: { [key: string]: ArSyncContainerBase | null }
   paths: string[]
@@ -240,6 +241,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.root = root
     if (request) this.initForReload(request)
     this.query = query
+    this.queryAttributes = query.attributes || {}
     this.data = {}
     this.children = {}
     this.replaceData(data)
@@ -258,8 +260,8 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.data.id = data.id
     }
     this.paths = []
-    for (const key in this.query.attributes) {
-      const subQuery = this.query.attributes[key]
+    for (const key in this.queryAttributes) {
+      const subQuery = this.queryAttributes[key]
       const aliasName = subQuery.as || key
       const subData = data[aliasName]
       const child = this.children[aliasName]
@@ -300,9 +302,9 @@ class ArSyncRecord extends ArSyncContainerBase {
         }
       }
     }
-    if (this.query.attributes['*']) {
+    if (this.queryAttributes['*']) {
       for (const key in data) {
-        if (!this.query.attributes[key] && this.data[key] !== data[key]) {
+        if (!this.queryAttributes[key] && this.data[key] !== data[key]) {
           this.mark()
           this.data[key] = data[key]
         }
@@ -312,7 +314,7 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
   onNotify(notifyData: NotifyData, path?: string) {
     const { action, class_name: className, id } = notifyData
-    const query = path && this.query.attributes[path]
+    const query = path && this.queryAttributes[path]
     const aliasName = (query && query.as) || path;
     if (action === 'remove') {
       const child = this.children[aliasName]
@@ -359,7 +361,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     }
   }
   patchQuery(key: string) {
-    const val = this.query.attributes[key]
+    const val = this.queryAttributes[key]
     if (!val) return
     let { attributes, as, params } = val
     if (attributes && Object.keys(val.attributes).length === 0) attributes = null
@@ -373,9 +375,9 @@ class ArSyncRecord extends ArSyncContainerBase {
   reloadQuery() {
     if (this.reloadQueryCache) return this.reloadQueryCache
     const reloadQuery = this.reloadQueryCache = { attributes: [] as any[] }
-    for (const key in this.query.attributes) {
+    for (const key in this.queryAttributes) {
       if (key === 'sync_keys') continue
-      const val = this.query.attributes[key]
+      const val = this.queryAttributes[key]
       if (!val || !val.attributes) {
         reloadQuery.attributes.push(key)
       } else if (!val.params && Object.keys(val.attributes).length === 0) {
@@ -386,7 +388,7 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
   update(data) {
     for (const key in data) {
-      const subQuery = this.query.attributes[key]
+      const subQuery = this.queryAttributes[key]
       if (subQuery && subQuery.attributes && Object.keys(subQuery.attributes).length > 0) continue
       if (this.data[key] === data[key]) continue
       this.mark()
@@ -411,6 +413,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   path: string
   order: { limit: number | null; key: string; mode: 'asc' | 'desc' } = { limit: null, mode: 'asc', key: 'id' }
   query
+  queryAttributes
   compactQuery
   data: any[]
   children: ArSyncRecord[]
@@ -420,6 +423,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.root = root
     this.path = path
     this.query = query
+    this.queryAttributes = query.attributes || {}
     this.compactQuery = ArSyncRecord.compactQuery(query)
     if (request) this.initForReload(request)
     if (query.params && (query.params.order || query.params.limit)) {
@@ -442,7 +446,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
     const limitNumber = (typeof limit === 'number') ? limit : null
     if (limitNumber !== null && key !== 'id') throw 'limit with custom order key is not supported'
-    const subQuery = this.query.attributes[key]
+    const subQuery = this.queryAttributes[key]
     this.aliasOrderKey = (subQuery && subQuery.as) || key
     this.order = { limit: limitNumber, mode, key }
   }
@@ -468,11 +472,11 @@ class ArSyncCollection extends ArSyncContainerBase {
     const newData: any[] = []
     for (const subData of collection) {
       let model: ArSyncRecord | undefined = undefined
-      if (typeof(subData) === 'object' && subData && 'id' in subData) model = existings.get(subData.id)
+      if (typeof(subData) === 'object' && subData && 'sync_keys' in subData) model = existings.get(subData.id)
       let data = subData
       if (model) {
         model.replaceData(subData)
-      } else if (subData.id) {
+      } else if (subData.sync_keys) {
         model = new ArSyncRecord(this.query, subData, null, this.root)
         model.parentModel = this
         model.parentKey = subData.id

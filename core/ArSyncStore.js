@@ -281,6 +281,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         if (request)
             _this.initForReload(request);
         _this.query = query;
+        _this.queryAttributes = query.attributes || {};
         _this.data = {};
         _this.children = {};
         _this.replaceData(data);
@@ -300,8 +301,8 @@ var ArSyncRecord = /** @class */ (function (_super) {
             this.data.id = data.id;
         }
         this.paths = [];
-        for (var key in this.query.attributes) {
-            var subQuery = this.query.attributes[key];
+        for (var key in this.queryAttributes) {
+            var subQuery = this.queryAttributes[key];
             var aliasName = subQuery.as || key;
             var subData = data[aliasName];
             var child = this.children[aliasName];
@@ -348,9 +349,9 @@ var ArSyncRecord = /** @class */ (function (_super) {
                 }
             }
         }
-        if (this.query.attributes['*']) {
+        if (this.queryAttributes['*']) {
             for (var key in data) {
-                if (!this.query.attributes[key] && this.data[key] !== data[key]) {
+                if (!this.queryAttributes[key] && this.data[key] !== data[key]) {
                     this.mark();
                     this.data[key] = data[key];
                 }
@@ -361,7 +362,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
     ArSyncRecord.prototype.onNotify = function (notifyData, path) {
         var _this = this;
         var action = notifyData.action, className = notifyData.class_name, id = notifyData.id;
-        var query = path && this.query.attributes[path];
+        var query = path && this.queryAttributes[path];
         var aliasName = (query && query.as) || path;
         if (action === 'remove') {
             var child = this.children[aliasName];
@@ -426,7 +427,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         }
     };
     ArSyncRecord.prototype.patchQuery = function (key) {
-        var val = this.query.attributes[key];
+        var val = this.queryAttributes[key];
         if (!val)
             return;
         var attributes = val.attributes, as = val.as, params = val.params;
@@ -448,10 +449,10 @@ var ArSyncRecord = /** @class */ (function (_super) {
         if (this.reloadQueryCache)
             return this.reloadQueryCache;
         var reloadQuery = this.reloadQueryCache = { attributes: [] };
-        for (var key in this.query.attributes) {
+        for (var key in this.queryAttributes) {
             if (key === 'sync_keys')
                 continue;
-            var val = this.query.attributes[key];
+            var val = this.queryAttributes[key];
             if (!val || !val.attributes) {
                 reloadQuery.attributes.push(key);
             }
@@ -463,7 +464,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
     };
     ArSyncRecord.prototype.update = function (data) {
         for (var key in data) {
-            var subQuery = this.query.attributes[key];
+            var subQuery = this.queryAttributes[key];
             if (subQuery && subQuery.attributes && Object.keys(subQuery.attributes).length > 0)
                 continue;
             if (this.data[key] === data[key])
@@ -496,6 +497,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
         _this.root = root;
         _this.path = path;
         _this.query = query;
+        _this.queryAttributes = query.attributes || {};
         _this.compactQuery = ArSyncRecord.compactQuery(query);
         if (request)
             _this.initForReload(request);
@@ -524,7 +526,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
         var limitNumber = (typeof limit === 'number') ? limit : null;
         if (limitNumber !== null && key !== 'id')
             throw 'limit with custom order key is not supported';
-        var subQuery = this.query.attributes[key];
+        var subQuery = this.queryAttributes[key];
         this.aliasOrderKey = (subQuery && subQuery.as) || key;
         this.order = { limit: limitNumber, mode: mode, key: key };
     };
@@ -557,13 +559,13 @@ var ArSyncCollection = /** @class */ (function (_super) {
         for (var _b = 0, collection_1 = collection; _b < collection_1.length; _b++) {
             var subData = collection_1[_b];
             var model = undefined;
-            if (typeof (subData) === 'object' && subData && 'id' in subData)
+            if (typeof (subData) === 'object' && subData && 'sync_keys' in subData)
                 model = existings.get(subData.id);
             var data_1 = subData;
             if (model) {
                 model.replaceData(subData);
             }
-            else if (subData.id) {
+            else if (subData.sync_keys) {
                 model = new ArSyncRecord(this.query, subData, null, this.root);
                 model.parentModel = this;
                 model.parentKey = subData.id;

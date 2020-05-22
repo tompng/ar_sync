@@ -25,7 +25,7 @@ isOK<IsEqual<typeof data1, { id: number }>>()
 const data2 = new ArSyncModel({ api: 'currentUser', query: ['id', 'name'] }).data!
 isOK<IsEqual<typeof data2, { id: number; name: string | null }>>()
 const data3 = new ArSyncModel({ api: 'currentUser', query: '*' }).data!
-isOK<IsEqual<typeof data3, { id: number; name: string | null; sync_keys: string[]; posts: {}[]; postOrNull: {} | null }>>()
+isOK<IsEqual<typeof data3, { id: number; name: string | null; sync_keys: string[]; posts: {}[]; postOrNull: {} | null; itemWithId: any; itemsWithId: any }>>()
 const data4 = new ArSyncModel({ api: 'currentUser',  query: { posts: 'id' } }).data!
 isOK<IsEqual<typeof data4, { posts: { id: number }[] }>>()
 const data5 = new ArSyncModel({ api: 'currentUser', query: { posts: '*' } }).data!

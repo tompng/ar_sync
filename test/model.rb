@@ -12,6 +12,8 @@ class User < BaseRecord
   sync_has_data :id, :name
   sync_has_many :posts
   sync_has_one(:postOrNull, type: ->{ [Post, nil] }) { nil }
+  sync_has_data(:itemWithId) { { id: 1, value: 'data' } }
+  sync_has_data(:itemsWithId) { [{ id: 1, value: 'data' }] }
 end
 
 class Post < BaseRecord
