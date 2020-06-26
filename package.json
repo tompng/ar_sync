@@ -11,7 +11,7 @@
     "actioncable": "^5.2.0",
     "@types/actioncable": "^5.2.0",
     "eslint": "^5.16.0",
-    "typescript": "3.8.3",
+    "typescript": "3.9.5",
     "@typescript-eslint/eslint-plugin": "^1.6.0",
     "@typescript-eslint/parser": "^1.6.0"
   }
