@@ -82,13 +82,13 @@ module ArSync
   end
 
   def self.serialize(record_or_records, query, user: nil)
-    ArSerializer.serialize record_or_records, query, context: user, include_id: true, use: :sync
+    ArSerializer.serialize record_or_records, query, context: user, use: :sync
   end
 
   def self.sync_serialize(target, user, query)
     case target
     when ArSync::Collection, ArSync::ModelBase
-      serialized = ArSerializer.serialize target, query, context: user, include_id: true, use: :sync
+      serialized = ArSerializer.serialize target, query, context: user, use: :sync
       return serialized if target.is_a? ArSync::ModelBase
       {
         sync_keys: ArSync.sync_keys(target, user),
