@@ -45,14 +45,20 @@ class ArSync::Collection
   end
 end
 
-class ArSync::CollectionWithOrder < ArSerializer::CompositeValue
+class ArSync::CollectionWithOrder # TODO: extends ArSerializer::CustomSerializable
   def initialize(records, order:, limit:)
-    @records = records
+    @ar_custom_serializable_models = records
     @order = { mode: order, limit: limit }
   end
 
+  def ar_custom_serializable_data(results)
+    { order: @order, collection: @ar_custom_serializable_models.map(&results).compact }
+  end
+
+  # TODO: delete
+  attr_reader :ar_custom_serializable_models
   def ar_serializer_build_sub_calls
-    values = @records.map { {} }
-    [{ order: @order, collection: values }, @records.zip(values)]
+    values = @ar_custom_serializable_models.map { {} }
+    [{ order: @order, collection: values }, @ar_custom_serializable_models.zip(values)]
   end
 end
