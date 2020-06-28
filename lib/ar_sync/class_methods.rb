@@ -148,7 +148,7 @@ module ArSync::ModelBase::ClassMethods
     end
 
     _sync_define :defaults, namespace: :sync do |current_user|
-      { sync_keys: ArSync.sync_keys(self, current_user) }
+      { id: id, sync_keys: ArSync.sync_keys(self, current_user) }
     end
 
     after_initialize do
