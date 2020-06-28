@@ -83,7 +83,18 @@ module ArSync::ModelBase::ClassMethods
       serializer_data_block = lambda do |preloaded, _context, **_params|
         preloaded ? preloaded[id] || [] : send(name)
       end
-      params_type = { limit?: :int, order?: [{ :* => %w[asc desc] }, 'asc', 'desc'] }
+      params_type = -> {
+        orderable_keys = reflect_on_association(underscore_name).klass._serializer_orderable_field_keys
+        orderable_keys &= [*option[:only]].map(&:to_s) if option[:only]
+        orderable_keys -= [*option[:except]].map(&:to_s) if option[:except]
+        orderable_keys |= ['id']
+        orderable_keys.sort!
+        modes = %w[asc desc]
+        {
+          limit?: :int,
+          order?: orderable_keys.map { |key| { key => modes } } + modes
+        }
+      }
     else
       params_type = {}
     end
