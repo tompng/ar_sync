@@ -68,7 +68,7 @@ class ArSync::HasManyField < ArSync::Field
   def skip_propagation?(parent, child, _path)
     return false unless limit
     return !propagate_when.call(child) if propagate_when
-    ids = parent.send(association).order(id: order).limit(limit).ids
+    ids = parent.__send__(association).order(id: order).limit(limit).ids
     if child.destroyed?
       ids.size == limit && (order == :asc ? ids.max < child.id : child.id < ids.min)
     else
