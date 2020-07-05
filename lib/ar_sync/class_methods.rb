@@ -72,7 +72,7 @@ module ArSync::ModelBase::ClassMethods
         )
       end
       data_block = lambda do |preloaded, _context, **params|
-        records = preloaded ? preloaded[id] || [] : send(name)
+        records = preloaded ? preloaded[id] || [] : __send__(name)
         next records unless limit || order == :asc
         ArSync::CollectionWithOrder.new(
           records,
@@ -81,7 +81,7 @@ module ArSync::ModelBase::ClassMethods
         )
       end
       serializer_data_block = lambda do |preloaded, _context, **_params|
-        preloaded ? preloaded[id] || [] : send(name)
+        preloaded ? preloaded[id] || [] : __send__(name)
       end
       params_type = { limit?: :int, order?: [{ :* => %w[asc desc] }, 'asc', 'desc'] }
     else

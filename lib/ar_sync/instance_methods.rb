@@ -8,7 +8,7 @@ module ArSync::ModelBase::InstanceMethods
     values = {}
     self.class._each_sync_parent do |_, info|
       [*info[:watch]].each do |watch|
-        values[watch] = watch.is_a?(Proc) ? instance_exec(&watch) : send(watch)
+        values[watch] = watch.is_a?(Proc) ? instance_exec(&watch) : __send__(watch)
       end
     end
     values
