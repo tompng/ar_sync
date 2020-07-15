@@ -150,7 +150,7 @@ tap do # order test
       params: { id: #{post.id} },
       query: {
         comments: {
-          params: { order: { body: 'desc' } },
+          params: { orderBy: 'body', direction: 'desc' },
           attributes: { id: true, body: { as: 'text' } }
         }
       }

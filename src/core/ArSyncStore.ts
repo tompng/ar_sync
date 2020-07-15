@@ -1,4 +1,4 @@
-import ArSyncAPI from './ArSyncApi'
+import ArSyncApi from './ArSyncApi'
 
 class ModelBatchRequest {
   timer: number | null = null
@@ -34,7 +34,7 @@ class ModelBatchRequest {
     this.apiRequests.forEach((apiRequest, api) => {
       apiRequest.forEach(({ query, requests }) => {
         const ids = Array.from(requests.keys())
-        ArSyncAPI.syncFetch({ api, query, params: { ids } }).then((models: any[]) => {
+        ArSyncApi.syncFetch({ api, query, params: { ids } }).then((models: any[]) => {
           for (const model of models) {
             const req = requests.get(model.id)
             if (req) req.model = model
@@ -94,7 +94,7 @@ class ArSyncContainerBase {
           }
         })
       } else {
-        ArSyncAPI.syncFetch(request).then(data => {
+        ArSyncApi.syncFetch(request).then(data => {
           if (this.data && data) {
             this.replaceData(data)
             if (this.onConnectionChange) this.onConnectionChange(true)
@@ -207,7 +207,7 @@ class ArSyncContainerBase {
       })
     } else {
       const request = { api, query: compactQuery, params }
-      return ArSyncAPI.syncFetch(request).then((response: any) => {
+      return ArSyncApi.syncFetch(request).then((response: any) => {
         if (!response) {
           throw { retry: false }
         } else if (response.collection && response.order) {
@@ -421,10 +421,11 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
 }
 
+type Ordering = { first?: number; last?: number; orderBy: string; direction: 'asc' | 'desc' }
 class ArSyncCollection extends ArSyncContainerBase {
   root
   path: string
-  order: { limit: number | null; key: string; mode: 'asc' | 'desc' } = { limit: null, mode: 'asc', key: 'id' }
+  ordering: Ordering = { orderBy: 'id', direction: 'asc' }
   query
   queryAttributes
   compactQuery
@@ -439,29 +440,25 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.queryAttributes = query.attributes || {}
     this.compactQuery = ArSyncRecord.compactQuery(query)
     if (request) this.initForReload(request)
-    if (query.params && (query.params.order || query.params.limit)) {
-      this.setOrdering(query.params.limit, query.params.order)
+    if (query.params) {
+      this.setOrdering(query.params)
     }
     this.data = []
     this.children = []
     this.replaceData(data, sync_keys)
   }
-  setOrdering(limit: unknown, order: unknown) {
-    let mode: 'asc' | 'desc' = 'asc'
-    let key: string = 'id'
-    if (order === 'asc' || order === 'desc') {
-      mode = order
-    } else if (typeof order === 'object' && order) {
-      const keys = Object.keys(order)
-      if (keys.length > 1) throw 'multiple order keys are not supported'
-      if (keys.length === 1) key = keys[0]
-      mode = order[key] === 'asc' ? 'asc' : 'desc'
-    }
-    const limitNumber = (typeof limit === 'number') ? limit : null
-    if (limitNumber !== null && key !== 'id') throw 'limit with custom order key is not supported'
-    const subQuery = this.queryAttributes[key]
-    this.aliasOrderKey = (subQuery && subQuery.as) || key
-    this.order = { limit: limitNumber, mode, key }
+  setOrdering(ordering: { first?: unknown; last?: unknown; orderBy?: unknown; direction?: unknown }) {
+    let direction: 'asc' | 'desc' = 'asc'
+    let orderBy: string = 'id'
+    let first: number | undefined = undefined
+    let last: number | undefined = undefined
+    if (ordering.direction === 'desc') direction = ordering.direction
+    if (typeof ordering.orderBy === 'string') orderBy = ordering.orderBy
+    if (typeof ordering.first === 'number') first = ordering.first
+    if (typeof ordering.last === 'number') last = ordering.last
+    const subQuery = this.queryAttributes[orderBy]
+    this.aliasOrderKey = (subQuery && subQuery.as) || orderBy
+    this.ordering = { first, last, direction, orderBy }
   }
   setSyncKeys(sync_keys: string[]) {
     if (sync_keys) {
@@ -470,16 +467,16 @@ class ArSyncCollection extends ArSyncContainerBase {
       this.sync_keys = []
     }
   }
-  replaceData(data: any[] | { collection: any[]; order: any }, sync_keys: string[]) {
+  replaceData(data: any[] | { collection: any[]; ordering: Ordering }, sync_keys: string[]) {
     this.setSyncKeys(sync_keys)
     const existings = new Map<number, ArSyncRecord>()
     for (const child of this.children) existings.set(child.data.id, child)
     let collection: any[]
-    if ('collection' in data && 'order' in data) {
-      collection = data.collection
-      this.setOrdering(data.order.limit, data.order.mode)
-    } else {
+    if (Array.isArray(data)) {
       collection = data
+    } else {
+      collection = data.collection
+      this.setOrdering(data.ordering)
     }
     const newChildren: any[] = []
     const newData: any[] = []
@@ -511,14 +508,24 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.subscribeAll()
   }
   consumeAdd(className: string, id: number) {
+    const { first, last, direction } = this.ordering
+    const limit = first || last
     if (this.data.findIndex(a => a.id === id) >= 0) return
-    if (this.order.limit === this.data.length) {
-      if (this.order.mode === 'asc') {
-        const last = this.data[this.data.length - 1]
-        if (last && last.id < id) return
+    if (limit && limit <= this.data.length) {
+      const lastItem = this.data[this.data.length - 1]
+      const firstItem = this.data[0]
+      if (direction === 'asc') {
+        if (first) {
+          if (lastItem && lastItem.id < id) return
+        } else {
+          if (firstItem && id < firstItem.id) return
+        }
       } else {
-        const last = this.data[this.data.length - 1]
-        if (last && last.id > id) return
+        if (first) {
+          if (lastItem && id < lastItem.id) return
+        } else {
+          if (firstItem && firstItem.id < id) return
+        }
       }
     }
     modelBatchRequest.fetch(className, this.compactQuery, id).then((data: any) => {
@@ -526,30 +533,42 @@ class ArSyncCollection extends ArSyncContainerBase {
       const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parentModel = this
       model.parentKey = id
-      const overflow = this.order.limit && this.order.limit === this.data.length
+      const overflow = limit && limit <= this.data.length
       let rmodel: ArSyncRecord | undefined
       this.mark()
       const orderKey = this.aliasOrderKey
-      if (this.order.mode === 'asc') {
-        const last = this.data[this.data.length - 1]
-        this.children.push(model)
-        this.data.push(model.data)
-        if (last && last[orderKey] > data[orderKey]) this.markAndSort()
-        if (overflow) {
-          rmodel = this.children.shift()!
-          rmodel.release()
-          this.data.shift()
+      const firstItem = this.data[0]
+      const lastItem = this.data[this.data.length - 1]
+      if (direction === 'asc') {
+        if (firstItem && data[orderKey] < firstItem[orderKey]) {
+          this.children.unshift(model)
+          this.data.unshift(model.data)
+        } else {
+          const skipSort = lastItem && lastItem[orderKey] < data[orderKey]
+          this.children.push(model)
+          this.data.push(model.data)
+          if (!skipSort) this.markAndSort()
         }
       } else {
-        const first = this.data[0]
-        this.children.unshift(model)
-        this.data.unshift(model.data)
-        if (first && first[orderKey] > data[orderKey]) this.markAndSort()
-        if (overflow) {
-          rmodel = this.children.pop()!
-          rmodel.release()
-          this.data.pop()
+        if (firstItem && data[orderKey] > firstItem[orderKey]) {
+          this.children.unshift(model)
+          this.data.unshift(model.data)
+        } else {
+          const skipSort = lastItem && lastItem[orderKey] > data[orderKey]
+          this.children.push(model)
+          this.data.push(model.data)
+          if (!skipSort) this.markAndSort()
         }
+      }
+      if (overflow) {
+        if (first) {
+          rmodel = this.children.pop()!
+          this.data.pop()
+        } else {
+          rmodel = this.children.shift()!
+          this.data.shift()
+        }
+        rmodel.release()
       }
       this.onChange([model.id], model.data)
       if (rmodel) this.onChange([rmodel.id], null)
@@ -560,7 +579,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   markAndSort() {
     this.mark()
     const orderKey = this.aliasOrderKey
-    if (this.order.mode === 'asc') {
+    if (this.ordering.direction === 'asc') {
       this.children.sort((a, b) => a.data[orderKey] < b.data[orderKey] ? -1 : +1)
       this.data.sort((a, b) => a[orderKey] < b[orderKey] ? -1 : +1)
     } else {
