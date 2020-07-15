@@ -92,7 +92,7 @@ module ArSync
       return serialized if target.is_a? ArSync::ModelBase
       {
         sync_keys: ArSync.sync_keys(target, user),
-        order: { mode: target.order, limit: target.limit },
+        ordering: target.ordering,
         collection: serialized
       }
     when ActiveRecord::Relation, Array

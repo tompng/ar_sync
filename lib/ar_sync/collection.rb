@@ -1,21 +1,26 @@
-require_relative 'field'
-
 class ArSync::Collection
-  attr_reader :klass, :name, :limit, :order
-  def initialize(klass, name, limit: nil, order: nil)
+  attr_reader :klass, :name, :first, :last, :direction, :ordering
+  def initialize(klass, name, first: nil, last: nil, direction: nil)
+    direction ||= :asc
     @klass = klass
     @name = name
-    @limit = limit
-    @order = order
+    @first = first
+    @last = last
+    @direction = direction
+    @ordering = { first: first, last: last, direction: direction }.compact
     self.class.defined_collections[[klass, name]] = self
     define_singleton_method(name) { to_a }
   end
 
   def to_a
-    all = klass.all
-    all = all.order id: order if order
-    all = all.limit limit if limit
-    all
+    if first
+      klass.order(id: direction).limit(first).to_a
+    elsif last
+      rev = direction == :asc ? :desc : :asc
+      klass.order(id: rev).limit(last).reverse
+    else
+      klass.all.to_a
+    end
   end
 
   def self.defined_collections
@@ -45,20 +50,13 @@ class ArSync::Collection
   end
 end
 
-class ArSync::CollectionWithOrder # TODO: extends ArSerializer::CustomSerializable
-  def initialize(records, order:, limit:)
-    @ar_custom_serializable_models = records
-    @order = { mode: order, limit: limit }
-  end
-
-  def ar_custom_serializable_data(results)
-    { order: @order, collection: @ar_custom_serializable_models.map(&results).compact }
-  end
-
-  # TODO: delete
-  attr_reader :ar_custom_serializable_models
-  def ar_serializer_build_sub_calls
-    values = @ar_custom_serializable_models.map { {} }
-    [{ order: @order, collection: values }, @ar_custom_serializable_models.zip(values)]
+class ArSync::CollectionWithOrder < ArSerializer::CustomSerializable
+  def initialize(records, direction:, first: nil, last: nil)
+    super records do |results|
+      {
+        ordering: { direction: direction || :asc, first: first, last: last }.compact,
+        collection: records.map(&results).compact
+      }
+    end
   end
 end
