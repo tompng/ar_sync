@@ -6,3 +6,4 @@ git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 gemspec path: ".."
 
 gem "activerecord", "~> 6.0.0"
+gem 'ar_serializer', github: 'tompng/ar_serializer'
