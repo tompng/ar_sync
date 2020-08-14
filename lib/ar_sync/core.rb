@@ -7,6 +7,10 @@ module ArSync
   ArSync::ModelBase.module_eval do
     extend ActiveSupport::Concern
     include ArSync::ModelBase::InstanceMethods
+
+    included do
+      class_attribute :_sync_self, instance_accessor: false, default: false
+    end
   end
 
   def self.on_notification(&block)

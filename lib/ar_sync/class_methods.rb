@@ -2,10 +2,6 @@ require_relative 'field'
 require_relative 'collection'
 
 module ArSync::ModelBase::ClassMethods
-  def _sync_self?
-    defined? @_sync_self
-  end
-
   def _sync_parents_info
     @_sync_parents_info ||= []
   end
@@ -43,7 +39,7 @@ module ArSync::ModelBase::ClassMethods
   end
 
   def sync_has_data(*names, **option, &data_block)
-    @_sync_self = true
+    self._sync_self = true
     names.each do |name|
       _sync_children_info[name] = nil
       _sync_define name, **option, &data_block

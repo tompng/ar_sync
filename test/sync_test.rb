@@ -280,3 +280,14 @@ tap do # model load from id
   post2.update title: p2title
   runner.assert_script '[p1.data.title, p2.data.title]', to_be: [p1title, p2title]
 end
+
+tap do # sync self
+  star = YellowStar.first
+  runner.eval_script <<~JAVASCRIPT
+    global.star = new ArSyncModel({ api: 'Star', id: #{star.id}, query: 'type' })
+  JAVASCRIPT
+  runner.assert_script 'star.data'
+  runner.assert_script '[star.data.type]', to_be: ['YellowStar']
+  star.update!(type: 'RedStar')
+  runner.assert_script '[star.data.type]', to_be: ['RedStar']
+end
