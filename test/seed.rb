@@ -23,6 +23,7 @@ ActiveRecord::Migration::Current.class_eval do
   end
 
   create_table :stars do |t|
+    t.string :type
     t.references :comment
     t.references :user
     t.timestamps
@@ -47,7 +48,9 @@ Comment.import comments
 comment_ids = Comment.ids
 
 sets = Set.new
+color_klasses = ['YellowStar', 'RedStar', 'GreenStar']
 stars = 128.times.map do
+  type = color_klasses.sample
   user_id = user_ids.sample
   comment_id = comment_ids.sample
   while sets.include? [user_id, comment_id]
@@ -55,7 +58,7 @@ stars = 128.times.map do
     comment_id = comment_ids.sample
   end
   sets.add [user_id, comment_id]
-  { user_id: user_id, comment_id: comment_id }
+  { type: type, user_id: user_id, comment_id: comment_id }
 end
 Star.import stars
 

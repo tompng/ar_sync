@@ -3,7 +3,9 @@ require_relative 'collection'
 
 module ArSync::ModelBase::ClassMethods
   def _sync_self?
-    defined? @_sync_self
+    return true if defined?(@_sync_self)
+
+    superclass._sync_self? if superclass < ActiveRecord::Base
   end
 
   def _sync_parents_info

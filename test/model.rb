@@ -71,10 +71,14 @@ class Star < BaseRecord
   self.table_name = :stars
   belongs_to :user
   belongs_to :comment
-  sync_has_data :id, :created_at
+  sync_has_data :id, :created_at, :type
   sync_has_one :user, only: [:id, :name]
   sync_parent :comment, inverse_of: :starCount
   sync_parent :comment, inverse_of: :myStar, only_to: -> { user }
   sync_parent :comment, inverse_of: :myStars, only_to: -> { user }
   sync_parent :comment, inverse_of: :editedStarCount, watch: :updated_at
 end
+
+class YellowStar < Star; end
+class RedStar < Star; end
+class GreenStar < Star; end
