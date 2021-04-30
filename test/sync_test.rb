@@ -10,6 +10,7 @@ class Schema
   serializer_field(:currentUser) { |user| user }
   serializer_field(:post) { |_user, id:| Post.find id }
   serializer_field(:comment) { |_user, id:| Post.find id }
+  serializer_field(:nil) { nil }
 
   [User, Post, Comment, Star].each do |klass|
     serializer_field(klass.name) { |_user, ids:| klass.where id: ids }
@@ -279,6 +280,17 @@ tap do # model load from id
   p2title = "P2#{rand}"
   post2.update title: p2title
   runner.assert_script '[p1.data.title, p2.data.title]', to_be: [p1title, p2title]
+end
+
+tap do # load failed with notfound
+  runner.eval_script <<~JAVASCRIPT
+    global.p1 = new ArSyncModel({ api: 'post', params: { id: 0xffffffff }, query: 'title' }),
+    global.p2 = new ArSyncModel({ api: 'Post', id: 0xffffffff, query: 'title' })
+    global.p3 = new ArSyncModel({ api: 'nil', params: { id: 0xffffffff }, query: 'title' })
+  JAVASCRIPT
+  runner.assert_script '[p1.complete, p1.notfound, p1.data]', to_be: [true, true, nil]
+  runner.assert_script '[p2.complete, p2.notfound, p2.data]', to_be: [true, true, nil]
+  runner.assert_script '[p3.complete, p3.notfound, p3.data]', to_be: [true, true, nil]
 end
 
 tap do # sync self

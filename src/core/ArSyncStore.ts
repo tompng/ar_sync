@@ -190,11 +190,16 @@ class ArSyncContainerBase {
     const parsedQuery = ArSyncRecord.parseQuery(query)
     const compactQuery = ArSyncRecord.compactQuery(parsedQuery)
     if (id) {
-      return modelBatchRequest.fetch(api, compactQuery, id).then(data => new ArSyncRecord(parsedQuery, data, null, root))
+      return modelBatchRequest.fetch(api, compactQuery, id).then(data => {
+        if (!data) throw { retry: false }
+        return new ArSyncRecord(parsedQuery, data, null, root)
+      })
     } else {
       const request = { api, query: compactQuery, params }
       return ArSyncAPI.syncFetch(request).then((response: any) => {
-        if (response.collection && response.order) {
+        if (!response) {
+          throw { retry: false }
+        } else if (response.collection && response.order) {
           return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root)
         } else if (response instanceof Array) {
           return new ArSyncCollection([], '', parsedQuery, response, request, root)

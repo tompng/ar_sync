@@ -237,12 +237,19 @@ var ArSyncContainerBase = /** @class */ (function () {
         var parsedQuery = ArSyncRecord.parseQuery(query);
         var compactQuery = ArSyncRecord.compactQuery(parsedQuery);
         if (id) {
-            return modelBatchRequest.fetch(api, compactQuery, id).then(function (data) { return new ArSyncRecord(parsedQuery, data, null, root); });
+            return modelBatchRequest.fetch(api, compactQuery, id).then(function (data) {
+                if (!data)
+                    throw { retry: false };
+                return new ArSyncRecord(parsedQuery, data, null, root);
+            });
         }
         else {
             var request_1 = { api: api, query: compactQuery, params: params };
             return ArSyncApi_1.default.syncFetch(request_1).then(function (response) {
-                if (response.collection && response.order) {
+                if (!response) {
+                    throw { retry: false };
+                }
+                else if (response.collection && response.order) {
                     return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request_1, root);
                 }
                 else if (response instanceof Array) {
