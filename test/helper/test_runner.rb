@@ -26,8 +26,12 @@ class TestRunner
       info = @schema.class._serializer_field_info api_name
       api_params = (request['params'] || {}).transform_keys(&:to_sym)
       user = @current_user.reload
-      model = instance_exec(user, **api_params, &info.data_block)
-      { data: ArSync.sync_serialize(model, user, request['query']) }
+      begin
+        model = instance_exec(user, **api_params, &info.data_block)
+        { data: ArSync.sync_serialize(model, user, request['query']) }
+      rescue ActiveRecord::RecordNotFound => e
+        { error: { type: 'Record Not Found', message: e.message } }
+      end
     end
   end
 

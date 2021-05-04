@@ -108,7 +108,7 @@ var ApiFetcher = /** @class */ (function () {
                         var callbacks = callbacksList[i];
                         for (var _i = 0, callbacks_1 = callbacks; _i < callbacks_1.length; _i++) {
                             var callback = callbacks_1[_i];
-                            if (result.data) {
+                            if (result.data !== undefined) {
                                 callback.resolve(result.data);
                             }
                             else {

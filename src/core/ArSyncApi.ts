@@ -53,7 +53,7 @@ class ApiFetcher {
             const result = results[i]
             const callbacks = callbacksList[i]
             for (const callback of callbacks) {
-              if (result.data) {
+              if (result.data !== undefined) {
                 callback.resolve(result.data)
               } else {
                 const error = result.error || { type: 'Unknown Error' }
