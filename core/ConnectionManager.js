@@ -40,6 +40,8 @@ var ConnectionManager = /** @class */ (function () {
     };
     ConnectionManager.prototype.subscribe = function (key, func) {
         var _this = this;
+        if (!this.networkStatus)
+            return { unsubscribe: function () { } };
         var subscription = this.connect(key);
         var id = subscription.serial++;
         subscription.ref++;
