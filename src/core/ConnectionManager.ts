@@ -38,6 +38,7 @@ export default class ConnectionManager {
     return { unsubscribe }
   }
   subscribe(key, func) {
+    if (!this.networkStatus) return { unsubscribe(){} }
     const subscription = this.connect(key)
     const id = subscription.serial++
     subscription.ref++

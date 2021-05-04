@@ -11,7 +11,7 @@ export default class ConnectionManager {
         unsubscribe: () => void;
     };
     subscribe(key: any, func: any): {
-        unsubscribe: () => void;
+        unsubscribe(): void;
     };
     connect(key: any): any;
     disconnect(key: any): void;

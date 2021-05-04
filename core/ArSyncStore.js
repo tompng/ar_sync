@@ -295,10 +295,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         return _this;
     }
     ArSyncRecord.prototype.setSyncKeys = function (sync_keys) {
-        this.sync_keys = sync_keys;
-        if (!this.sync_keys) {
-            this.sync_keys = [];
-        }
+        this.sync_keys = sync_keys !== null && sync_keys !== void 0 ? sync_keys : [];
     };
     ArSyncRecord.prototype.replaceData = function (data) {
         this.setSyncKeys(data.sync_keys);

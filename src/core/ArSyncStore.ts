@@ -251,11 +251,8 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.children = {}
     this.replaceData(data)
   }
-  setSyncKeys(sync_keys: string[]) {
-    this.sync_keys = sync_keys
-    if (!this.sync_keys) {
-      this.sync_keys = []
-    }
+  setSyncKeys(sync_keys: string[] | undefined) {
+    this.sync_keys = sync_keys ?? []
   }
   replaceData(data) {
     this.setSyncKeys(data.sync_keys)
