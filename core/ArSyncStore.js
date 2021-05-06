@@ -100,9 +100,25 @@ var ArSyncContainerBase = /** @class */ (function () {
     ArSyncContainerBase.prototype.initForReload = function (request) {
         var _this = this;
         this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork(function (state) {
-            if (state) {
+            if (!state) {
+                if (_this.onConnectionChange)
+                    _this.onConnectionChange(false);
+                return;
+            }
+            if (request.id != null) {
+                modelBatchRequest.fetch(request.api, request.query, request.id).then(function (data) {
+                    if (_this.data && data) {
+                        _this.replaceData(data);
+                        if (_this.onConnectionChange)
+                            _this.onConnectionChange(true);
+                        if (_this.onChange)
+                            _this.onChange([], _this.data);
+                    }
+                });
+            }
+            else {
                 ArSyncApi_1.default.syncFetch(request).then(function (data) {
-                    if (_this.data) {
+                    if (_this.data && data) {
                         _this.replaceData(data);
                         if (_this.onConnectionChange)
                             _this.onConnectionChange(true);
@@ -112,10 +128,6 @@ var ArSyncContainerBase = /** @class */ (function () {
                 }).catch(function (e) {
                     console.error("failed to reload. " + e);
                 });
-            }
-            else {
-                if (_this.onConnectionChange)
-                    _this.onConnectionChange(false);
             }
         });
     };
@@ -236,11 +248,12 @@ var ArSyncContainerBase = /** @class */ (function () {
         var api = _a.api, id = _a.id, params = _a.params, query = _a.query;
         var parsedQuery = ArSyncRecord.parseQuery(query);
         var compactQuery = ArSyncRecord.compactQuery(parsedQuery);
-        if (id) {
+        if (id != null) {
             return modelBatchRequest.fetch(api, compactQuery, id).then(function (data) {
                 if (!data)
                     throw { retry: false };
-                return new ArSyncRecord(parsedQuery, data, null, root);
+                var request = { api: api, id: id, query: compactQuery };
+                return new ArSyncRecord(parsedQuery, data, request, root);
             });
         }
         else {
