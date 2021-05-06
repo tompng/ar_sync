@@ -81,9 +81,21 @@ class ArSyncContainerBase {
   replaceData(_data, _sync_keys?) {}
   initForReload(request) {
     this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork((state) => {
-      if (state) {
+      if (!state) {
+        if (this.onConnectionChange) this.onConnectionChange(false)
+        return
+      }
+      if (request.id != null) {
+        modelBatchRequest.fetch(request.api, request.query, request.id).then(data => {
+          if (this.data && data) {
+            this.replaceData(data)
+            if (this.onConnectionChange) this.onConnectionChange(true)
+            if (this.onChange) this.onChange([], this.data)
+          }
+        })
+      } else {
         ArSyncAPI.syncFetch(request).then(data => {
-          if (this.data) {
+          if (this.data && data) {
             this.replaceData(data)
             if (this.onConnectionChange) this.onConnectionChange(true)
             if (this.onChange) this.onChange([], this.data)
@@ -91,8 +103,6 @@ class ArSyncContainerBase {
         }).catch(e => {
           console.error(`failed to reload. ${e}`)
         })
-      } else {
-        if (this.onConnectionChange) this.onConnectionChange(false)
       }
     })
   }
@@ -189,10 +199,11 @@ class ArSyncContainerBase {
   static _load({ api, id, params, query }, root) {
     const parsedQuery = ArSyncRecord.parseQuery(query)
     const compactQuery = ArSyncRecord.compactQuery(parsedQuery)
-    if (id) {
+    if (id != null) {
       return modelBatchRequest.fetch(api, compactQuery, id).then(data => {
         if (!data) throw { retry: false }
-        return new ArSyncRecord(parsedQuery, data, null, root)
+        const request = { api, id, query: compactQuery }
+        return new ArSyncRecord(parsedQuery, data, request, root)
       })
     } else {
       const request = { api, query: compactQuery, params }
