@@ -20,6 +20,7 @@ interface PromiseCallback {
   reject: (error: FetchError) => void
 }
 
+type Request = { api: string; params?: any; query: any; id?: number }
 class ApiFetcher {
   endpoint: string
   batches: [object, PromiseCallback][] = []
@@ -27,7 +28,15 @@ class ApiFetcher {
   constructor(endpoint: string) {
     this.endpoint = endpoint
   }
-  fetch(request: object) {
+  fetch(request: Request) {
+    if (request.id) {
+      return new Promise((resolve, reject) => {
+        this.fetch({ api: request.api, params: { ids: [request.id] }, query: request.query }).then((result: any[]) => {
+          if (result[0]) resolve(result[0])
+          else reject({ type: 'Not Found', retry: false })
+        }).catch(reject)
+      })
+    }
     return new Promise((resolve, reject) => {
       this.batches.push([request, { resolve, reject }])
       if (this.batchFetchTimer) return
@@ -77,7 +86,7 @@ const syncFetcher = new ApiFetcher('/sync_api')
 const ArSyncApi = {
   domain: null as string | null,
   _batchFetch: apiBatchFetch,
-  fetch: (request: object) => staticFetcher.fetch(request),
-  syncFetch: (request: object) => syncFetcher.fetch(request),
+  fetch: (request: Request) => staticFetcher.fetch(request),
+  syncFetch: (request: Request) => syncFetcher.fetch(request),
 }
 export default ArSyncApi
