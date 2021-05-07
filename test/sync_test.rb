@@ -303,3 +303,15 @@ tap do # sync self
   star.update!(type: 'RedStar')
   runner.assert_script 'star.data.type', to_be: 'RedStar'
 end
+
+tap do # fetch with id test
+  post = Post.first
+  runner.eval_script <<~JAVASCRIPT
+    global.data1 = {}
+    global.data2 = {}
+    ArSyncApi.syncFetch({ api: 'Post', id: #{post.id}, query: 'title' }).then(data => { global.data1 = data })
+    ArSyncApi.fetch({ api: 'Post', id: #{post.id}, query: 'title' }).then(data => { global.data2 = data })
+  JAVASCRIPT
+  runner.assert_script 'data1.title', to_be: post.title
+  runner.assert_script 'data2.title', to_be: post.title
+end

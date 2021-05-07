@@ -79,6 +79,16 @@ var ApiFetcher = /** @class */ (function () {
     }
     ApiFetcher.prototype.fetch = function (request) {
         var _this = this;
+        if (request.id) {
+            return new Promise(function (resolve, reject) {
+                _this.fetch({ api: request.api, params: { ids: [request.id] }, query: request.query }).then(function (result) {
+                    if (result[0])
+                        resolve(result[0]);
+                    else
+                        reject({ type: 'Not Found', retry: false });
+                }).catch(reject);
+            });
+        }
         return new Promise(function (resolve, reject) {
             _this.batches.push([request, { resolve: resolve, reject: reject }]);
             if (_this.batchFetchTimer)
