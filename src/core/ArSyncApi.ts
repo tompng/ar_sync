@@ -29,7 +29,7 @@ class ApiFetcher {
     this.endpoint = endpoint
   }
   fetch(request: Request) {
-    if (request.id) {
+    if (request.id != null) {
       return new Promise((resolve, reject) => {
         this.fetch({ api: request.api, params: { ids: [request.id] }, query: request.query }).then((result: any[]) => {
           if (result[0]) resolve(result[0])
