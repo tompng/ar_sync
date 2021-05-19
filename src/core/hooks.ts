@@ -23,13 +23,13 @@ function checkHooks() {
 
 interface ModelStatus { complete: boolean; notfound?: boolean; connected: boolean }
 export type DataAndStatus<T> = [T | null, ModelStatus]
-export interface Request { api: string; params?: any; query: any }
+export interface Request { api: string; params?: any; id?: number; query: any }
 
 const initialResult: DataAndStatus<any> = [null, { complete: false, notfound: undefined, connected: true }]
 export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
   checkHooks()
   const [result, setResult] = useState<DataAndStatus<T>>(initialResult)
-  const requestString = JSON.stringify(request && request.params)
+  const requestString = JSON.stringify(request?.id ?? request?.params)
   const prevRequestStringRef = useRef(requestString)
   useEffect(() => {
     prevRequestStringRef.current = requestString
@@ -79,10 +79,10 @@ export function useArSyncFetch<T>(request: Request | null): DataStatusUpdate<T> 
   checkHooks()
   const [state, setState] = useState<FetchState<T>>(initialFetchState)
   const query = request && request.query
-  const params = request && request.params
+  const resourceIdentifier = request?.id ?? request?.params
   const requestString = useMemo(() => {
-    return JSON.stringify(extractParams(query, [params]))
-  }, [query, params])
+    return JSON.stringify(extractParams(query, [resourceIdentifier]))
+  }, [query, resourceIdentifier])
   const prevRequestStringRef = useRef(requestString)
   const loader = useMemo(() => {
     let lastLoadId = 0

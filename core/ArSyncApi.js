@@ -79,7 +79,7 @@ var ApiFetcher = /** @class */ (function () {
     }
     ApiFetcher.prototype.fetch = function (request) {
         var _this = this;
-        if (request.id) {
+        if (request.id != null) {
             return new Promise(function (resolve, reject) {
                 _this.fetch({ api: request.api, params: { ids: [request.id] }, query: request.query }).then(function (result) {
                     if (result[0])

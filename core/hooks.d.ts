@@ -20,6 +20,7 @@ export declare type DataAndStatus<T> = [T | null, ModelStatus];
 export interface Request {
     api: string;
     params?: any;
+    id?: number;
     query: any;
 }
 export declare function useArSyncModel<T>(request: Request | null): DataAndStatus<T>;

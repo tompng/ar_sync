@@ -20,9 +20,10 @@ function checkHooks() {
 }
 var initialResult = [null, { complete: false, notfound: undefined, connected: true }];
 function useArSyncModel(request) {
+    var _a;
     checkHooks();
-    var _a = useState(initialResult), result = _a[0], setResult = _a[1];
-    var requestString = JSON.stringify(request && request.params);
+    var _b = useState(initialResult), result = _b[0], setResult = _b[1];
+    var requestString = JSON.stringify((_a = request === null || request === void 0 ? void 0 : request.id) !== null && _a !== void 0 ? _a : request === null || request === void 0 ? void 0 : request.params);
     var prevRequestStringRef = useRef(requestString);
     useEffect(function () {
         prevRequestStringRef.current = requestString;
@@ -69,13 +70,14 @@ function extractParams(query, output) {
     return output;
 }
 function useArSyncFetch(request) {
+    var _a;
     checkHooks();
-    var _a = useState(initialFetchState), state = _a[0], setState = _a[1];
+    var _b = useState(initialFetchState), state = _b[0], setState = _b[1];
     var query = request && request.query;
-    var params = request && request.params;
+    var resourceIdentifier = (_a = request === null || request === void 0 ? void 0 : request.id) !== null && _a !== void 0 ? _a : request === null || request === void 0 ? void 0 : request.params;
     var requestString = useMemo(function () {
-        return JSON.stringify(extractParams(query, [params]));
-    }, [query, params]);
+        return JSON.stringify(extractParams(query, [resourceIdentifier]));
+    }, [query, resourceIdentifier]);
     var prevRequestStringRef = useRef(requestString);
     var loader = useMemo(function () {
         var lastLoadId = 0;
