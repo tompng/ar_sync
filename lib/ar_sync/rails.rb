@@ -94,7 +94,7 @@ module ArSync
           info = sch.class._serializer_field_info api_name
           raise ArSync::ApiNotFound, "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless info
           api_params = (request[:params].as_json || {}).transform_keys(&:to_sym)
-          model = sch.instance_exec(current_user, api_params, &info.data_block)
+          model = sch.instance_exec(current_user, **api_params, &info.data_block)
           { data: yield(model, current_user, request[:query].as_json) }
         rescue StandardError => e
           { error: handle_exception(e) }
