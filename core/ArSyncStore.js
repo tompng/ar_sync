@@ -509,7 +509,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
     __extends(ArSyncCollection, _super);
     function ArSyncCollection(sync_keys, path, query, data, request, root) {
         var _this = _super.call(this) || this;
-        _this.order = { limit: null, mode: 'asc', key: 'id' };
+        _this.ordering = { orderBy: 'id', direction: 'asc' };
         _this.aliasOrderKey = 'id';
         _this.root = root;
         _this.path = path;
@@ -518,34 +518,30 @@ var ArSyncCollection = /** @class */ (function (_super) {
         _this.compactQuery = ArSyncRecord.compactQuery(query);
         if (request)
             _this.initForReload(request);
-        if (query.params && (query.params.order || query.params.limit)) {
-            _this.setOrdering(query.params.limit, query.params.order);
+        if (query.params) {
+            _this.setOrdering(query.params);
         }
         _this.data = [];
         _this.children = [];
         _this.replaceData(data, sync_keys);
         return _this;
     }
-    ArSyncCollection.prototype.setOrdering = function (limit, order) {
-        var mode = 'asc';
-        var key = 'id';
-        if (order === 'asc' || order === 'desc') {
-            mode = order;
-        }
-        else if (typeof order === 'object' && order) {
-            var keys = Object.keys(order);
-            if (keys.length > 1)
-                throw 'multiple order keys are not supported';
-            if (keys.length === 1)
-                key = keys[0];
-            mode = order[key] === 'asc' ? 'asc' : 'desc';
-        }
-        var limitNumber = (typeof limit === 'number') ? limit : null;
-        if (limitNumber !== null && key !== 'id')
-            throw 'limit with custom order key is not supported';
-        var subQuery = this.queryAttributes[key];
-        this.aliasOrderKey = (subQuery && subQuery.as) || key;
-        this.order = { limit: limitNumber, mode: mode, key: key };
+    ArSyncCollection.prototype.setOrdering = function (ordering) {
+        var direction = 'asc';
+        var orderBy = 'id';
+        var first = undefined;
+        var last = undefined;
+        if (ordering.direction === 'desc')
+            direction = ordering.direction;
+        if (typeof ordering.orderBy === 'string')
+            orderBy = ordering.orderBy;
+        if (typeof ordering.first === 'number')
+            first = ordering.first;
+        if (typeof ordering.last === 'number')
+            last = ordering.last;
+        var subQuery = this.queryAttributes[orderBy];
+        this.aliasOrderKey = (subQuery && subQuery.as) || orderBy;
+        this.ordering = { first: first, last: last, direction: direction, orderBy: orderBy };
     };
     ArSyncCollection.prototype.setSyncKeys = function (sync_keys) {
         var _this = this;
@@ -564,12 +560,12 @@ var ArSyncCollection = /** @class */ (function (_super) {
             existings.set(child.data.id, child);
         }
         var collection;
-        if ('collection' in data && 'order' in data) {
-            collection = data.collection;
-            this.setOrdering(data.order.limit, data.order.mode);
+        if (Array.isArray(data)) {
+            collection = data;
         }
         else {
-            collection = data;
+            collection = data.collection;
+            this.setOrdering(data.ordering);
         }
         var newChildren = [];
         var newData = [];
@@ -614,18 +610,32 @@ var ArSyncCollection = /** @class */ (function (_super) {
     };
     ArSyncCollection.prototype.consumeAdd = function (className, id) {
         var _this = this;
+        var _a = this.ordering, first = _a.first, last = _a.last, direction = _a.direction;
+        var limit = first || last;
         if (this.data.findIndex(function (a) { return a.id === id; }) >= 0)
             return;
-        if (this.order.limit === this.data.length) {
-            if (this.order.mode === 'asc') {
-                var last = this.data[this.data.length - 1];
-                if (last && last.id < id)
-                    return;
+        if (limit && limit <= this.data.length) {
+            var lastItem = this.data[this.data.length - 1];
+            var firstItem = this.data[0];
+            if (direction === 'asc') {
+                if (first) {
+                    if (lastItem && lastItem.id < id)
+                        return;
+                }
+                else {
+                    if (firstItem && id < firstItem.id)
+                        return;
+                }
             }
             else {
-                var last = this.data[this.data.length - 1];
-                if (last && last.id > id)
-                    return;
+                if (first) {
+                    if (lastItem && id < lastItem.id)
+                        return;
+                }
+                else {
+                    if (firstItem && firstItem.id < id)
+                        return;
+                }
             }
         }
         modelBatchRequest.fetch(className, this.compactQuery, id).then(function (data) {
@@ -634,33 +644,48 @@ var ArSyncCollection = /** @class */ (function (_super) {
             var model = new ArSyncRecord(_this.query, data, null, _this.root);
             model.parentModel = _this;
             model.parentKey = id;
-            var overflow = _this.order.limit && _this.order.limit === _this.data.length;
+            var overflow = limit && limit <= _this.data.length;
             var rmodel;
             _this.mark();
             var orderKey = _this.aliasOrderKey;
-            if (_this.order.mode === 'asc') {
-                var last = _this.data[_this.data.length - 1];
-                _this.children.push(model);
-                _this.data.push(model.data);
-                if (last && last[orderKey] > data[orderKey])
-                    _this.markAndSort();
-                if (overflow) {
-                    rmodel = _this.children.shift();
-                    rmodel.release();
-                    _this.data.shift();
+            var firstItem = _this.data[0];
+            var lastItem = _this.data[_this.data.length - 1];
+            if (direction === 'asc') {
+                if (firstItem && data[orderKey] < firstItem[orderKey]) {
+                    _this.children.unshift(model);
+                    _this.data.unshift(model.data);
+                }
+                else {
+                    var skipSort = lastItem && lastItem[orderKey] < data[orderKey];
+                    _this.children.push(model);
+                    _this.data.push(model.data);
+                    if (!skipSort)
+                        _this.markAndSort();
                 }
             }
             else {
-                var first = _this.data[0];
-                _this.children.unshift(model);
-                _this.data.unshift(model.data);
-                if (first && first[orderKey] > data[orderKey])
-                    _this.markAndSort();
-                if (overflow) {
+                if (firstItem && data[orderKey] > firstItem[orderKey]) {
+                    _this.children.unshift(model);
+                    _this.data.unshift(model.data);
+                }
+                else {
+                    var skipSort = lastItem && lastItem[orderKey] > data[orderKey];
+                    _this.children.push(model);
+                    _this.data.push(model.data);
+                    if (!skipSort)
+                        _this.markAndSort();
+                }
+            }
+            if (overflow) {
+                if (first) {
                     rmodel = _this.children.pop();
-                    rmodel.release();
                     _this.data.pop();
                 }
+                else {
+                    rmodel = _this.children.shift();
+                    _this.data.shift();
+                }
+                rmodel.release();
             }
             _this.onChange([model.id], model.data);
             if (rmodel)
@@ -672,7 +697,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
     ArSyncCollection.prototype.markAndSort = function () {
         this.mark();
         var orderKey = this.aliasOrderKey;
-        if (this.order.mode === 'asc') {
+        if (this.ordering.direction === 'asc') {
             this.children.sort(function (a, b) { return a.data[orderKey] < b.data[orderKey] ? -1 : +1; });
             this.data.sort(function (a, b) { return a[orderKey] < b[orderKey] ? -1 : +1; });
         }

@@ -1,4 +1,3 @@
-require_relative 'field'
 require_relative 'collection'
 
 module ArSync::ModelBase::ClassMethods
@@ -62,30 +61,59 @@ module ArSync::ModelBase::ClassMethods
     _sync_define name, **option, &data_block
   end
 
-  def _sync_has_many(name, order: :asc, limit: nil, preload: nil, association: nil, **option, &data_block)
-    raise "order not in [:asc, :desc] : #{order}" unless %i[asc desc].include? order
+  def _sync_has_many(name, direction: :asc, first: nil, last: nil, preload: nil, association: nil, **option, &data_block)
+    raise ArgumentError, 'direction not in [:asc, :desc]' unless %i[asc desc].include? direction
+    raise ArgumentError, 'first and last cannot be both specified' if first && last
+    raise ArgumentError, 'cannot use first or last with direction: :desc' if direction != :asc && !first && !last
     if data_block.nil? && preload.nil?
       underscore_name = name.to_s.underscore.to_sym
+      order_option_from_params = lambda do |params|
+        if first || last
+          params_first = first && [first, params[:first]&.to_i].compact.min
+          params_last = last && [last, params[:last]&.to_i].compact.min
+          { direction: direction, first: params_first, last: params_last }
+        else
+          {
+            first: params[:first]&.to_i,
+            last: params[:last]&.to_i,
+            order_by: params[:order_by],
+            direction: params[:direction] || :asc
+          }
+        end
+      end
       preload = lambda do |records, _context, **params|
         ArSerializer::Field.preload_association(
-          self, records, association || underscore_name,
-          order: (!limit && params && params[:order]) || order,
-          limit: [params && params[:limit]&.to_i, limit].compact.min
+          self,
+          records,
+          association || underscore_name,
+          **order_option_from_params.call(params)
         )
       end
       data_block = lambda do |preloaded, _context, **params|
         records = preloaded ? preloaded[id] || [] : __send__(name)
-        next records unless limit || order == :asc
+        next records unless first || last
         ArSync::CollectionWithOrder.new(
           records,
-          order: (!limit && params && params[:order]) || order,
-          limit: [params && params[:limit]&.to_i, limit].compact.min
+          **order_option_from_params.call(params)
         )
       end
       serializer_data_block = lambda do |preloaded, _context, **_params|
         preloaded ? preloaded[id] || [] : __send__(name)
       end
-      params_type = { limit?: :int, order?: [{ :* => %w[asc desc] }, 'asc', 'desc'] }
+      if first
+        params_type = { first?: :int }
+      elsif last
+        params_type = { last?: :int }
+      else
+        params_type = lambda do
+          orderable_keys = reflect_on_association(underscore_name).klass._serializer_orderable_field_keys
+          orderable_keys &= [*option[:only]].map(&:to_s) if option[:only]
+          orderable_keys -= [*option[:except]].map(&:to_s) if option[:except]
+          orderable_keys |= ['id']
+          order_by = orderable_keys.size == 1 ? orderable_keys.first : orderable_keys.sort
+          { first?: :int, last?: :int, direction?: %w[asc desc], orderBy?: order_by }
+        end
+      end
     else
       params_type = {}
     end
@@ -106,9 +134,9 @@ module ArSync::ModelBase::ClassMethods
     serializer_field name, **option, namespace: :sync, &data_block
   end
 
-  def sync_define_collection(name, limit: nil, order: :asc)
+  def sync_define_collection(name, first: nil, last: nil, direction: :asc)
     _initialize_sync_callbacks
-    collection = ArSync::Collection.new self, name, limit: limit, order: order
+    collection = ArSync::Collection.new self, name, first: first, last: last, direction: direction
     sync_parent collection, inverse_of: [self, name]
   end
 

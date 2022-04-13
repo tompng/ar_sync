@@ -1,3 +1,11 @@
+GIT
+  remote: https://github.com/tompng/ar_serializer
+  revision: 7cdc35eedcdd1878fb994bfddf3819f1cd84df11
+  specs:
+    ar_serializer (1.1.1)
+      activerecord
+      top_n_loader
+
 PATH
   remote: .
   specs:
@@ -21,9 +29,6 @@ GEM
       minitest (~> 5.1)
       tzinfo (~> 1.1)
       zeitwerk (~> 2.2, >= 2.2.2)
-    ar_serializer (1.1.0)
-      activerecord
-      top_n_loader
     coderay (1.1.2)
     concurrent-ruby (1.1.6)
     i18n (1.8.2)
@@ -47,6 +52,7 @@ PLATFORMS
 
 DEPENDENCIES
   activerecord-import
+  ar_serializer!
   ar_sync!
   pry
   rake

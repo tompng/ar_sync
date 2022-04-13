@@ -43,11 +43,11 @@ const data10 = new ArSyncModel({ api: 'users', query: { '*': true, posts: { id: 
 isOK<TypeIncludes<(typeof data10)[0]['posts'][0]['comments'][0], { id: number; body: string | null }>>()
 const data11 = new ArSyncModel({ api: 'users', query: { '*': true, posts: { id: true, comments: '*', commmments: true } } }).data!
 isOK<HasExtraField<typeof data11, 'commmments'>>()
-const data12 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { limit: 4 }, attributes: 'title' } } }).data!
+const data12 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { first: 4 }, attributes: 'title' } } }).data!
 isOK<IsEqual<(typeof data12.posts)[0], { title: string | null }>>()
-const data13 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { limit: 4 }, attributes: ['id', 'title'] } } }).data!
+const data13 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { first: 4 }, attributes: ['id', 'title'] } } }).data!
 isOK<IsEqual<(typeof data13.posts)[0], { id: number; title: string | null }>>()
-const data14 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { limit: 4 }, attributes: { id: true, title: true } } } }).data!
+const data14 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { first: 4 }, attributes: { id: true, title: true } } } }).data!
 isOK<IsEqual<(typeof data14.posts)[0], { id: number; title: string | null }>>()
 const data15 = new ArSyncModel({ api: 'currentUser', query: { posts: ['id', 'title'] } } as const).data!
 isOK<IsEqual<(typeof data15.posts)[0], { id: number; title: string | null }>>()

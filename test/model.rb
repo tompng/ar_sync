@@ -22,8 +22,8 @@ class Post < BaseRecord
   has_many :comments, dependent: :destroy
 
   sync_define_collection :all
-  sync_define_collection :first10, limit: 10, order: :asc
-  sync_define_collection :last10, limit: 10, order: :desc
+  sync_define_collection :first10, first: 10
+  sync_define_collection :last10, last: 10
 
   sync_parent :user, inverse_of: :posts
   sync_has_data :id, :title, :body
@@ -50,14 +50,14 @@ class Comment < BaseRecord
     Star.where(comment_id: comments.map(&:id)).group(:comment_id).count
   }) { |preload| preload[id] || 0 }
 
-  define_preloader :my_stars_loader do |comments, user|
+  my_stars_loader = ->(comments, user) do
     Star.where(user: user, comment_id: comments.map(&:id)).group_by(&:comment_id)
   end
 
-  sync_has_one :myStar, preload: :my_stars_loader do |preloaded|
+  sync_has_one :myStar, preload: my_stars_loader do |preloaded|
     preloaded[id]&.first
   end
-  sync_has_many :myStars, preload: :my_stars_loader do |preloaded|
+  sync_has_many :myStars, preload: my_stars_loader do |preloaded|
     preloaded[id] || []
   end
 

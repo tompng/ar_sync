@@ -138,36 +138,83 @@ end
 
 tap do # order test
   post = Post.first
-  post.comments.each do |c|
-    c.update body: rand.to_s
-  end
   10.times do
-    post.comments.create user: users.sample, body: rand.to_s
+    post.comments.create user: users.sample
   end
-  runner.eval_script <<~JAVASCRIPT
-    global.postModel = new ArSyncModel({
-      api: 'post',
-      params: { id: #{post.id} },
-      query: {
-        comments: {
-          params: { order: { body: 'desc' } },
-          attributes: { id: true, body: { as: 'text' } }
+  [:asc, :desc].each do |direction|
+    post.comments.each do |c|
+      c.update body: rand.to_s
+    end
+    runner.eval_script <<-JAVASCRIPT
+      global.postModel = new ArSyncModel({
+        api: 'post',
+        params: { id: #{post.id} },
+        query: {
+          comments: {
+            params: { orderBy: 'body', direction: '#{direction}' },
+            attributes: { id: true, body: { as: 'text' } }
+          }
         }
-      }
-    })
-  JAVASCRIPT
-  runner.assert_script 'postModel.data'
-  comments_code = 'postModel.data.comments.map(c => c.id)'
-  current_order = -> { post.comments.reload.sort_by(&:body).reverse.map(&:id) }
-  runner.assert_script comments_code, to_be: current_order.call
-  post.comments.create user: users.sample, body: '0.6'
-  runner.assert_script comments_code, to_be: current_order.call
-  post.comments.sort_by(&:body).first.update body: '0.4'
-  runner.assert_script comments_code, to_be: current_order.call
-  comments_body_code = 'postModel.data.comments.map(c => c.text)'
-  runner.assert_script comments_body_code, to_include: '0.4'
-  runner.assert_script comments_body_code, to_include: '0.6'
-  runner.eval_script 'postModel.release(); postModel = null'
+      })
+    JAVASCRIPT
+    runner.assert_script 'postModel.data'
+    comments_code = 'postModel.data.comments.map(c => c.id)'
+    current_order = -> do
+      sorted = post.comments.reload.sort_by(&:body).map(&:id)
+      direction == :asc ? sorted : sorted.reverse
+    end
+    runner.assert_script comments_code, to_be: current_order.call
+    post.comments.create user: users.sample, body: '0.6'
+    runner.assert_script comments_code, to_be: current_order.call
+    post.comments.sort_by(&:body).first.update body: '0.4'
+    runner.assert_script comments_code, to_be: current_order.call
+    comments_body_code = 'postModel.data.comments.map(c => c.text)'
+    runner.assert_script comments_body_code, to_include: '0.4'
+    runner.assert_script comments_body_code, to_include: '0.6'
+    runner.eval_script 'postModel.release(); postModel = null'
+  end
+end
+
+tap do # first last direction test
+  post = Post.first
+  [:asc, :desc].product([:first, :last]) do |direction, first_last|
+    post.comments.destroy_all
+    runner.eval_script <<-JAVASCRIPT
+      global.postModel = new ArSyncModel({
+        api: 'post',
+        params: { id: #{post.id} },
+        query: {
+          comments: {
+            params: { #{first_last}: 3, direction: '#{direction}' },
+            attributes: { id: true }
+          }
+        }
+      })
+    JAVASCRIPT
+    runner.assert_script 'postModel.data'
+    current_comment_ids = -> do
+      ids = post.comments.reload.order(id: :asc).map(&:id)
+      ids.reverse! if direction == :desc
+      ids.__send__(first_last, 3)
+    end
+    comment_ids_code = 'postModel.data.comments.map(c => c.id)'
+    test = -> {
+      runner.assert_script comment_ids_code, to_be: current_comment_ids.call
+    }
+    5.times do
+      post.comments.create
+      test.call
+    end
+    if (direction == :asc) ^ (first_last == :first)
+      2.times do
+        post.comments.first.destroy
+        post.comments.last.destroy
+        post.comments.create
+        test.call
+      end
+    end
+    runner.eval_script 'postModel.release(); postModel = null'
+  end
 end
 
 tap do # no subquery test
