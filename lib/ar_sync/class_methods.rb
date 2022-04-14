@@ -66,7 +66,7 @@ module ArSync::ModelBase::ClassMethods
     raise ArgumentError, 'first and last cannot be both specified' if first && last
     raise ArgumentError, 'cannot use first or last with direction: :desc' if direction != :asc && !first && !last
     if data_block.nil? && preload.nil?
-      underscore_name = name.to_s.underscore.to_sym
+      association_name = association || name.to_s.underscore.to_sym
       order_option_from_params = lambda do |params|
         if first || last
           params_first = first && [first, params[:first]&.to_i].compact.min
@@ -85,7 +85,7 @@ module ArSync::ModelBase::ClassMethods
         ArSerializer::Field.preload_association(
           self,
           records,
-          association || underscore_name,
+          association_name,
           **order_option_from_params.call(params)
         )
       end
@@ -106,7 +106,7 @@ module ArSync::ModelBase::ClassMethods
         params_type = { last?: :int }
       else
         params_type = lambda do
-          orderable_keys = reflect_on_association(underscore_name).klass._serializer_orderable_field_keys
+          orderable_keys = reflect_on_association(association_name)&.klass&._serializer_orderable_field_keys || []
           orderable_keys &= [*option[:only]].map(&:to_s) if option[:only]
           orderable_keys -= [*option[:except]].map(&:to_s) if option[:except]
           orderable_keys |= ['id']
