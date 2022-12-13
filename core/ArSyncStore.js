@@ -156,7 +156,7 @@ var ArSyncContainerBase = /** @class */ (function () {
         }
         this.listeners = [];
     };
-    ArSyncContainerBase.compactQuery = function (query) {
+    ArSyncContainerBase.compactQueryAttributes = function (query) {
         function compactAttributes(attributes) {
             var attrs = {};
             var keys = [];
@@ -201,6 +201,8 @@ var ArSyncContainerBase = /** @class */ (function () {
             return result;
         }
         var result = compactQuery(query);
+        if (typeof result === 'object' && 'attributes' in result)
+            return result.attributes;
         return result === true ? {} : result;
     };
     ArSyncContainerBase.parseQuery = function (query, attrsonly) {
@@ -247,17 +249,17 @@ var ArSyncContainerBase = /** @class */ (function () {
     ArSyncContainerBase._load = function (_a, root) {
         var api = _a.api, id = _a.id, params = _a.params, query = _a.query;
         var parsedQuery = ArSyncRecord.parseQuery(query);
-        var compactQuery = ArSyncRecord.compactQuery(parsedQuery);
+        var compactQueryAttributes = ArSyncRecord.compactQueryAttributes(parsedQuery);
         if (id != null) {
-            return modelBatchRequest.fetch(api, compactQuery, id).then(function (data) {
+            return modelBatchRequest.fetch(api, compactQueryAttributes, id).then(function (data) {
                 if (!data)
                     throw { retry: false };
-                var request = { api: api, id: id, query: compactQuery };
+                var request = { api: api, id: id, query: compactQueryAttributes };
                 return new ArSyncRecord(parsedQuery, data, request, root);
             });
         }
         else {
-            var request_1 = { api: api, query: compactQuery, params: params };
+            var request_1 = { api: api, query: compactQueryAttributes, params: params };
             return ArSyncApi_1.default.syncFetch(request_1).then(function (response) {
                 if (!response) {
                     throw { retry: false };
@@ -393,7 +395,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         else if (action === 'add') {
             if (this.data[aliasName] && this.data[aliasName].id === id)
                 return;
-            modelBatchRequest.fetch(className, ArSyncRecord.compactQuery(query), id).then(function (data) {
+            modelBatchRequest.fetch(className, ArSyncRecord.compactQueryAttributes(query), id).then(function (data) {
                 if (!data || !_this.data)
                     return;
                 var model = new ArSyncRecord(query, data, null, _this.root);
@@ -444,40 +446,30 @@ var ArSyncRecord = /** @class */ (function (_super) {
         }
     };
     ArSyncRecord.prototype.patchQuery = function (key) {
-        var val = this.queryAttributes[key];
-        if (!val)
-            return;
-        var attributes = val.attributes, as = val.as, params = val.params;
-        if (attributes && Object.keys(val.attributes).length === 0)
-            attributes = null;
-        if (!attributes && !as && !params)
-            return key;
-        var result = {};
-        if (attributes)
-            result.attributes = attributes;
-        if (as)
-            result.as = as;
-        if (params)
-            result.params = params;
-        return result;
+        var _a;
+        var subQuery = this.queryAttributes[key];
+        if (subQuery)
+            return _a = {}, _a[key] = subQuery, _a;
     };
     ArSyncRecord.prototype.reloadQuery = function () {
-        var _a;
         if (this.reloadQueryCache)
             return this.reloadQueryCache;
-        var reloadQuery = this.reloadQueryCache = { attributes: [] };
+        var arrayQuery = [];
+        var hashQuery = {};
         for (var key in this.queryAttributes) {
             if (key === 'sync_keys')
                 continue;
             var val = this.queryAttributes[key];
             if (!val || !val.attributes) {
-                reloadQuery.attributes.push(key);
+                arrayQuery === null || arrayQuery === void 0 ? void 0 : arrayQuery.push(key);
+                hashQuery[key] = true;
             }
             else if (!val.params && Object.keys(val.attributes).length === 0) {
-                reloadQuery.attributes.push((_a = {}, _a[key] = val, _a));
+                arrayQuery = null;
+                hashQuery[key] = val;
             }
         }
-        return reloadQuery;
+        return this.reloadQueryCache = arrayQuery || hashQuery;
     };
     ArSyncRecord.prototype.update = function (data) {
         for (var key in data) {
@@ -515,7 +507,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
         _this.path = path;
         _this.query = query;
         _this.queryAttributes = query.attributes || {};
-        _this.compactQuery = ArSyncRecord.compactQuery(query);
+        _this.compactQueryAttributes = ArSyncRecord.compactQueryAttributes(query);
         if (request)
             _this.initForReload(request);
         if (query.params) {
@@ -638,7 +630,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
                 }
             }
         }
-        modelBatchRequest.fetch(className, this.compactQuery, id).then(function (data) {
+        modelBatchRequest.fetch(className, this.compactQueryAttributes, id).then(function (data) {
             if (!data || !_this.data)
                 return;
             var model = new ArSyncRecord(_this.query, data, null, _this.root);
