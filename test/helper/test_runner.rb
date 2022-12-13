@@ -24,7 +24,7 @@ class TestRunner
     requests.map do |request|
       api_name = request['api']
       info = @schema.class._serializer_field_info api_name
-      api_params = (request['params'] || {}).transform_keys(&:to_sym)
+      api_params = ArSerializer::Serializer.deep_underscore_keys(request['params'] || {})
       user = @current_user.reload
       begin
         model = instance_exec(user, **api_params, &info.data_block)
