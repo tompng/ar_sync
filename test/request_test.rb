@@ -37,6 +37,9 @@ class TsTest < Minitest::Test
       Model.validate! foo_id, bar
       Model.new
     end
+    serializer_field :hash do
+      { x: 0, y: 0 }
+    end
   end
 
   class Controller < ActionController::Base
@@ -50,13 +53,16 @@ class TsTest < Minitest::Test
       @current_user = nil
     end
 
+    def log_internal_exception(e)
+      raise e
+    end
+
     def render(result)
       @result = result
     end
   end
 
   def test_rails_api_response
-    # Controller.new({requests: []}).tap(&:static_call).result
     params = { fooId: 1, bar: { bazId: 2 } }
     requests = [
       {
@@ -67,9 +73,10 @@ class TsTest < Minitest::Test
           model1: { params: params, attributes: :id },
           model2: { params: params, attributes: :id }
         }
-      }
+      },
+      { api: :hash, query: {} }
     ]
-    expected = { json: [{ data: { id: 1, model1: { id: 1 }, model2: { id: 1 } } }] }
+    expected = { json: [{ data: { id: 1, model1: { id: 1 }, model2: { id: 1 } } }, { data: { x: 0, y: 0 } }] }
     assert_equal expected, Controller.new({ requests: requests }).tap(&:static_call).result
   end
 end

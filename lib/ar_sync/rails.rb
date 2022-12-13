@@ -47,8 +47,8 @@ module ArSync
     end
 
     def sync_call
-      _api_call :sync do |model, current_user, query|
-        ArSync.sync_serialize model, current_user, query
+      _api_call :sync do |schema, current_user, query|
+        ArSync.sync_serialize schema, current_user, query
       end
     end
 
@@ -69,15 +69,8 @@ module ArSync
     end
 
     def static_call
-      _api_call :static do |model, current_user, query|
-        case model
-        when ArSync::Collection, ActiveRecord::Relation, Array
-          ArSerializer.serialize model.to_a, query, context: current_user
-        when ArSerializer::Serializable
-          ArSerializer.serialize model, query, context: current_user
-        else
-          model
-        end
+      _api_call :sync do |schema, current_user, query|
+        ArSerializer.serialize schema, query, context: current_user
       end
     end
 
@@ -87,15 +80,19 @@ module ArSync
       if respond_to?(ArSync.config.current_user_method)
         current_user = send ArSync.config.current_user_method
       end
+      sch = schema
       responses = params[:requests].map do |request|
         begin
           api_name = request[:api]
-          sch = schema
-          info = sch.class._serializer_field_info api_name
-          raise ArSync::ApiNotFound, "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless info
-          api_params = ArSerializer::Serializer.deep_underscore_keys(request[:params].as_json || {})
-          model = sch.instance_exec(current_user, **api_params, &info.data_block)
-          { data: yield(model, current_user, request[:query].as_json) }
+          raise ArSync::ApiNotFound, "#{type.to_s.capitalize} API named `#{api_name}` not configured" unless sch.class._serializer_field_info api_name
+          query = {
+            api_name => {
+              as: :data,
+              params: request[:params],
+              attributes: request[:query]
+            }
+          }
+          yield schema, current_user, query
         rescue StandardError => e
           { error: handle_exception(e) }
         end
