@@ -22,13 +22,16 @@ class TestRunner
 
   def handle_requests(requests)
     requests.map do |request|
-      api_name = request['api']
-      info = @schema.class._serializer_field_info api_name
-      api_params = (request['params'] || {}).transform_keys(&:to_sym)
       user = @current_user.reload
+      query = {
+        request['api'] => {
+          as: :data,
+          params: request['params'],
+          attributes: request['query']
+        }
+      }
       begin
-        model = instance_exec(user, **api_params, &info.data_block)
-        { data: ArSync.sync_serialize(model, user, request['query']) }
+        ArSync.sync_serialize @schema, user, query
       rescue ActiveRecord::RecordNotFound => e
         { error: { type: 'Record Not Found', message: e.message } }
       end

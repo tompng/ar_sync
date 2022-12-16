@@ -37,7 +37,7 @@ runner.eval_script <<~JAVASCRIPT
           title: true,
           myComments: { as: 'myCmnts', attributes: ['id', 'starCount'] },
           comments: {
-            starCount: true,
+            starCount: { as: '星' },
             user: ['id', 'name'],
             myStar: { as: 'myReaction', attributes: 'id' }
           }
@@ -128,10 +128,10 @@ tap do # per-user has_one
   runner.assert_script "#{comment_code}.myReaction", to_be: nil
   comment.stars.find_by(user: other_user)&.destroy
   comment.stars.create(user: other_user)
-  runner.assert_script "#{comment_code}.starCount", to_be: comment.stars.count
+  runner.assert_script "#{comment_code}.星", to_be: comment.stars.count
   runner.assert_script "#{comment_code}.myReaction", to_be: nil
   star = comment.stars.create(user: user)
-  runner.assert_script "#{comment_code}.starCount", to_be: comment.stars.count
+  runner.assert_script "#{comment_code}.星", to_be: comment.stars.count
   runner.assert_script "#{comment_code}.myReaction"
   runner.assert_script "#{comment_code}.myReaction.id", to_be: star.id
 end
