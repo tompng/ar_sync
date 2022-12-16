@@ -69,7 +69,7 @@ module ArSync
     end
 
     def static_call
-      _api_call :sync do |schema, current_user, query|
+      _api_call :static do |schema, current_user, query|
         ArSerializer.serialize schema, query, context: current_user
       end
     end
