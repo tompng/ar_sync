@@ -88,8 +88,8 @@ module ArSync
           query = {
             api_name => {
               as: :data,
-              params: request[:params],
-              attributes: request[:query]
+              params: request[:params].as_json,
+              attributes: request[:query].as_json
             }
           }
           yield schema, current_user, query
