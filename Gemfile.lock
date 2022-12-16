@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ar_sync (1.1.0)
+    ar_sync (1.1.1)
       activerecord
       ar_serializer
 
