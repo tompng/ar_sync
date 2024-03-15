@@ -299,6 +299,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
     __extends(ArSyncRecord, _super);
     function ArSyncRecord(query, data, request, root) {
         var _this = _super.call(this) || this;
+        _this.fetching = new Set();
         _this.root = root;
         if (request)
             _this.initForReload(request);
@@ -385,6 +386,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         var aliasName = (query && query.as) || path;
         if (action === 'remove') {
             var child = this.children[aliasName];
+            // this.fetching.delete(`${aliasName}:${id}`) // To cancel consumeAdd
             if (child)
                 child.release();
             this.children[aliasName] = null;
@@ -395,7 +397,13 @@ var ArSyncRecord = /** @class */ (function (_super) {
         else if (action === 'add') {
             if (this.data[aliasName] && this.data[aliasName].id === id)
                 return;
+            var fetchKey_1 = aliasName + ":" + id;
+            this.fetching.add(fetchKey_1);
             modelBatchRequest.fetch(className, ArSyncRecord.compactQueryAttributes(query), id).then(function (data) {
+                // Record already removed
+                if (!_this.fetching.has(fetchKey_1))
+                    return;
+                _this.fetching.delete(fetchKey_1);
                 if (!data || !_this.data)
                     return;
                 var model = new ArSyncRecord(query, data, null, _this.root);
@@ -503,6 +511,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
         var _this = _super.call(this) || this;
         _this.ordering = { orderBy: 'id', direction: 'asc' };
         _this.aliasOrderKey = 'id';
+        _this.fetching = new Set();
         _this.root = root;
         _this.path = path;
         _this.query = query;
@@ -630,7 +639,12 @@ var ArSyncCollection = /** @class */ (function (_super) {
                 }
             }
         }
+        this.fetching.add(id);
         modelBatchRequest.fetch(className, this.compactQueryAttributes, id).then(function (data) {
+            // Record already removed
+            if (!_this.fetching.has(id))
+                return;
+            _this.fetching.delete(id);
             if (!data || !_this.data)
                 return;
             var model = new ArSyncRecord(_this.query, data, null, _this.root);
@@ -700,6 +714,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
     };
     ArSyncCollection.prototype.consumeRemove = function (id) {
         var idx = this.data.findIndex(function (a) { return a.id === id; });
+        this.fetching.delete(id); // To cancel consumeAdd
         if (idx < 0)
             return;
         this.mark();

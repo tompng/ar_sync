@@ -90,6 +90,34 @@ tap do # has_one change
   runner.assert_script 'userModel.data.articles[0].comments[0].user.id', to_be: users.third.id
 end
 
+tap do # has_many destroy fast
+  title1 = "NewPost#{rand}"
+  title2 = "NewPost#{rand}"
+  temp_post = user.posts.create user: users.sample, title: title1
+  # Emulate record destroyed just after fetch started
+  temp_post._initialize_sync_info_before_mutation
+  temp_post._sync_notify :destroy
+  new_post = user.posts.create user: users.sample, title: title2
+  runner.assert_script 'userModel.data.articles.map(a => a.title)', to_include: title2, not_to_include: title1
+  temp_post.destroy
+  new_post.destroy
+end
+
+tap do # has_one destroy fast
+  comment = user.posts.first.comments.first
+  comment_code = 'userModel.data.articles[0].comments[0]'
+  comment.stars.where(user: user).destroy_all
+  runner.assert_script "#{comment_code}.myReaction", to_be: nil
+  # Emulate record destroyed just after fetch started
+  star = comment.stars.where(user: user).create
+  star._initialize_sync_info_before_mutation
+  star._sync_notify :destroy
+  comment.user.update name: rand.to_s
+  runner.assert_script "#{comment_code}.user.name", to_be: comment.user.name
+  runner.assert_script "#{comment_code}.myReaction", to_be: nil
+  star.destroy
+end
+
 tap do # parent replace
   comment = user.posts.first.comments.first
   runner.assert_script 'userModel.data.articles[0].comments[0].id', to_be: comment.id

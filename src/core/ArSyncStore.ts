@@ -253,6 +253,7 @@ class ArSyncRecord extends ArSyncContainerBase {
   children: { [key: string]: ArSyncContainerBase | null }
   paths: string[]
   reloadQueryCache
+  fetching = new Set<string>()
   constructor(query, data, request, root) {
     super()
     this.root = root
@@ -332,6 +333,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     const aliasName = (query && query.as) || path;
     if (action === 'remove') {
       const child = this.children[aliasName]
+      this.fetching.delete(`${aliasName}:${id}`) // To cancel consumeAdd
       if (child) child.release()
       this.children[aliasName] = null
       this.mark()
@@ -339,7 +341,13 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.onChange([aliasName], null)
     } else if (action === 'add') {
       if (this.data[aliasName] && this.data[aliasName].id === id) return
+      const fetchKey = `${aliasName}:${id}`
+      this.fetching.add(fetchKey)
       modelBatchRequest.fetch(className, ArSyncRecord.compactQueryAttributes(query), id).then(data => {
+        // Record already removed
+        if (!this.fetching.has(fetchKey)) return
+
+        this.fetching.delete(fetchKey)
         if (!data || !this.data) return
         const model = new ArSyncRecord(query, data, null, this.root)
         const child = this.children[aliasName]
@@ -428,6 +436,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   data: any[]
   children: ArSyncRecord[]
   aliasOrderKey = 'id'
+  fetching = new Set<number>()
   constructor(sync_keys: string[], path: string, query, data: any[], request, root){
     super()
     this.root = root
@@ -524,7 +533,12 @@ class ArSyncCollection extends ArSyncContainerBase {
         }
       }
     }
+    this.fetching.add(id)
     modelBatchRequest.fetch(className, this.compactQueryAttributes, id).then((data: any) => {
+      // Record already removed
+      if (!this.fetching.has(id)) return
+
+      this.fetching.delete(id)
       if (!data || !this.data) return
       const model = new ArSyncRecord(this.query, data, null, this.root)
       model.parentModel = this
@@ -585,6 +599,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
   consumeRemove(id: number) {
     const idx = this.data.findIndex(a => a.id === id)
+    this.fetching.delete(id) // To cancel consumeAdd
     if (idx < 0) return
     this.mark()
     this.children[idx].release()

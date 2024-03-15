@@ -76,23 +76,16 @@ class TestRunner
   def assert_script(code, **options, &block)
     timeout = options.has_key?(:timeout) ? options.delete(:timeout) : 1
     start = Time.now
-    raise if block ? options.size != 0 : options.size >= 2
 
     if options.empty?
       block ||= :itself.to_proc
     else
-      key, value = options.entries.first
-      /^(?<reversed>not_)?to_(?<verb>.+)/ =~ key
-      test = lambda do |v|
-        if verb == 'be'
-          v == value
-        else
-          v.send verb + '?', value
-        end
-      end
       block = lambda do |v|
-        f = test.call(v)
-        reversed ? !f : f
+        options.all? do |key, value|
+          /^(?<reversed>not_)?to_(?<verb>.+)/ =~ key
+          result = verb == 'be' ? v == value : v.send(verb + '?', value)
+          reversed ? !result : result
+        end
       end
     end
     return true if block.call eval_script(code)
