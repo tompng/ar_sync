@@ -2,10 +2,10 @@
 
 require 'bundler/setup'
 require 'ar_sync'
-require 'pry'
+require 'irb'
 require_relative '../test/model'
 ArSync.on_notification do |events|
   puts "\e[1m#{events.inspect}\e[m"
 end
 
-Pry.start
+IRB.start
