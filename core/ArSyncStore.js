@@ -386,7 +386,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         var aliasName = (query && query.as) || path;
         if (action === 'remove') {
             var child = this.children[aliasName];
-            // this.fetching.delete(`${aliasName}:${id}`) // To cancel consumeAdd
+            this.fetching.delete(aliasName + ":" + id); // To cancel consumeAdd
             if (child)
                 child.release();
             this.children[aliasName] = null;
