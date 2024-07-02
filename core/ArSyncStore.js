@@ -31,6 +31,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ArSyncStore = void 0;
 var ArSyncApi_1 = require("./ArSyncApi");
 var ModelBatchRequest = /** @class */ (function () {
     function ModelBatchRequest() {
@@ -95,6 +96,7 @@ var modelBatchRequest = new ModelBatchRequest;
 var ArSyncContainerBase = /** @class */ (function () {
     function ArSyncContainerBase() {
         this.listeners = [];
+        this.parentModel = null;
     }
     ArSyncContainerBase.prototype.replaceData = function (_data, _sync_keys) { };
     ArSyncContainerBase.prototype.initForReload = function (request) {
@@ -246,7 +248,7 @@ var ArSyncContainerBase = /** @class */ (function () {
             return attributes;
         return { attributes: attributes, as: column, params: params };
     };
-    ArSyncContainerBase._load = function (_a, root) {
+    ArSyncContainerBase.load = function (_a, root) {
         var api = _a.api, id = _a.id, params = _a.params, query = _a.query;
         var parsedQuery = ArSyncRecord.parseQuery(query);
         var compactQueryAttributes = ArSyncRecord.compactQueryAttributes(parsedQuery);
@@ -255,7 +257,7 @@ var ArSyncContainerBase = /** @class */ (function () {
                 if (!data)
                     throw { retry: false };
                 var request = { api: api, id: id, query: compactQueryAttributes };
-                return new ArSyncRecord(parsedQuery, data, request, root);
+                return new ArSyncRecord(parsedQuery, data, request, root, null, null);
             });
         }
         else {
@@ -265,39 +267,22 @@ var ArSyncContainerBase = /** @class */ (function () {
                     throw { retry: false };
                 }
                 else if (response.collection && response.order) {
-                    return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request_1, root);
+                    return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request_1, root, null, null);
                 }
                 else if (response instanceof Array) {
-                    return new ArSyncCollection([], '', parsedQuery, response, request_1, root);
+                    return new ArSyncCollection([], '', parsedQuery, response, request_1, root, null, null);
                 }
                 else {
-                    return new ArSyncRecord(parsedQuery, response, request_1, root);
+                    return new ArSyncRecord(parsedQuery, response, request_1, root, null, null);
                 }
             });
         }
-    };
-    ArSyncContainerBase.load = function (apiParams, root) {
-        var _this = this;
-        if (!(apiParams instanceof Array))
-            return this._load(apiParams, root);
-        return new Promise(function (resolve, _reject) {
-            var resultModels = [];
-            var countdown = apiParams.length;
-            apiParams.forEach(function (param, i) {
-                _this._load(param, root).then(function (model) {
-                    resultModels[i] = model;
-                    countdown--;
-                    if (countdown === 0)
-                        resolve(resultModels);
-                });
-            });
-        });
     };
     return ArSyncContainerBase;
 }());
 var ArSyncRecord = /** @class */ (function (_super) {
     __extends(ArSyncRecord, _super);
-    function ArSyncRecord(query, data, request, root) {
+    function ArSyncRecord(query, data, request, root, parentModel, parentKey) {
         var _this = _super.call(this) || this;
         _this.fetching = new Set();
         _this.root = root;
@@ -307,7 +292,10 @@ var ArSyncRecord = /** @class */ (function (_super) {
         _this.queryAttributes = query.attributes || {};
         _this.data = {};
         _this.children = {};
+        _this.rootRecord = !parentModel;
         _this.replaceData(data);
+        _this.parentModel = parentModel;
+        _this.parentKey = parentKey;
         return _this;
     }
     ArSyncRecord.prototype.setSyncKeys = function (sync_keys) {
@@ -333,12 +321,10 @@ var ArSyncRecord = /** @class */ (function (_super) {
                     child.replaceData(subData, this.sync_keys);
                 }
                 else {
-                    var collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root);
+                    var collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root, this, aliasName);
                     this.mark();
                     this.children[aliasName] = collection;
                     this.data[aliasName] = collection.data;
-                    collection.parentModel = this;
-                    collection.parentKey = aliasName;
                 }
             }
             else {
@@ -349,12 +335,10 @@ var ArSyncRecord = /** @class */ (function (_super) {
                         child.replaceData(subData);
                     }
                     else {
-                        var model = new ArSyncRecord(subQuery, subData, null, this.root);
+                        var model = new ArSyncRecord(subQuery, subData, null, this.root, this, aliasName);
                         this.mark();
                         this.children[aliasName] = model;
                         this.data[aliasName] = model.data;
-                        model.parentModel = this;
-                        model.parentKey = aliasName;
                     }
                 }
                 else {
@@ -406,15 +390,13 @@ var ArSyncRecord = /** @class */ (function (_super) {
                 _this.fetching.delete(fetchKey_1);
                 if (!data || !_this.data)
                     return;
-                var model = new ArSyncRecord(query, data, null, _this.root);
+                var model = new ArSyncRecord(query, data, null, _this.root, _this, aliasName);
                 var child = _this.children[aliasName];
                 if (child)
                     child.release();
                 _this.children[aliasName] = model;
                 _this.mark();
                 _this.data[aliasName] = model.data;
-                model.parentModel = _this;
-                model.parentKey = aliasName;
                 _this.onChange([aliasName], model.data);
             }).catch(function (e) {
                 console.error("failed to load " + className + ":" + id + " " + e);
@@ -451,6 +433,13 @@ var ArSyncRecord = /** @class */ (function (_super) {
         for (var _b = 0, _c = this.paths; _b < _c.length; _b++) {
             var path = _c[_b];
             _loop_1(path);
+        }
+        if (this.rootRecord) {
+            var destroyCallback = function () { return _this.root.handleDestroy(); };
+            for (var _d = 0, _e = this.sync_keys; _d < _e.length; _d++) {
+                var key = _e[_d];
+                this.subscribe(key + '_destroy', destroyCallback);
+            }
         }
     };
     ArSyncRecord.prototype.patchQuery = function (key) {
@@ -500,14 +489,14 @@ var ArSyncRecord = /** @class */ (function (_super) {
             return;
         this.data = __assign({}, this.data);
         this.root.mark(this.data);
-        if (this.parentModel)
+        if (this.parentModel && this.parentKey)
             this.parentModel.markAndSet(this.parentKey, this.data);
     };
     return ArSyncRecord;
 }(ArSyncContainerBase));
 var ArSyncCollection = /** @class */ (function (_super) {
     __extends(ArSyncCollection, _super);
-    function ArSyncCollection(sync_keys, path, query, data, request, root) {
+    function ArSyncCollection(sync_keys, path, query, data, request, root, parentModel, parentKey) {
         var _this = _super.call(this) || this;
         _this.ordering = { orderBy: 'id', direction: 'asc' };
         _this.aliasOrderKey = 'id';
@@ -525,6 +514,8 @@ var ArSyncCollection = /** @class */ (function (_super) {
         _this.data = [];
         _this.children = [];
         _this.replaceData(data, sync_keys);
+        _this.parentModel = parentModel;
+        _this.parentKey = parentKey;
         return _this;
     }
     ArSyncCollection.prototype.setOrdering = function (ordering) {
@@ -580,9 +571,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
                 model.replaceData(subData);
             }
             else if (subData.sync_keys) {
-                model = new ArSyncRecord(this.query, subData, null, this.root);
-                model.parentModel = this;
-                model.parentKey = subData.id;
+                model = new ArSyncRecord(this.query, subData, null, this.root, this, subData.id);
             }
             if (model) {
                 newChildren.push(model);
@@ -647,9 +636,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
             _this.fetching.delete(id);
             if (!data || !_this.data)
                 return;
-            var model = new ArSyncRecord(_this.query, data, null, _this.root);
-            model.parentModel = _this;
-            model.parentKey = id;
+            var model = new ArSyncRecord(_this.query, data, null, _this.root, _this, id);
             var overflow = limit && limit <= _this.data.length;
             var rmodel;
             _this.mark();
@@ -755,7 +742,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
             return;
         this.data = __spreadArrays(this.data);
         this.root.mark(this.data);
-        if (this.parentModel)
+        if (this.parentModel && this.parentKey)
             this.parentModel.markAndSet(this.parentKey, this.data);
     };
     return ArSyncCollection;
@@ -763,15 +750,22 @@ var ArSyncCollection = /** @class */ (function (_super) {
 var ArSyncStore = /** @class */ (function () {
     function ArSyncStore(request, _a) {
         var immutable = (_a === void 0 ? {} : _a).immutable;
+        this.complete = false;
+        this.destroyed = false;
         this.immutable = !!immutable;
         this.markedForFreezeObjects = [];
         this.changes = [];
         this.eventListeners = { events: {}, serial: 0 };
         this.request = request;
-        this.complete = false;
         this.data = null;
         this.load(0);
     }
+    ArSyncStore.prototype.handleDestroy = function () {
+        this.release();
+        this.data = null;
+        this.destroyed = true;
+        this.trigger('destroy');
+    };
     ArSyncStore.prototype.load = function (retryCount) {
         var _this = this;
         ArSyncContainerBase.load(this.request, this).then(function (container) {
@@ -869,4 +863,4 @@ var ArSyncStore = /** @class */ (function () {
     };
     return ArSyncStore;
 }());
-exports.default = ArSyncStore;
+exports.ArSyncStore = ArSyncStore;

@@ -1,20 +1,28 @@
-export default class ArSyncStore {
+export declare type Request = {
+    api: string;
+    query: any;
+    params?: any;
+    id?: any;
+};
+export declare class ArSyncStore {
     immutable: boolean;
     markedForFreezeObjects: any[];
     changes: any;
     eventListeners: any;
     markForRelease: true | undefined;
     container: any;
-    request: any;
+    request: Request;
     complete: boolean;
     notfound?: boolean;
+    destroyed: boolean;
     data: any;
     changesBufferTimer: number | undefined | null;
     retryLoadTimer: number | undefined | null;
     static connectionManager: any;
-    constructor(request: any, { immutable }?: {
+    constructor(request: Request, { immutable }?: {
         immutable?: boolean | undefined;
     });
+    handleDestroy(): void;
     load(retryCount: number): void;
     setChangesBufferTimer(): void;
     subscribe(event: any, callback: any): {
