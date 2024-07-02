@@ -40,6 +40,7 @@ runner.eval_script <<~JAVASCRIPT
           title: true,
           myComments: { as: 'myCmnts', attributes: ['id', 'starCount'] },
           comments: {
+            id: true,
             starCount: { as: '星' },
             user: ['id', 'name'],
             myStar: { as: 'myReaction', attributes: 'id' }
@@ -252,7 +253,7 @@ tap do # no subquery test
   runner.eval_script <<~JAVASCRIPT
     global.noSubqueryTestModel = new ArSyncModel({
       api: 'currentUser',
-      query: ['id', 'posts']
+      query: ['id', { posts: 'id' }]
     })
   JAVASCRIPT
   runner.assert_script 'noSubqueryTestModel.data'

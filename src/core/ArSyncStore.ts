@@ -1,5 +1,6 @@
 import ArSyncApi from './ArSyncApi'
 export type Request = { api: string; query: any; params?: any; id?: any }
+
 class ModelBatchRequest {
   timer: number | null = null
   apiRequests = new Map<string,
@@ -36,7 +37,7 @@ class ModelBatchRequest {
         const ids = Array.from(requests.keys())
         ArSyncApi.syncFetch({ api, query, params: { ids } }).then((models: any[]) => {
           for (const model of models) {
-            const req = requests.get(model.id)
+            const req = requests.get(model._sync.id)
             if (req) req.model = model
           }
           requests.forEach(({ model, callbacks }) => {
@@ -67,6 +68,7 @@ type ParsedQuery = {
   params: any
 } | {}
 
+type SyncField = { id: number; keys: string[] }
 type Unsubscribable = { unsubscribe: () => void }
 
 class ArSyncContainerBase {
@@ -76,9 +78,8 @@ class ArSyncContainerBase {
   parentModel: ArSyncRecord | ArSyncCollection | null = null
   parentKey
   children: ArSyncContainerBase[] | { [key: string]: ArSyncContainerBase | null }
-  sync_keys: string[]
   onConnectionChange?: (status: boolean) => void
-  replaceData(_data, _sync_keys?) {}
+  replaceData(_data, _parentSyncKeys?) {}
   initForReload(request) {
     this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork((state) => {
       if (!state) {
@@ -211,8 +212,8 @@ class ArSyncContainerBase {
       return ArSyncApi.syncFetch(request).then((response: any) => {
         if (!response) {
           throw { retry: false }
-        } else if (response.collection && response.order) {
-          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root, null, null)
+        } else if (response.collection && response.order && response._sync) {
+          return new ArSyncCollection(response._sync.keys, 'collection', parsedQuery, response, request, root, null, null)
         } else if (response instanceof Array) {
           return new ArSyncCollection([], '', parsedQuery, response, request, root, null, null)
         } else {
@@ -225,7 +226,7 @@ class ArSyncContainerBase {
 
 type NotifyData = {
   action: 'add' | 'remove' | 'update'
-  class_name: string
+  class: string
   id: number
   field?: string
 }
@@ -236,6 +237,7 @@ class ArSyncRecord extends ArSyncContainerBase {
   query
   queryAttributes
   data
+  syncKeys: string[]
   children: { [key: string]: ArSyncContainerBase | null }
   paths: string[]
   reloadQueryCache
@@ -250,39 +252,35 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.data = {}
     this.children = {}
     this.rootRecord = !parentModel
+    this.id = data._sync.id
+    this.syncKeys = data._sync.keys
     this.replaceData(data)
     this.parentModel = parentModel
     this.parentKey = parentKey
   }
-  setSyncKeys(sync_keys: string[] | undefined) {
-    this.sync_keys = sync_keys ?? []
-  }
-  replaceData(data) {
-    this.setSyncKeys(data.sync_keys)
+  replaceData(data: { _sync: SyncField }) {
+    this.id = data._sync.id
+    this.syncKeys = data._sync.keys
     this.unsubscribeAll()
-    if (this.data.id !== data.id) {
-      this.mark()
-      this.data.id = data.id
-    }
     this.paths = []
     for (const key in this.queryAttributes) {
       const subQuery = this.queryAttributes[key]
       const aliasName = subQuery.as || key
       const subData = data[aliasName]
       const child = this.children[aliasName]
-      if (key === 'sync_keys') continue
-      if (subData instanceof Array || (subData && subData.collection && subData.order)) {
+      if (key === '_sync') continue
+      if (subData instanceof Array || (subData && subData.collection && subData.order && subData._sync)) {
         if (child) {
-          child.replaceData(subData, this.sync_keys)
+          child.replaceData(subData, this.syncKeys)
         } else {
-          const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root, this, aliasName)
+          const collection = new ArSyncCollection(this.syncKeys, key, subQuery, subData, null, this.root, this, aliasName)
           this.mark()
           this.children[aliasName] = collection
           this.data[aliasName] = collection.data
         }
       } else {
         if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0) this.paths.push(key)
-        if (subData && subData.sync_keys) {
+        if (subData && subData._sync) {
           if (child) {
             child.replaceData(subData)
           } else {
@@ -305,6 +303,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     }
     if (this.queryAttributes['*']) {
       for (const key in data) {
+        if (key === '_sync') continue
         if (!this.queryAttributes[key] && this.data[key] !== data[key]) {
           this.mark()
           this.data[key] = data[key]
@@ -314,7 +313,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.subscribeAll()
   }
   onNotify(notifyData: NotifyData, path?: string) {
-    const { action, class_name: className, id } = notifyData
+    const { action, class: className, id } = notifyData
     const query = path && this.queryAttributes[path]
     const aliasName = (query && query.as) || path;
     if (action === 'remove') {
@@ -326,7 +325,8 @@ class ArSyncRecord extends ArSyncContainerBase {
       this.data[aliasName] = null
       this.onChange([aliasName], null)
     } else if (action === 'add') {
-      if (this.data[aliasName] && this.data[aliasName].id === id) return
+      const child = this.children[aliasName]
+      if (child instanceof ArSyncRecord && child.id === id) return
       const fetchKey = `${aliasName}:${id}`
       this.fetching.add(fetchKey)
       modelBatchRequest.fetch(className, ArSyncRecord.compactQueryAttributes(query), id).then(data => {
@@ -358,16 +358,16 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
   subscribeAll() {
     const callback = data => this.onNotify(data)
-    for (const key of this.sync_keys) {
+    for (const key of this.syncKeys) {
       this.subscribe(key, callback)
     }
     for (const path of this.paths) {
       const pathCallback = data => this.onNotify(data, path)
-      for (const key of this.sync_keys) this.subscribe(key + path, pathCallback)
+      for (const key of this.syncKeys) this.subscribe(key + path, pathCallback)
     }
     if (this.rootRecord) {
-      const destroyCallback = () => this.root.handleDestroy()
-      for (const key of this.sync_keys) this.subscribe(key + '_destroy', destroyCallback)
+      const key = this.syncKeys[0]
+      if (key) this.subscribe(key + '_destroy', () => this.root.handleDestroy())
     }
   }
   patchQuery(key: string) {
@@ -379,7 +379,7 @@ class ArSyncRecord extends ArSyncContainerBase {
     let arrayQuery = [] as string[] | null
     const hashQuery = {}
     for (const key in this.queryAttributes) {
-      if (key === 'sync_keys') continue
+      if (key === '_sync') continue
       const val = this.queryAttributes[key]
       if (!val || !val.attributes) {
         arrayQuery?.push(key)
@@ -393,6 +393,7 @@ class ArSyncRecord extends ArSyncContainerBase {
   }
   update(data) {
     for (const key in data) {
+      if (key === '_sync') continue
       const subQuery = this.queryAttributes[key]
       if (subQuery && subQuery.attributes && Object.keys(subQuery.attributes).length > 0) continue
       if (this.data[key] === data[key]) continue
@@ -421,11 +422,12 @@ class ArSyncCollection extends ArSyncContainerBase {
   query
   queryAttributes
   compactQueryAttributes
+  syncKeys: string[]
   data: any[]
   children: ArSyncRecord[]
   aliasOrderKey = 'id'
   fetching = new Set<number>()
-  constructor(sync_keys: string[], path: string, query, data: any[], request, root: ArSyncStore, parentModel: ArSyncRecord | null, parentKey: string | null){
+  constructor(parentSyncKeys: string[], path: string, query, data: any[], request, root: ArSyncStore, parentModel: ArSyncRecord | null, parentKey: string | null){
     super()
     this.root = root
     this.path = path
@@ -438,7 +440,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
     this.data = []
     this.children = []
-    this.replaceData(data, sync_keys)
+    this.replaceData(data, parentSyncKeys)
     this.parentModel = parentModel
     this.parentKey = parentKey
   }
@@ -455,17 +457,17 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.aliasOrderKey = (subQuery && subQuery.as) || orderBy
     this.ordering = { first, last, direction, orderBy }
   }
-  setSyncKeys(sync_keys: string[]) {
-    if (sync_keys) {
-      this.sync_keys = sync_keys.map(key => key + this.path)
+  setSyncKeys(parentSyncKeys: string[] | undefined) {
+    if (parentSyncKeys) {
+      this.syncKeys = parentSyncKeys.map(key => key + this.path)
     } else {
-      this.sync_keys = []
+      this.syncKeys = []
     }
   }
-  replaceData(data: any[] | { collection: any[]; ordering: Ordering }, sync_keys: string[]) {
-    this.setSyncKeys(sync_keys)
+  replaceData(data: any[] | { collection: any[]; ordering: Ordering }, parentSyncKeys: string[]) {
+    this.setSyncKeys(parentSyncKeys)
     const existings = new Map<number, ArSyncRecord>()
-    for (const child of this.children) existings.set(child.data.id, child)
+    for (const child of this.children) existings.set(child.id, child)
     let collection: any[]
     if (Array.isArray(data)) {
       collection = data
@@ -477,12 +479,12 @@ class ArSyncCollection extends ArSyncContainerBase {
     const newData: any[] = []
     for (const subData of collection) {
       let model: ArSyncRecord | undefined = undefined
-      if (typeof(subData) === 'object' && subData && 'sync_keys' in subData) model = existings.get(subData.id)
+      if (typeof(subData) === 'object' && subData && '_sync' in subData) model = existings.get(subData._sync.id)
       let data = subData
       if (model) {
         model.replaceData(subData)
-      } else if (subData.sync_keys) {
-        model = new ArSyncRecord(this.query, subData, null, this.root, this, subData.id)
+      } else if (subData._sync) {
+        model = new ArSyncRecord(this.query, subData, null, this.root, this, subData._sync.id)
       }
       if (model) {
         newChildren.push(model)
@@ -492,7 +494,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
     while (this.children.length) {
       const child = this.children.pop()!
-      if (!existings.has(child.data.id)) child.release()
+      if (!existings.has(child.id)) child.release()
     }
     if (this.data.length || newChildren.length) this.mark()
     while (this.data.length) this.data.pop()
@@ -503,10 +505,10 @@ class ArSyncCollection extends ArSyncContainerBase {
   consumeAdd(className: string, id: number) {
     const { first, last, direction } = this.ordering
     const limit = first || last
-    if (this.data.findIndex(a => a.id === id) >= 0) return
-    if (limit && limit <= this.data.length) {
-      const lastItem = this.data[this.data.length - 1]
-      const firstItem = this.data[0]
+    if (this.children.find(a => a.id === id)) return
+    if (limit && limit <= this.children.length) {
+      const lastItem = this.children[this.children.length - 1]
+      const firstItem = this.children[0]
       if (direction === 'asc') {
         if (first) {
           if (lastItem && lastItem.id < id) return
@@ -584,7 +586,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     }
   }
   consumeRemove(id: number) {
-    const idx = this.data.findIndex(a => a.id === id)
+    const idx = this.children.findIndex(a => a.id === id)
     this.fetching.delete(id) // To cancel consumeAdd
     if (idx < 0) return
     this.mark()
@@ -593,16 +595,16 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.data.splice(idx, 1)
     this.onChange([id], null)
   }
-  onNotify(notifyData) {
+  onNotify(notifyData: NotifyData) {
     if (notifyData.action === 'add') {
-      this.consumeAdd(notifyData.class_name, notifyData.id)
+      this.consumeAdd(notifyData.class, notifyData.id)
     } else if (notifyData.action === 'remove') {
       this.consumeRemove(notifyData.id)
     }
   }
   subscribeAll() {
     const callback = data => this.onNotify(data)
-    for (const key of this.sync_keys) this.subscribe(key, callback)
+    for (const key of this.syncKeys) this.subscribe(key, callback)
   }
   onChange(path: (string | number)[], data) {
     super.onChange(path, data)
@@ -610,7 +612,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
   markAndSet(id: number, data) {
     this.mark()
-    const idx = this.data.findIndex(a => a.id === id)
+    const idx = this.children.findIndex(a => a.id === id)
     if (idx >= 0) this.data[idx] = data
   }
   mark() {
