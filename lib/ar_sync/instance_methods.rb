@@ -1,7 +1,10 @@
 module ArSync::ModelBase::InstanceMethods
   def _sync_notify(action)
     _sync_notify_parent action
-    _sync_notify_self if self.class._sync_self? && action == :update
+    if self.class._sync_self?
+      _sync_notify_self if action == :update
+      _sync_notify_self_destroy if action == :destroy
+    end
   end
 
   def _sync_current_watch_values
@@ -120,5 +123,9 @@ module ArSync::ModelBase::InstanceMethods
       _sync_notify_child_removed value, name, nil if value.nil?
     end
     ArSync.sync_send to: self, action: :update, model: self
+  end
+
+  def _sync_notify_self_destroy
+    ArSync.sync_send to: self, action: :destroy, path: :_destroy, model: nil
   end
 end

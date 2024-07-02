@@ -379,6 +379,19 @@ tap do # sync self
   runner.assert_script 'star.data.type', to_be: 'RedStar'
 end
 
+tap do # sync root destroy
+  star = YellowStar.first
+  runner.eval_script <<~JAVASCRIPT
+    global.destroyCalled = null
+    global.star = new ArSyncModel({ api: 'Star', id: #{star.id}, query: 'type' })
+    global.star.subscribe('destroy', () => { destroyCalled = { data: star.data, destroyed: star.destroyed } })
+  JAVASCRIPT
+  runner.assert_script 'star.data'
+  runner.assert_script '!star.destroyed'
+  star.destroy
+  runner.assert_script 'destroyCalled', to_be: { 'data' => nil, 'destroyed' => true }
+end
+
 tap do # fetch with id test
   post = Post.first
   runner.eval_script <<~JAVASCRIPT
