@@ -5,19 +5,22 @@ var ConnectionManager_1 = require("./ConnectionManager");
 var ArSyncModel = /** @class */ (function () {
     function ArSyncModel(request, option) {
         var _this = this;
+        this.complete = false;
+        this.destroyed = false;
         this._ref = ArSyncModel.retrieveRef(request, option);
         this._listenerSerial = 0;
         this._listeners = {};
-        this.complete = false;
-        this.connected = ArSyncStore_1.default.connectionManager.networkStatus;
+        this.connected = ArSyncStore_1.ArSyncStore.connectionManager.networkStatus;
         var setData = function () {
             _this.data = _this._ref.model.data;
             _this.complete = _this._ref.model.complete;
             _this.notfound = _this._ref.model.notfound;
+            _this.destroyed = _this._ref.model.destroyed;
         };
         setData();
         this.subscribe('load', setData);
         this.subscribe('change', setData);
+        this.subscribe('destroy', setData);
         this.subscribe('connection', function (status) {
             _this.connected = status;
         });
@@ -81,13 +84,12 @@ var ArSyncModel = /** @class */ (function () {
             this._listeners[id].unsubscribe();
         this._listeners = {};
         ArSyncModel._detach(this._ref);
-        this._ref = null;
     };
     ArSyncModel.retrieveRef = function (request, option) {
         var key = JSON.stringify([request, option]);
         var ref = this._cache[key];
         if (!ref) {
-            var model = new ArSyncStore_1.default(request, option);
+            var model = new ArSyncStore_1.ArSyncStore(request, option);
             ref = this._cache[key] = { key: key, count: 0, timer: null, model: model };
         }
         this._attach(ref);
@@ -116,7 +118,7 @@ var ArSyncModel = /** @class */ (function () {
             clearTimeout(ref.timer);
     };
     ArSyncModel.setConnectionAdapter = function (adapter) {
-        ArSyncStore_1.default.connectionManager = new ConnectionManager_1.default(adapter);
+        ArSyncStore_1.ArSyncStore.connectionManager = new ConnectionManager_1.default(adapter);
     };
     ArSyncModel.waitForLoad = function () {
         var models = [];

@@ -1,9 +1,5 @@
+import { ArSyncStore, Request } from './ArSyncStore';
 import ConnectionAdapter from './ConnectionAdapter';
-interface Request {
-    api: string;
-    query: any;
-    params?: any;
-}
 declare type Path = Readonly<(string | number)[]>;
 interface Change {
     path: Path;
@@ -12,8 +8,14 @@ interface Change {
 declare type ChangeCallback = (change: Change) => void;
 declare type LoadCallback = () => void;
 declare type ConnectionCallback = (status: boolean) => void;
-declare type SubscriptionType = 'load' | 'change' | 'connection';
+declare type SubscriptionType = 'load' | 'change' | 'connection' | 'destroy';
 declare type SubscriptionCallback = ChangeCallback | LoadCallback | ConnectionCallback;
+declare type ArSyncModelRef = {
+    key: string;
+    count: number;
+    timer: number | null;
+    model: ArSyncStore;
+};
 declare type PathFirst<P extends Readonly<any[]>> = ((...args: P) => void) extends (first: infer First, ...other: any) => void ? First : never;
 declare type PathRest<U> = U extends Readonly<any[]> ? ((...args: U) => any) extends (head: any, ...args: infer T) => any ? U extends Readonly<[any, any, ...any[]]> ? T : never : never : never;
 declare type DigResult<Data, P extends Readonly<any[]>> = Data extends null | undefined ? Data : PathFirst<P> extends never ? Data : PathFirst<P> extends keyof Data ? (Data extends Readonly<any[]> ? undefined : never) | {
@@ -26,6 +28,7 @@ export default class ArSyncModel<T> {
     private _listeners;
     complete: boolean;
     notfound?: boolean;
+    destroyed: boolean;
     connected: boolean;
     data: T | null;
     static _cache: {
@@ -52,12 +55,7 @@ export default class ArSyncModel<T> {
     release(): void;
     static retrieveRef(request: Request, option?: {
         immutable: boolean;
-    }): {
-        key: string;
-        count: number;
-        timer: number | null;
-        model: any;
-    };
+    }): ArSyncModelRef;
     static _detach(ref: any): void;
     private static _attach;
     static setConnectionAdapter(adapter: ConnectionAdapter): void;
