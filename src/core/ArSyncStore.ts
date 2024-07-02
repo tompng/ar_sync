@@ -1,5 +1,5 @@
 import ArSyncApi from './ArSyncApi'
-
+export type Request = { api: string; query: any; params?: any; id?: any }
 class ModelBatchRequest {
   timer: number | null = null
   apiRequests = new Map<string,
@@ -73,7 +73,7 @@ class ArSyncContainerBase {
   data
   listeners: Unsubscribable[] = []
   networkSubscriber?: Unsubscribable
-  parentModel
+  parentModel: ArSyncRecord | ArSyncCollection | null = null
   parentKey
   children: ArSyncContainerBase[] | { [key: string]: ArSyncContainerBase | null }
   sync_keys: string[]
@@ -197,14 +197,14 @@ class ArSyncContainerBase {
     if (attrsonly) return attributes
     return { attributes, as: column, params }
   }
-  static _load({ api, id, params, query }, root) {
+  static load({ api, id, params, query }: Request, root: ArSyncStore) {
     const parsedQuery = ArSyncRecord.parseQuery(query)
     const compactQueryAttributes = ArSyncRecord.compactQueryAttributes(parsedQuery)
     if (id != null) {
       return modelBatchRequest.fetch(api, compactQueryAttributes, id).then(data => {
         if (!data) throw { retry: false }
         const request = { api, id, query: compactQueryAttributes }
-        return new ArSyncRecord(parsedQuery, data, request, root)
+        return new ArSyncRecord(parsedQuery, data, request, root, null, null)
       })
     } else {
       const request = { api, query: compactQueryAttributes, params }
@@ -212,28 +212,14 @@ class ArSyncContainerBase {
         if (!response) {
           throw { retry: false }
         } else if (response.collection && response.order) {
-          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root)
+          return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request, root, null, null)
         } else if (response instanceof Array) {
-          return new ArSyncCollection([], '', parsedQuery, response, request, root)
+          return new ArSyncCollection([], '', parsedQuery, response, request, root, null, null)
         } else {
-          return new ArSyncRecord(parsedQuery, response, request, root)
+          return new ArSyncRecord(parsedQuery, response, request, root, null, null)
         }
       })
     }
-  }
-  static load(apiParams, root) {
-    if (!(apiParams instanceof Array)) return this._load(apiParams, root)
-    return new Promise((resolve, _reject) => {
-      const resultModels: any[] = []
-      let countdown = apiParams.length
-      apiParams.forEach((param, i) => {
-        this._load(param, root).then(model => {
-          resultModels[i] = model
-          countdown --
-          if (countdown === 0) resolve(resultModels)
-        })
-      })
-    })
   }
 }
 
@@ -246,15 +232,16 @@ type NotifyData = {
 
 class ArSyncRecord extends ArSyncContainerBase {
   id: number
-  root
+  root: ArSyncStore
   query
   queryAttributes
   data
   children: { [key: string]: ArSyncContainerBase | null }
   paths: string[]
   reloadQueryCache
+  rootRecord: boolean
   fetching = new Set<string>()
-  constructor(query, data, request, root) {
+  constructor(query, data, request, root: ArSyncStore, parentModel: ArSyncRecord | ArSyncCollection | null, parentKey: string | number | null) {
     super()
     this.root = root
     if (request) this.initForReload(request)
@@ -262,7 +249,10 @@ class ArSyncRecord extends ArSyncContainerBase {
     this.queryAttributes = query.attributes || {}
     this.data = {}
     this.children = {}
+    this.rootRecord = !parentModel
     this.replaceData(data)
+    this.parentModel = parentModel
+    this.parentKey = parentKey
   }
   setSyncKeys(sync_keys: string[] | undefined) {
     this.sync_keys = sync_keys ?? []
@@ -285,12 +275,10 @@ class ArSyncRecord extends ArSyncContainerBase {
         if (child) {
           child.replaceData(subData, this.sync_keys)
         } else {
-          const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root)
+          const collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root, this, aliasName)
           this.mark()
           this.children[aliasName] = collection
           this.data[aliasName] = collection.data
-          collection.parentModel = this
-          collection.parentKey = aliasName
         }
       } else {
         if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0) this.paths.push(key)
@@ -298,12 +286,10 @@ class ArSyncRecord extends ArSyncContainerBase {
           if (child) {
             child.replaceData(subData)
           } else {
-            const model = new ArSyncRecord(subQuery, subData, null, this.root)
+            const model = new ArSyncRecord(subQuery, subData, null, this.root, this, aliasName)
             this.mark()
             this.children[aliasName] = model
             this.data[aliasName] = model.data
-            model.parentModel = this
-            model.parentKey = aliasName
           }
         } else {
           if(child) {
@@ -349,14 +335,12 @@ class ArSyncRecord extends ArSyncContainerBase {
 
         this.fetching.delete(fetchKey)
         if (!data || !this.data) return
-        const model = new ArSyncRecord(query, data, null, this.root)
+        const model = new ArSyncRecord(query, data, null, this.root, this, aliasName)
         const child = this.children[aliasName]
         if (child) child.release()
         this.children[aliasName] = model
         this.mark()
         this.data[aliasName] = model.data
-        model.parentModel = this
-        model.parentKey = aliasName
         this.onChange([aliasName], model.data)
       }).catch(e => {
         console.error(`failed to load ${className}:${id} ${e}`)
@@ -380,6 +364,10 @@ class ArSyncRecord extends ArSyncContainerBase {
     for (const path of this.paths) {
       const pathCallback = data => this.onNotify(data, path)
       for (const key of this.sync_keys) this.subscribe(key + path, pathCallback)
+    }
+    if (this.rootRecord) {
+      const destroyCallback = () => this.root.handleDestroy()
+      for (const key of this.sync_keys) this.subscribe(key + '_destroy', destroyCallback)
     }
   }
   patchQuery(key: string) {
@@ -421,13 +409,13 @@ class ArSyncRecord extends ArSyncContainerBase {
     if (!this.root || !this.root.immutable || !Object.isFrozen(this.data)) return
     this.data = { ...this.data }
     this.root.mark(this.data)
-    if (this.parentModel) this.parentModel.markAndSet(this.parentKey, this.data)
+    if (this.parentModel && this.parentKey) (this.parentModel as { markAndSet(key: string | number, data: any): any }).markAndSet(this.parentKey, this.data)
   }
 }
 
 type Ordering = { first?: number; last?: number; orderBy: string; direction: 'asc' | 'desc' }
 class ArSyncCollection extends ArSyncContainerBase {
-  root
+  root: ArSyncStore
   path: string
   ordering: Ordering = { orderBy: 'id', direction: 'asc' }
   query
@@ -437,7 +425,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   children: ArSyncRecord[]
   aliasOrderKey = 'id'
   fetching = new Set<number>()
-  constructor(sync_keys: string[], path: string, query, data: any[], request, root){
+  constructor(sync_keys: string[], path: string, query, data: any[], request, root: ArSyncStore, parentModel: ArSyncRecord | null, parentKey: string | null){
     super()
     this.root = root
     this.path = path
@@ -451,6 +439,8 @@ class ArSyncCollection extends ArSyncContainerBase {
     this.data = []
     this.children = []
     this.replaceData(data, sync_keys)
+    this.parentModel = parentModel
+    this.parentKey = parentKey
   }
   setOrdering(ordering: { first?: unknown; last?: unknown; orderBy?: unknown; direction?: unknown }) {
     let direction: 'asc' | 'desc' = 'asc'
@@ -492,9 +482,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       if (model) {
         model.replaceData(subData)
       } else if (subData.sync_keys) {
-        model = new ArSyncRecord(this.query, subData, null, this.root)
-        model.parentModel = this
-        model.parentKey = subData.id
+        model = new ArSyncRecord(this.query, subData, null, this.root, this, subData.id)
       }
       if (model) {
         newChildren.push(model)
@@ -540,9 +528,7 @@ class ArSyncCollection extends ArSyncContainerBase {
 
       this.fetching.delete(id)
       if (!data || !this.data) return
-      const model = new ArSyncRecord(this.query, data, null, this.root)
-      model.parentModel = this
-      model.parentKey = id
+      const model = new ArSyncRecord(this.query, data, null, this.root, this, id)
       const overflow = limit && limit <= this.data.length
       let rmodel: ArSyncRecord | undefined
       this.mark()
@@ -631,33 +617,39 @@ class ArSyncCollection extends ArSyncContainerBase {
     if (!this.root || !this.root.immutable || !Object.isFrozen(this.data)) return
     this.data = [...this.data]
     this.root.mark(this.data)
-    if (this.parentModel) this.parentModel.markAndSet(this.parentKey, this.data)
+    if (this.parentModel && this.parentKey) (this.parentModel as { markAndSet(key: string | number, data: any): any }).markAndSet(this.parentKey, this.data)
   }
 }
 
-export default class ArSyncStore {
+export class ArSyncStore {
   immutable: boolean
   markedForFreezeObjects: any[]
   changes
   eventListeners
   markForRelease: true | undefined
   container
-  request
-  complete: boolean
+  request: Request
+  complete = false
   notfound?: boolean
+  destroyed = false
   data
   changesBufferTimer: number | undefined | null
   retryLoadTimer: number | undefined | null
   static connectionManager
-  constructor(request, { immutable } = {} as { immutable?: boolean }) {
+  constructor(request: Request, { immutable } = {} as { immutable?: boolean }) {
     this.immutable = !!immutable
     this.markedForFreezeObjects = []
     this.changes = []
     this.eventListeners = { events: {}, serial: 0 }
     this.request = request
-    this.complete = false
     this.data = null
     this.load(0)
+  }
+  handleDestroy() {
+    this.release()
+    this.data = null
+    this.destroyed = true
+    this.trigger('destroy')
   }
   load(retryCount: number) {
     ArSyncContainerBase.load(this.request, this).then((container: ArSyncContainerBase) => {

@@ -21,11 +21,11 @@ function checkHooks() {
   if (!useState) throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo, useRef })`'
 }
 
-interface ModelStatus { complete: boolean; notfound?: boolean; connected: boolean }
+interface ModelStatus { complete: boolean; notfound?: boolean; connected: boolean; destroyed: boolean }
 export type DataAndStatus<T> = [T | null, ModelStatus]
 export interface Request { api: string; params?: any; id?: number; query: any }
 
-const initialResult: DataAndStatus<any> = [null, { complete: false, notfound: undefined, connected: true }]
+const initialResult: DataAndStatus<any> = [null, { complete: false, notfound: undefined, connected: true, destroyed: false }]
 export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
   checkHooks()
   const [result, setResult] = useState<DataAndStatus<T>>(initialResult)
@@ -39,12 +39,12 @@ export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
     }
     const model = new ArSyncModel<T>(request, { immutable: true })
     function update() {
-      const { complete, notfound, connected, data } = model
+      const { complete, notfound, connected, destroyed, data } = model
       setResult(resultWas => {
         const [dataWas, statusWas] = resultWas
-        const statusPersisted = statusWas.complete === complete && statusWas.notfound === notfound && statusWas.connected === connected
+        const statusPersisted = statusWas.complete === complete && statusWas.notfound === notfound && statusWas.connected === connected && statusWas.destroyed === destroyed
         if (dataWas === data && statusPersisted) return resultWas
-        const status = statusPersisted ? statusWas : { complete, notfound, connected }
+        const status = statusPersisted ? statusWas : { complete, notfound, connected, destroyed }
         return [data, status]
       })
     }
@@ -55,6 +55,7 @@ export function useArSyncModel<T>(request: Request | null): DataAndStatus<T> {
     }
     model.subscribe('load', update)
     model.subscribe('change', update)
+    model.subscribe('destroy', update)
     model.subscribe('connection', update)
     return () => model.release()
   }, [requestString])
