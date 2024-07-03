@@ -63,7 +63,7 @@ var ModelBatchRequest = /** @class */ (function () {
                 ArSyncApi_1.default.syncFetch({ api: api, query: query, params: { ids: ids } }).then(function (models) {
                     for (var _i = 0, models_1 = models; _i < models_1.length; _i++) {
                         var model = models_1[_i];
-                        var req = requests.get(model.id);
+                        var req = requests.get(model._sync.id);
                         if (req)
                             req.model = model;
                     }
@@ -98,7 +98,7 @@ var ArSyncContainerBase = /** @class */ (function () {
         this.listeners = [];
         this.parentModel = null;
     }
-    ArSyncContainerBase.prototype.replaceData = function (_data, _sync_keys) { };
+    ArSyncContainerBase.prototype.replaceData = function (_data, _parentSyncKeys) { };
     ArSyncContainerBase.prototype.initForReload = function (request) {
         var _this = this;
         this.networkSubscriber = ArSyncStore.connectionManager.subscribeNetwork(function (state) {
@@ -266,8 +266,8 @@ var ArSyncContainerBase = /** @class */ (function () {
                 if (!response) {
                     throw { retry: false };
                 }
-                else if (response.collection && response.order) {
-                    return new ArSyncCollection(response.sync_keys, 'collection', parsedQuery, response, request_1, root, null, null);
+                else if (response.collection && response.order && response._sync) {
+                    return new ArSyncCollection(response._sync.keys, 'collection', parsedQuery, response, request_1, root, null, null);
                 }
                 else if (response instanceof Array) {
                     return new ArSyncCollection([], '', parsedQuery, response, request_1, root, null, null);
@@ -293,35 +293,31 @@ var ArSyncRecord = /** @class */ (function (_super) {
         _this.data = {};
         _this.children = {};
         _this.rootRecord = !parentModel;
+        _this.id = data._sync.id;
+        _this.syncKeys = data._sync.keys;
         _this.replaceData(data);
         _this.parentModel = parentModel;
         _this.parentKey = parentKey;
         return _this;
     }
-    ArSyncRecord.prototype.setSyncKeys = function (sync_keys) {
-        this.sync_keys = sync_keys !== null && sync_keys !== void 0 ? sync_keys : [];
-    };
     ArSyncRecord.prototype.replaceData = function (data) {
-        this.setSyncKeys(data.sync_keys);
+        this.id = data._sync.id;
+        this.syncKeys = data._sync.keys;
         this.unsubscribeAll();
-        if (this.data.id !== data.id) {
-            this.mark();
-            this.data.id = data.id;
-        }
         this.paths = [];
         for (var key in this.queryAttributes) {
             var subQuery = this.queryAttributes[key];
             var aliasName = subQuery.as || key;
             var subData = data[aliasName];
             var child = this.children[aliasName];
-            if (key === 'sync_keys')
+            if (key === '_sync')
                 continue;
-            if (subData instanceof Array || (subData && subData.collection && subData.order)) {
+            if (subData instanceof Array || (subData && subData.collection && subData.order && subData._sync)) {
                 if (child) {
-                    child.replaceData(subData, this.sync_keys);
+                    child.replaceData(subData, this.syncKeys);
                 }
                 else {
-                    var collection = new ArSyncCollection(this.sync_keys, key, subQuery, subData, null, this.root, this, aliasName);
+                    var collection = new ArSyncCollection(this.syncKeys, key, subQuery, subData, null, this.root, this, aliasName);
                     this.mark();
                     this.children[aliasName] = collection;
                     this.data[aliasName] = collection.data;
@@ -330,7 +326,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
             else {
                 if (subQuery.attributes && Object.keys(subQuery.attributes).length > 0)
                     this.paths.push(key);
-                if (subData && subData.sync_keys) {
+                if (subData && subData._sync) {
                     if (child) {
                         child.replaceData(subData);
                     }
@@ -355,6 +351,8 @@ var ArSyncRecord = /** @class */ (function (_super) {
         }
         if (this.queryAttributes['*']) {
             for (var key in data) {
+                if (key === '_sync')
+                    continue;
                 if (!this.queryAttributes[key] && this.data[key] !== data[key]) {
                     this.mark();
                     this.data[key] = data[key];
@@ -365,7 +363,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
     };
     ArSyncRecord.prototype.onNotify = function (notifyData, path) {
         var _this = this;
-        var action = notifyData.action, className = notifyData.class_name, id = notifyData.id;
+        var action = notifyData.action, className = notifyData.class, id = notifyData.id;
         var query = path && this.queryAttributes[path];
         var aliasName = (query && query.as) || path;
         if (action === 'remove') {
@@ -379,7 +377,8 @@ var ArSyncRecord = /** @class */ (function (_super) {
             this.onChange([aliasName], null);
         }
         else if (action === 'add') {
-            if (this.data[aliasName] && this.data[aliasName].id === id)
+            var child = this.children[aliasName];
+            if (child instanceof ArSyncRecord && child.id === id)
                 return;
             var fetchKey_1 = aliasName + ":" + id;
             this.fetching.add(fetchKey_1);
@@ -418,13 +417,13 @@ var ArSyncRecord = /** @class */ (function (_super) {
     ArSyncRecord.prototype.subscribeAll = function () {
         var _this = this;
         var callback = function (data) { return _this.onNotify(data); };
-        for (var _i = 0, _a = this.sync_keys; _i < _a.length; _i++) {
+        for (var _i = 0, _a = this.syncKeys; _i < _a.length; _i++) {
             var key = _a[_i];
             this.subscribe(key, callback);
         }
         var _loop_1 = function (path) {
             var pathCallback = function (data) { return _this.onNotify(data, path); };
-            for (var _i = 0, _a = this_1.sync_keys; _i < _a.length; _i++) {
+            for (var _i = 0, _a = this_1.syncKeys; _i < _a.length; _i++) {
                 var key = _a[_i];
                 this_1.subscribe(key + path, pathCallback);
             }
@@ -435,11 +434,9 @@ var ArSyncRecord = /** @class */ (function (_super) {
             _loop_1(path);
         }
         if (this.rootRecord) {
-            var destroyCallback = function () { return _this.root.handleDestroy(); };
-            for (var _d = 0, _e = this.sync_keys; _d < _e.length; _d++) {
-                var key = _e[_d];
-                this.subscribe(key + '_destroy', destroyCallback);
-            }
+            var key = this.syncKeys[0];
+            if (key)
+                this.subscribe(key + '_destroy', function () { return _this.root.handleDestroy(); });
         }
     };
     ArSyncRecord.prototype.patchQuery = function (key) {
@@ -454,7 +451,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
         var arrayQuery = [];
         var hashQuery = {};
         for (var key in this.queryAttributes) {
-            if (key === 'sync_keys')
+            if (key === '_sync')
                 continue;
             var val = this.queryAttributes[key];
             if (!val || !val.attributes) {
@@ -470,6 +467,8 @@ var ArSyncRecord = /** @class */ (function (_super) {
     };
     ArSyncRecord.prototype.update = function (data) {
         for (var key in data) {
+            if (key === '_sync')
+                continue;
             var subQuery = this.queryAttributes[key];
             if (subQuery && subQuery.attributes && Object.keys(subQuery.attributes).length > 0)
                 continue;
@@ -496,7 +495,7 @@ var ArSyncRecord = /** @class */ (function (_super) {
 }(ArSyncContainerBase));
 var ArSyncCollection = /** @class */ (function (_super) {
     __extends(ArSyncCollection, _super);
-    function ArSyncCollection(sync_keys, path, query, data, request, root, parentModel, parentKey) {
+    function ArSyncCollection(parentSyncKeys, path, query, data, request, root, parentModel, parentKey) {
         var _this = _super.call(this) || this;
         _this.ordering = { orderBy: 'id', direction: 'asc' };
         _this.aliasOrderKey = 'id';
@@ -513,7 +512,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
         }
         _this.data = [];
         _this.children = [];
-        _this.replaceData(data, sync_keys);
+        _this.replaceData(data, parentSyncKeys);
         _this.parentModel = parentModel;
         _this.parentKey = parentKey;
         return _this;
@@ -535,21 +534,21 @@ var ArSyncCollection = /** @class */ (function (_super) {
         this.aliasOrderKey = (subQuery && subQuery.as) || orderBy;
         this.ordering = { first: first, last: last, direction: direction, orderBy: orderBy };
     };
-    ArSyncCollection.prototype.setSyncKeys = function (sync_keys) {
+    ArSyncCollection.prototype.setSyncKeys = function (parentSyncKeys) {
         var _this = this;
-        if (sync_keys) {
-            this.sync_keys = sync_keys.map(function (key) { return key + _this.path; });
+        if (parentSyncKeys) {
+            this.syncKeys = parentSyncKeys.map(function (key) { return key + _this.path; });
         }
         else {
-            this.sync_keys = [];
+            this.syncKeys = [];
         }
     };
-    ArSyncCollection.prototype.replaceData = function (data, sync_keys) {
-        this.setSyncKeys(sync_keys);
+    ArSyncCollection.prototype.replaceData = function (data, parentSyncKeys) {
+        this.setSyncKeys(parentSyncKeys);
         var existings = new Map();
         for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
             var child = _a[_i];
-            existings.set(child.data.id, child);
+            existings.set(child.id, child);
         }
         var collection;
         if (Array.isArray(data)) {
@@ -564,14 +563,14 @@ var ArSyncCollection = /** @class */ (function (_super) {
         for (var _b = 0, collection_1 = collection; _b < collection_1.length; _b++) {
             var subData = collection_1[_b];
             var model = undefined;
-            if (typeof (subData) === 'object' && subData && 'sync_keys' in subData)
-                model = existings.get(subData.id);
+            if (typeof (subData) === 'object' && subData && '_sync' in subData)
+                model = existings.get(subData._sync.id);
             var data_1 = subData;
             if (model) {
                 model.replaceData(subData);
             }
-            else if (subData.sync_keys) {
-                model = new ArSyncRecord(this.query, subData, null, this.root, this, subData.id);
+            else if (subData._sync) {
+                model = new ArSyncRecord(this.query, subData, null, this.root, this, subData._sync.id);
             }
             if (model) {
                 newChildren.push(model);
@@ -581,7 +580,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
         }
         while (this.children.length) {
             var child = this.children.pop();
-            if (!existings.has(child.data.id))
+            if (!existings.has(child.id))
                 child.release();
         }
         if (this.data.length || newChildren.length)
@@ -602,11 +601,11 @@ var ArSyncCollection = /** @class */ (function (_super) {
         var _this = this;
         var _a = this.ordering, first = _a.first, last = _a.last, direction = _a.direction;
         var limit = first || last;
-        if (this.data.findIndex(function (a) { return a.id === id; }) >= 0)
+        if (this.children.find(function (a) { return a.id === id; }))
             return;
-        if (limit && limit <= this.data.length) {
-            var lastItem = this.data[this.data.length - 1];
-            var firstItem = this.data[0];
+        if (limit && limit <= this.children.length) {
+            var lastItem = this.children[this.children.length - 1];
+            var firstItem = this.children[0];
             if (direction === 'asc') {
                 if (first) {
                     if (lastItem && lastItem.id < id)
@@ -700,7 +699,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
         }
     };
     ArSyncCollection.prototype.consumeRemove = function (id) {
-        var idx = this.data.findIndex(function (a) { return a.id === id; });
+        var idx = this.children.findIndex(function (a) { return a.id === id; });
         this.fetching.delete(id); // To cancel consumeAdd
         if (idx < 0)
             return;
@@ -712,7 +711,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
     };
     ArSyncCollection.prototype.onNotify = function (notifyData) {
         if (notifyData.action === 'add') {
-            this.consumeAdd(notifyData.class_name, notifyData.id);
+            this.consumeAdd(notifyData.class, notifyData.id);
         }
         else if (notifyData.action === 'remove') {
             this.consumeRemove(notifyData.id);
@@ -721,7 +720,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
     ArSyncCollection.prototype.subscribeAll = function () {
         var _this = this;
         var callback = function (data) { return _this.onNotify(data); };
-        for (var _i = 0, _a = this.sync_keys; _i < _a.length; _i++) {
+        for (var _i = 0, _a = this.syncKeys; _i < _a.length; _i++) {
             var key = _a[_i];
             this.subscribe(key, callback);
         }
@@ -733,7 +732,7 @@ var ArSyncCollection = /** @class */ (function (_super) {
     };
     ArSyncCollection.prototype.markAndSet = function (id, data) {
         this.mark();
-        var idx = this.data.findIndex(function (a) { return a.id === id; });
+        var idx = this.children.findIndex(function (a) { return a.id === id; });
         if (idx >= 0)
             this.data[idx] = data;
     };
