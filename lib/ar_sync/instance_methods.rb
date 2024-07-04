@@ -1,4 +1,12 @@
 module ArSync::ModelBase::InstanceMethods
+  def sync_keys(current_user)
+    [ArSync.sync_key(self), ArSync.sync_key(self, current_user)]
+  end
+
+  def _sync_field(current_user)
+    { id:, keys: sync_keys(current_user) }
+  end
+
   def _sync_notify(action)
     _sync_notify_parent action
     if self.class._sync_self?

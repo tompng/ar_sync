@@ -173,12 +173,8 @@ module ArSync::ModelBase::ClassMethods
 
     _sync_define :id
 
-    _sync_define :sync_keys, type: [:string] do |current_user|
-      ArSync.sync_keys self, current_user
-    end
-
     serializer_defaults namespace: :sync do |current_user|
-      { id: id, sync_keys: ArSync.sync_keys(self, current_user) }
+      { _sync: _sync_field(current_user) }
     end
 
     after_initialize do

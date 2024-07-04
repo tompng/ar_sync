@@ -41,7 +41,7 @@ module ArSync
     e = { action: action }
     e[:field] = field if field
     if model
-      e[:class_name] = model.class.base_class.name
+      e[:class] = model.class.base_class.name
       e[:id] = model.id
     end
     event = ["#{key}#{path}", e]
@@ -51,10 +51,6 @@ module ArSync
     else
       @sync_send_block&.call [event]
     end
-  end
-
-  def self.sync_keys(model, user)
-    [sync_key(model), sync_key(model, user)]
   end
 
   def self.sync_key(model, to_user = nil, signature: true)
@@ -91,7 +87,7 @@ module ArSync
       serialized = ArSerializer.serialize target, query, context: user, use: :sync
       return serialized if target.is_a? ArSync::ModelBase
       {
-        sync_keys: ArSync.sync_keys(target, user),
+        _sync: { keys: [ArSync.sync_key(target), ArSync.sync_key(target, user)] },
         ordering: target.ordering,
         collection: serialized
       }
