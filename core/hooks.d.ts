@@ -15,6 +15,7 @@ interface ModelStatus {
     complete: boolean;
     notfound?: boolean;
     connected: boolean;
+    destroyed: boolean;
 }
 export declare type DataAndStatus<T> = [T | null, ModelStatus];
 export interface Request {

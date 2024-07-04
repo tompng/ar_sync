@@ -18,7 +18,7 @@ function checkHooks() {
     if (!useState)
         throw 'uninitialized. needs `initializeHooks({ useState, useEffect, useMemo, useRef })`';
 }
-var initialResult = [null, { complete: false, notfound: undefined, connected: true }];
+var initialResult = [null, { complete: false, notfound: undefined, connected: true, destroyed: false }];
 function useArSyncModel(request) {
     var _a;
     checkHooks();
@@ -33,13 +33,13 @@ function useArSyncModel(request) {
         }
         var model = new ArSyncModel_1.default(request, { immutable: true });
         function update() {
-            var complete = model.complete, notfound = model.notfound, connected = model.connected, data = model.data;
+            var complete = model.complete, notfound = model.notfound, connected = model.connected, destroyed = model.destroyed, data = model.data;
             setResult(function (resultWas) {
                 var dataWas = resultWas[0], statusWas = resultWas[1];
-                var statusPersisted = statusWas.complete === complete && statusWas.notfound === notfound && statusWas.connected === connected;
+                var statusPersisted = statusWas.complete === complete && statusWas.notfound === notfound && statusWas.connected === connected && statusWas.destroyed === destroyed;
                 if (dataWas === data && statusPersisted)
                     return resultWas;
-                var status = statusPersisted ? statusWas : { complete: complete, notfound: notfound, connected: connected };
+                var status = statusPersisted ? statusWas : { complete: complete, notfound: notfound, connected: connected, destroyed: destroyed };
                 return [data, status];
             });
         }
@@ -51,6 +51,7 @@ function useArSyncModel(request) {
         }
         model.subscribe('load', update);
         model.subscribe('change', update);
+        model.subscribe('destroy', update);
         model.subscribe('connection', update);
         return function () { return model.release(); };
     }, [requestString]);

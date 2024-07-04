@@ -1,15 +1,15 @@
-import ArSyncStore from './ArSyncStore'
+import { ArSyncStore, Request } from './ArSyncStore'
 import ArSyncConnectionManager from './ConnectionManager'
 import ConnectionAdapter from './ConnectionAdapter'
 
-interface Request { api: string; query: any; params?: any }
 type Path = Readonly<(string | number)[]>
 interface Change { path: Path; value: any }
 type ChangeCallback = (change: Change) => void
 type LoadCallback = () => void
 type ConnectionCallback = (status: boolean) => void
-type SubscriptionType = 'load' | 'change' | 'connection'
+type SubscriptionType = 'load' | 'change' | 'connection' | 'destroy'
 type SubscriptionCallback = ChangeCallback | LoadCallback | ConnectionCallback
+type ArSyncModelRef = { key: string; count: number; timer: number | null; model: ArSyncStore }
 
 type PathFirst<P extends Readonly<any[]>> = ((...args: P) => void) extends (first: infer First, ...other: any) => void ? First : never
 
@@ -30,11 +30,12 @@ type DigResult<Data, P extends Readonly<any[]>> =
   : undefined
 
 export default class ArSyncModel<T> {
-  private _ref
+  private _ref: ArSyncModelRef
   private _listenerSerial: number
   private _listeners
-  complete: boolean
+  complete = false
   notfound?: boolean
+  destroyed = false
   connected: boolean
   data: T | null
   static _cache: { [key: string]: { key: string; count: number; timer: number | null; model } } = {}
@@ -43,16 +44,17 @@ export default class ArSyncModel<T> {
     this._ref = ArSyncModel.retrieveRef(request, option)
     this._listenerSerial = 0
     this._listeners = {}
-    this.complete = false
     this.connected = ArSyncStore.connectionManager.networkStatus
     const setData = () => {
       this.data = this._ref.model.data
       this.complete = this._ref.model.complete
       this.notfound = this._ref.model.notfound
+      this.destroyed = this._ref.model.destroyed
     }
     setData()
     this.subscribe('load', setData)
     this.subscribe('change', setData)
+    this.subscribe('destroy', setData)
     this.subscribe('connection', (status: boolean) => {
       this.connected = status
     })
@@ -107,12 +109,11 @@ export default class ArSyncModel<T> {
     for (const id in this._listeners) this._listeners[id].unsubscribe()
     this._listeners = {}
     ArSyncModel._detach(this._ref)
-    this._ref = null
   }
   static retrieveRef(
     request: Request,
     option?: { immutable: boolean }
-  ): { key: string; count: number; timer: number | null; model } {
+  ): ArSyncModelRef {
     const key = JSON.stringify([request, option])
     let ref = this._cache[key]
     if (!ref) {
