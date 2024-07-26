@@ -27,7 +27,7 @@ isOK<IsEqual<typeof data2, { id: number; name: string | null }>>()
 const data3 = new ArSyncModel({ api: 'currentUser', query: '*' }).data!
 isOK<IsEqual<typeof data3, { id: number; name: string | null; posts: {}[]; postOrNull: {} | null; itemWithId: any; itemsWithId: any }>>()
 const data4 = new ArSyncModel({ api: 'currentUser',  query: { posts: 'id' } }).data!
-isOK<IsEqual<typeof data4, { posts: { id: number }[] }>>()
+isOK<IsEqual<typeof data4, { posts: { id: string }[] }>>()
 const data5 = new ArSyncModel({ api: 'currentUser', query: { posts: '*' } }).data!
 data5.posts[0].id; data5.posts[0].user; data5.posts[0].body
 isOK<TypeIncludes<typeof data5.posts[0], { body: string | null, comments: {}[] }>>()
@@ -46,11 +46,11 @@ isOK<HasExtraField<typeof data11, 'commmments'>>()
 const data12 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { first: 4 }, attributes: 'title' } } }).data!
 isOK<IsEqual<(typeof data12.posts)[0], { title: string | null }>>()
 const data13 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { first: 4 }, attributes: ['id', 'title'] } } }).data!
-isOK<IsEqual<(typeof data13.posts)[0], { id: number; title: string | null }>>()
+isOK<IsEqual<(typeof data13.posts)[0], { id: string; title: string | null }>>()
 const data14 = new ArSyncModel({ api: 'currentUser', query: { posts: { params: { first: 4 }, attributes: { id: true, title: true } } } }).data!
-isOK<IsEqual<(typeof data14.posts)[0], { id: number; title: string | null }>>()
+isOK<IsEqual<(typeof data14.posts)[0], { id: string; title: string | null }>>()
 const data15 = new ArSyncModel({ api: 'currentUser', query: { posts: ['id', 'title'] } } as const).data!
-isOK<IsEqual<(typeof data15.posts)[0], { id: number; title: string | null }>>()
+isOK<IsEqual<(typeof data15.posts)[0], { id: string; title: string | null }>>()
 const data16 = new ArSyncModel({ api: 'User', id: 1, query: 'name' }).data!
 isOK<IsEqual<typeof data16, { name: string | null }>>()
 const data17 = new ArSyncModel({ api: 'currentUser', query: 'postOrNull' }).data!
@@ -62,6 +62,6 @@ isOK<TypeIncludes<typeof data19, { postOrNull: { title: string | null } | null }
 
 const model = new ArSyncModel({ api: 'currentUser', query: { posts: ['id', 'title'] } } as const)
 let digId = model.dig(['posts', 0, 'id'] as const)
-isOK<IsEqual<typeof digId, number | null | undefined>>()
+isOK<IsEqual<typeof digId, string | null | undefined>>()
 let digTitle = model.dig(['posts', 0, 'title'] as const)
 isOK<IsEqual<typeof digTitle, string | null | undefined>>()

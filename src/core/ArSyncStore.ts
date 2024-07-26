@@ -1,5 +1,7 @@
 import ArSyncApi from './ArSyncApi'
-export type Request = { api: string; query: any; params?: any; id?: any }
+export type Request = { api: string; query: any; params?: any; id?: IDType }
+
+type IDType = number | string
 
 class ModelBatchRequest {
   timer: number | null = null
@@ -7,8 +9,8 @@ class ModelBatchRequest {
     Map<string,
       {
         query,
-        requests: Map<number, {
-          id: number
+        requests: Map<IDType, {
+          id: IDType
           model?
           callbacks: {
             resolve: (model: any) => void
@@ -18,7 +20,7 @@ class ModelBatchRequest {
       }
     >
   >()
-  fetch(api: string, query, id: number) {
+  fetch(api: string, query, id: IDType) {
     this.setTimer()
     return new Promise((resolve, reject) => {
       const queryJSON = JSON.stringify(query)
@@ -68,7 +70,7 @@ type ParsedQuery = {
   params: any
 } | {}
 
-type SyncField = { id: number; keys: string[] }
+type SyncField = { id: IDType; keys: string[] }
 type Unsubscribable = { unsubscribe: () => void }
 
 class ArSyncContainerBase {
@@ -227,12 +229,12 @@ class ArSyncContainerBase {
 type NotifyData = {
   action: 'add' | 'remove' | 'update'
   class: string
-  id: number
+  id: IDType
   field?: string
 }
 
 class ArSyncRecord extends ArSyncContainerBase {
-  id: number
+  id: IDType
   root: ArSyncStore
   query
   queryAttributes
@@ -426,7 +428,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   data: any[]
   children: ArSyncRecord[]
   aliasOrderKey = 'id'
-  fetching = new Set<number>()
+  fetching = new Set<IDType>()
   constructor(parentSyncKeys: string[], path: string, query, data: any[], request, root: ArSyncStore, parentModel: ArSyncRecord | null, parentKey: string | null){
     super()
     this.root = root
@@ -466,7 +468,7 @@ class ArSyncCollection extends ArSyncContainerBase {
   }
   replaceData(data: any[] | { collection: any[]; ordering: Ordering }, parentSyncKeys: string[]) {
     this.setSyncKeys(parentSyncKeys)
-    const existings = new Map<number, ArSyncRecord>()
+    const existings = new Map<IDType, ArSyncRecord>()
     for (const child of this.children) existings.set(child.id, child)
     let collection: any[]
     if (Array.isArray(data)) {
@@ -502,7 +504,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     for (const el of newData) this.data.push(el)
     this.subscribeAll()
   }
-  consumeAdd(className: string, id: number) {
+  consumeAdd(className: string, id: IDType) {
     const { first, last, direction } = this.ordering
     const limit = first || last
     if (this.children.find(a => a.id === id)) return
@@ -585,7 +587,7 @@ class ArSyncCollection extends ArSyncContainerBase {
       this.data.sort((a, b) => a[orderKey] > b[orderKey] ? -1 : +1)
     }
   }
-  consumeRemove(id: number) {
+  consumeRemove(id: IDType) {
     const idx = this.children.findIndex(a => a.id === id)
     this.fetching.delete(id) // To cancel consumeAdd
     if (idx < 0) return
@@ -610,7 +612,7 @@ class ArSyncCollection extends ArSyncContainerBase {
     super.onChange(path, data)
     if (path[1] === this.aliasOrderKey) this.markAndSort()
   }
-  markAndSet(id: number, data) {
+  markAndSet(id: IDType, data) {
     this.mark()
     const idx = this.children.findIndex(a => a.id === id)
     if (idx >= 0) this.data[idx] = data

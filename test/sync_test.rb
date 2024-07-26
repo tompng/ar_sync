@@ -180,7 +180,7 @@ tap do # order test
     runner.eval_script <<-JAVASCRIPT
       global.postModel = new ArSyncModel({
         api: 'post',
-        params: { id: #{post.id} },
+        params: { id: #{post.id.to_json} },
         query: {
           comments: {
             params: { orderBy: 'body', direction: '#{direction}' },
@@ -214,7 +214,7 @@ tap do # first last direction test
     runner.eval_script <<-JAVASCRIPT
       global.postModel = new ArSyncModel({
         api: 'post',
-        params: { id: #{post.id} },
+        params: { id: #{post.id.to_json} },
         query: {
           comments: {
             params: { #{first_last}: 3, direction: '#{direction}' },
@@ -295,7 +295,7 @@ tap do # plain-array filed test
     runner.eval_script <<~JAVASCRIPT
       global.postModel = new ArSyncModel({
         api: 'post',
-        params: { id: #{post.id} },
+        params: { id: #{post.id.to_json} },
         query: ['id','titleChars']
       })
     JAVASCRIPT
@@ -315,7 +315,7 @@ tap do # watch test
   runner.eval_script <<~JAVASCRIPT
     global.postModel = new ArSyncModel({
       api: 'post',
-      params: { id: #{post.id} },
+      params: { id: #{post.id.to_json} },
       query: { comments: 'editedStarCount' }
     })
   JAVASCRIPT
@@ -333,7 +333,7 @@ tap do # root array field test
   runner.eval_script <<~JAVASCRIPT
     global.postsModel = new ArSyncModel({
       api: 'Post',
-      params: { ids: [#{post1.id}, #{post2.id}] },
+      params: { ids: [#{post1.id.to_json}, #{post2.id.to_json}] },
       query: ['id', 'title']
     })
   JAVASCRIPT
@@ -348,8 +348,8 @@ tap do # model load from id
   post1 = Post.first
   post2 = Post.second
   runner.eval_script <<~JAVASCRIPT
-    global.p1 = new ArSyncModel({ api: 'Post', id: #{post1.id}, query: 'title' })
-    global.p2 = new ArSyncModel({ api: 'Post', id: #{post2.id}, query: 'title' })
+    global.p1 = new ArSyncModel({ api: 'Post', id: #{post1.id.to_json}, query: 'title' })
+    global.p2 = new ArSyncModel({ api: 'Post', id: #{post2.id.to_json}, query: 'title' })
   JAVASCRIPT
   runner.assert_script 'p1.data && p2.data'
   runner.assert_script '[p1.data.title, p2.data.title]', to_be: [post1.title, post2.title]
@@ -401,8 +401,8 @@ tap do # fetch with id test
   runner.eval_script <<~JAVASCRIPT
     global.data1 = {}
     global.data2 = {}
-    ArSyncApi.syncFetch({ api: 'Post', id: #{post.id}, query: 'title' }).then(data => { global.data1 = data })
-    ArSyncApi.fetch({ api: 'Post', id: #{post.id}, query: 'title' }).then(data => { global.data2 = data })
+    ArSyncApi.syncFetch({ api: 'Post', id: #{post.id.to_json}, query: 'title' }).then(data => { global.data1 = data })
+    ArSyncApi.fetch({ api: 'Post', id: #{post.id.to_json}, query: 'title' }).then(data => { global.data2 = data })
   JAVASCRIPT
   runner.assert_script 'data1.title', to_be: post.title
   runner.assert_script 'data2.title', to_be: post.title

@@ -17,6 +17,9 @@ class User < BaseRecord
 end
 
 class Post < BaseRecord
+  before_validation do
+    self.id ||= '%08d' % (Post.maximum(:id).to_i + 1)
+  end
   self.table_name = :posts
   belongs_to :user
   has_many :comments, dependent: :destroy
