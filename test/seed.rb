@@ -8,7 +8,7 @@ ActiveRecord::Migration::Current.class_eval do
   create_table :users do |t|
     t.string :name
   end
-  create_table :posts do |t|
+  create_table :posts, id: :string do |t|
     t.references :user
     t.string :title
     t.text :body
@@ -16,7 +16,7 @@ ActiveRecord::Migration::Current.class_eval do
   end
 
   create_table :comments do |t|
-    t.references :post
+    t.references :post, type: :string
     t.references :user
     t.text :body
     t.timestamps
@@ -36,7 +36,7 @@ User.import users
 user_ids = User.ids
 
 posts = 16.times.map do |i|
-  { user_id: user_ids.sample, title: "Post#{i}", body: "post #{i}" }
+  { id: '%08d' % (i + 1), user_id: user_ids.sample, title: "Post#{i}", body: "post #{i}" }
 end
 Post.import posts
 post_ids = Post.ids
