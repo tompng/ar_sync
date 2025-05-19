@@ -11,10 +11,10 @@ require 'ar_sync/rails'
 
 class TsTest < Minitest::Test
   PARAMS_TYPE = { fooId: :int, bar: { bazId: :int } }
-  class Model ActiveRecord::Base
-    def self.after_initialize(*); end
-    def self.before_destroy(*); end
-    def self.after_commit(*); end
+  class Model
+    def self.after_initialize(*, &); end
+    def self.before_destroy(*, &); end
+    def self.after_commit(*, &); end
     include ArSerializer::Serializable
     include ArSync::ModelBase
     def self.validate!(foo_id, bar)

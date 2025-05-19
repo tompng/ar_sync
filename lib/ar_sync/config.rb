@@ -1,4 +1,3 @@
-require 'ostruct'
 module ArSync
   config_keys = %i[
     current_user_method
