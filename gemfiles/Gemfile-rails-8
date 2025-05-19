@@ -5,6 +5,6 @@ git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 # Specify your gem's dependencies in ar_sync.gemspec
 gemspec path: '..'
 
-gem 'sqlite3', '~> 1.4'
-gem 'activerecord', '~> 7.0.0'
+gem 'sqlite3'
+gem 'activerecord', '~> 8.0'
 gem 'ar_serializer', github: 'tompng/ar_serializer'
