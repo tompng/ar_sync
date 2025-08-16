@@ -116,7 +116,8 @@ module ArSync
     end
 
     def log_internal_exception(exception)
-      ActiveSupport::Deprecation.silence do
+      deprecator = ::Rails.version >= Gem::Version.new('7.1.0') ? ::Rails.application.deprecators : ActiveSupport::Deprecation
+      deprecator.silence do
         logger.fatal '  '
         logger.fatal "#{exception.class} (#{exception.message}):"
         log_internal_exception_trace exception.annoted_source_code if exception.respond_to?(:annoted_source_code)
