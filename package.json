@@ -10,9 +10,9 @@
     "@types/react": "^16.8.6",
     "actioncable": "^5.2.0",
     "@types/actioncable": "^5.2.0",
-    "eslint": "^5.16.0",
+    "eslint": "^9.39.1",
     "typescript": "3.9.5",
-    "@typescript-eslint/eslint-plugin": "^1.6.0",
-    "@typescript-eslint/parser": "^1.6.0"
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4"
   }
 }
