@@ -53,10 +53,14 @@ module ArSync::TypeScript
       import { TypeRequest } from './types'
       import DataTypeFromRequest from './DataTypeFromRequest'
       import { default as ArSyncModelBase } from 'ar_sync/core/ArSyncModel'
-      declare class ArSyncModel<R extends TypeRequest> extends ArSyncModelBase<DataTypeFromRequest<R>> {
-        constructor(r: R, option?: { immutable: boolean })
+      import ConnectionAdapter from 'ar_sync/core/ConnectionAdapter'
+
+      type ArSyncModel<R extends TypeRequest> = ArSyncModelBase<DataTypeFromRequest<R>>
+      const ArSyncModel = ArSyncModelBase as unknown as {
+        new <R extends TypeRequest>(r: R, option?: { immutable: boolean }): ArSyncModel<R>
+        setConnectionAdapter(adapter: ConnectionAdapter): void
       }
-      export default ArSyncModelBase as typeof ArSyncModel
+      export default ArSyncModel
     CODE
   end
 
