@@ -29,8 +29,8 @@ var ArSyncModel = /** @class */ (function () {
         this.subscribeOnce('load', callback);
     };
     ArSyncModel.prototype.subscribeOnce = function (event, callback) {
-        var subscription = this.subscribe(event, function (arg) {
-            callback(arg);
+        var subscription = this.subscribe(event, function (e) {
+            callback(e);
             subscription.unsubscribe();
         });
         return subscription;
