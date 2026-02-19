@@ -7,8 +7,13 @@ interface Change { path: Path; value: any }
 type ChangeCallback = (change: Change) => void
 type LoadCallback = () => void
 type ConnectionCallback = (status: boolean) => void
-type SubscriptionType = 'load' | 'change' | 'connection' | 'destroy'
-type SubscriptionCallback = ChangeCallback | LoadCallback | ConnectionCallback
+type SubscriptionCallbackMap = {
+  load: LoadCallback
+  change: ChangeCallback
+  connection: ConnectionCallback
+  destroy: LoadCallback
+}
+type SubscriptionType = keyof SubscriptionCallbackMap
 type ArSyncModelRef = { key: string; count: number; timer: number | null; model: ArSyncStore }
 
 type PathFirst<P extends Readonly<any[]>> = ((...args: P) => void) extends (first: infer First, ...other: any) => void ? First : never
@@ -62,9 +67,9 @@ export default class ArSyncModel<T> {
   onload(callback: LoadCallback) {
     this.subscribeOnce('load', callback)
   }
-  subscribeOnce(event: SubscriptionType, callback: SubscriptionCallback) {
-    const subscription = this.subscribe(event, (arg) => {
-      (callback as (arg: any) => void)(arg)
+  subscribeOnce<T extends SubscriptionType>(event: T, callback: SubscriptionCallbackMap[T]) {
+    const subscription = this.subscribe(event, (e?: any) => {
+      callback(e)
       subscription.unsubscribe()
     })
     return subscription
@@ -86,7 +91,7 @@ export default class ArSyncModel<T> {
     }
     return dig(data, path)
   }
-  subscribe(event: SubscriptionType, callback: SubscriptionCallback): { unsubscribe: () => void } {
+  subscribe<T extends SubscriptionType>(event: T, callback: SubscriptionCallbackMap[T]): { unsubscribe: () => void } {
     const id = this._listenerSerial++
     const subscription = this._ref.model.subscribe(event, callback)
     let unsubscribed = false
