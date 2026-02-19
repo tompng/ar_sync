@@ -5,6 +5,7 @@ import * as ActionCable from 'actioncable'
 ArSyncModel.setConnectionAdapter(new ActionCableAdapter(ActionCable))
 
 type IsEqual<T, U> = [T, U] extends [U, T] ? true : false
+type IsNotEqual<T, U> = IsEqual<T, U> extends true ? false : true
 function isOK<T extends true>(): T | undefined { return }
 type IsStrictMode = string | null extends string ? false : true
 type TypeIncludes<T extends {}, U extends {}> = IsEqual<Pick<T, keyof T & keyof U>, U>
@@ -13,6 +14,7 @@ isOK<IsStrictMode>()
 
 const [hooksData1] = useArSyncModel({ api: 'currentUser', query: 'id' })
 isOK<IsEqual<typeof hooksData1, { id: number } | null>>()
+isOK<IsNotEqual<typeof hooksData1, { id: string } | null>>()
 const [hooksData2] = useArSyncModel({ api: 'currentUser', query: { '*': true, foo: true } })
 isOK<HasExtraField<typeof hooksData2, 'foo'>>()
 const [hooksData3] = useArSyncFetch({ api: 'currentUser', query: 'id' })
@@ -22,6 +24,7 @@ isOK<HasExtraField<typeof hooksData4, 'foo'>>()
 
 const data1 = new ArSyncModel({ api: 'currentUser', query: 'id' }).data!
 isOK<IsEqual<typeof data1, { id: number }>>()
+isOK<IsNotEqual<typeof data1, { id: string }>>()
 const data2 = new ArSyncModel({ api: 'currentUser', query: ['id', 'name'] }).data!
 isOK<IsEqual<typeof data2, { id: number; name: string | null }>>()
 const data3 = new ArSyncModel({ api: 'currentUser', query: '*' }).data!

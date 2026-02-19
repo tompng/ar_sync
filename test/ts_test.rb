@@ -26,5 +26,9 @@ class TsTest < Minitest::Test
     output = output.lines.grep(/type_test/)
     puts output
     assert output.empty?
+
+    output = `./node_modules/typescript/bin/tsc --lib es2017,dom --noEmit test/generated_typed_files/*.ts`
+    puts output
+    assert output.empty?
   end
 end
