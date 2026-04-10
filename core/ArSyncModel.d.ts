@@ -8,8 +8,13 @@ interface Change {
 declare type ChangeCallback = (change: Change) => void;
 declare type LoadCallback = () => void;
 declare type ConnectionCallback = (status: boolean) => void;
-declare type SubscriptionType = 'load' | 'change' | 'connection' | 'destroy';
-declare type SubscriptionCallback = ChangeCallback | LoadCallback | ConnectionCallback;
+declare type SubscriptionCallbackMap = {
+    load: LoadCallback;
+    change: ChangeCallback;
+    connection: ConnectionCallback;
+    destroy: LoadCallback;
+};
+declare type SubscriptionType = keyof SubscriptionCallbackMap;
 declare type ArSyncModelRef = {
     key: string;
     count: number;
@@ -44,12 +49,12 @@ export default class ArSyncModel<T> {
         immutable: boolean;
     });
     onload(callback: LoadCallback): void;
-    subscribeOnce(event: SubscriptionType, callback: SubscriptionCallback): {
+    subscribeOnce<T extends SubscriptionType>(event: T, callback: SubscriptionCallbackMap[T]): {
         unsubscribe: () => void;
     };
     dig<P extends Path>(path: P): DigResult<T, P> | null;
     static digData<Data, P extends Path>(data: Data, path: P): DigResult<Data, P>;
-    subscribe(event: SubscriptionType, callback: SubscriptionCallback): {
+    subscribe<T extends SubscriptionType>(event: T, callback: SubscriptionCallbackMap[T]): {
         unsubscribe: () => void;
     };
     release(): void;

@@ -2,8 +2,9 @@ export declare type Request = {
     api: string;
     query: any;
     params?: any;
-    id?: any;
+    id?: IDType;
 };
+declare type IDType = number | string;
 export declare class ArSyncStore {
     immutable: boolean;
     markedForFreezeObjects: any[];
@@ -34,3 +35,4 @@ export declare class ArSyncStore {
     freezeMarked(): void;
     release(): void;
 }
+export {};
