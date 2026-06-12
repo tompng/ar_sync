@@ -1,128 +1,136 @@
-# ArSync - Reactive Programming with Ruby on Rails
+# ArSync — Reactive data sync for Ruby on Rails
 
-Frontend JSON data will be synchronized with ActiveRecord.
+Keep frontend JSON in sync with ActiveRecord, automatically.
 
-- Provides an json api with query(shape of the json)
-- Send a notificaiton with ActionCable and automaticaly updates the data
+- A read API where the client requests the shape of the JSON (built on [ar_serializer](https://github.com/tompng/ar_serializer)).
+- When a record changes, a notification is pushed (over ActionCable) and the data on the client updates in place.
+- Generates TypeScript types so query results are fully typed.
 
 ## Installation
 
-1. Add this line to your application's Gemfile:
+Add the gem:
+
 ```ruby
 gem 'ar_sync'
 ```
 
-2. Run generator
+Run the generator (creates `SyncSchema`, the API controller, an ActionCable channel, an initializer, and routes):
+
 ```shell
 rails g ar_sync:install
 ```
 
-## Usage
+## Defining sync models
 
-1. Define parent, data, has_one, has_many to your models
+Declare which fields and associations are synced, and how change notifications
+propagate to parents.
+
 ```ruby
 class User < ApplicationRecord
   has_many :posts
-  ...
   sync_has_data :id, :name
   sync_has_many :posts
 end
 
 class Post < ApplicationRecord
   belongs_to :user
-  ...
   sync_parent :user, inverse_of: :posts
   sync_has_data :id, :title, :body, :createdAt, :updatedAt
   sync_has_one :user, only: [:id, :name]
 end
 ```
 
-2. Define apis
+DSL:
+
+- `sync_has_data` / `sync_has_one` / `sync_has_many` — fields and associations to sync.
+- `sync_parent parent, inverse_of:` — when this record changes, notify `parent` through its `inverse_of` field. Options:
+  - `only_to:` — notify only a specific user (Symbol/Proc).
+  - `watch:` — fire only when the given column (or Proc value) actually changes.
+
+Field options (`type:`, `includes:`, `preload:`, `only:`, `except:`, `count_of:`, `permission:`, …) are passed through to ar_serializer — see its [README](https://github.com/tompng/ar_serializer) for the full list.
+
+## Defining APIs (`SyncSchema`)
+
+Root entry points live in `app/models/sync_schema.rb`. A field whose name matches
+a model class and takes `ids:` is the **reload API** for that type, used when the
+client subscribes by id — put your authorization there.
+
 ```ruby
-# app/models/sync_schema.rb
 class SyncSchema < ArSync::SyncSchemaBase
-  # User-defined api
-  serializer_field :my_simple_profile_api do |current_user|
+  serializer_field :my_profile do |current_user|
     current_user
   end
-  serializer_field :my_simple_friends_api do |current_user, age:|
+
+  serializer_field :my_friends do |current_user, age:|
     current_user.friends.where(age: age)
   end
-  # Reload api (field name = classname, params = `ids:`)
+
+  # Reload APIs (field name = class name, params = `ids:`)
   serializer_field :User do |current_user, ids:|
-    User.where(condition).where id: ids
+    User.where(accessible_condition).where id: ids
   end
+
   serializer_field :Post do |current_user, ids:|
-    Post.where(condition).where id: ids
+    Post.where(accessible_condition).where id: ids
   end
 end
 ```
 
-3. Write your view
-```html
-<!-- if you're using vue -->
-<script>
-  const userModel = new ArSyncModel({
-    api: 'my_simple_profile_api ',
-    query: { id: true, name: true, posts: ['title', 'createdAt'] }
-  })
-  userModel.onload(() => {
-    new Vue({ el: '#root', data: { user: userModel.data } })
-  })
-</script>
-<div id='root'>
-  <h1>{{user.name}}'s page</h1>
-  <ul>
-    <li v-for='post in user.posts'>
-      <a :href="'/posts/' + post.id">
-        {{post.title}}
-      </a>
-      <small>date: {{post.createdAt}}</small>
-    </li>
-  </ul>
-  <form action='/posts' data-remote=true method=post>
-    <input name='post[title]'>
-    <textarea name=post[body]></textarea>
-    <input type=submit>
-  </form>
-</div>
+## Frontend (TypeScript + React)
+
+1. Add the package:
+
+```jsonc
+// package.json
+"ar_sync": "github:tompng/ar_sync"
 ```
-Now, your view and ActiveRecord are synchronized.
 
+2. Generate types into a directory:
 
-# With typescript
-1. Add `"ar_sync": "git://github.com/tompng/ar_sync.git"` to your package.json
-
-2. Generate types
 ```shell
-rails g ar_sync:types path_to_generated_code_dir/
+rails g ar_sync:types path/to/generated/
 ```
 
-3. Connection Setting
+3. Configure the connection adapter once at startup:
+
 ```ts
-import ArSyncModel from 'path_to_generated_code_dir/ArSyncModel'
+import ArSyncModel from 'path/to/generated/ArSyncModel'
 import ActionCableAdapter from 'ar_sync/core/ActionCableAdapter'
 import * as ActionCable from 'actioncable'
+
 ArSyncModel.setConnectionAdapter(new ActionCableAdapter(ActionCable))
-// ArSyncModel.setConnectionAdapter(new MyCustomConnectionAdapter) // If you are using other transports
+// Pass a custom adapter instead if you use another transport.
 ```
 
-4. Write your components
-```ts
-import { useArSyncModel } from 'path_to_generated_code_dir/hooks'
-const HelloComponent: React.FC = () => {
-  const [user, status] = useArSyncModel({
-    api: 'my_simple_profile_api',
-    query: ['id', 'name']
-  })
-  // user // => { id: number; name: string } | null
+4. Fetch data with hooks. The result type is derived from the query — only the
+fields you ask for are present.
+
+```tsx
+import { useArSyncModel, useArSyncFetch } from 'path/to/generated/hooks'
+
+const Hello: React.FC = () => {
+  // useArSyncModel: fetch + subscribe to realtime updates
+  const [user] = useArSyncModel({ api: 'my_profile', query: ['id', 'name'] })
   if (!user) return <>loading...</>
-  // user.id // => number
-  // user.name // => string
-  // user.foobar // => compile error
+  // user.id    // => number
+  // user.name  // => string
+  // user.foo   // => compile error
   return <h1>Hello, {user.name}!</h1>
 }
 ```
 
-# Examples
+- `useArSyncModel` — fetch once, then keep the data live as the server changes.
+- `useArSyncFetch` — fetch once without subscribing.
+
+Queries follow ar_serializer's query format, e.g.
+`{ id: true, name: true, posts: ['title', 'createdAt'] }`.
+
+> Non-React frontends can use `ArSyncModel` directly (`new ArSyncModel({ api, query })`, `model.data`, `model.onload(...)`).
+
+## Example app
+
 https://github.com/tompng/ar_sync_sampleapp
+
+## License
+
+[MIT](LICENSE.txt)
