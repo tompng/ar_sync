@@ -41,7 +41,7 @@ module ArSync
 
     def create_config
       create_file 'config/initializers/ar_sync.rb', <<~CODE
-        ActiveRecord::Base.include ArSync::ModelBase
+        ActiveSupport.on_load(:active_record) { include ArSync::ModelBase }
         ArSync.configure do |config|
           config.current_user_method = :current_user
           config.key_prefix = 'ar_sync_'
